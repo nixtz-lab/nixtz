@@ -123,10 +123,11 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname)));
 
 // -------------------------------------------------------------------
-// 3. ROUTE IMPORTS (Updated File Names)
+// 3. ROUTE IMPORTS 
 // -------------------------------------------------------------------
-const staffRosterRoutes = require('./staff_roster_api (1).js');
-const staffProfileRoutes = require('./routes/staff_profile_api_be.js'); // RENAMED
+// FIX: Corrected import to assume files are in a 'routes' folder and use the correct names
+const staffRosterRoutes = require('./routes/staff_roster_api.js'); 
+const staffProfileRoutes = require('./routes/staff_profile_api_be.js'); 
 
 
 // -------------------------------------------------------------------
