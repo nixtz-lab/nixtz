@@ -99,7 +99,6 @@ const MembershipConfigSchema = new mongoose.Schema({
 });
 const MembershipConfig = mongoose.model('MembershipConfig', MembershipConfigSchema);
 
-
 // *** NEW SCHEMA: TMT (Admin) Stock Rating ***
 const TmtStockRatingSchema = new mongoose.Schema({
     ticker: { type: String, required: true, unique: true, uppercase: true, trim: true },
@@ -127,6 +126,51 @@ const TickerScanSchema = new mongoose.Schema({
 });
 const TickerScan = mongoose.model('TickerScan', TickerScanSchema);
 // -- end new schema ---
+
+// --- NEW SCHEMA: User Portfolio Holding ---
+const PortfolioHoldingSchema = new mongoose.Schema({
+    user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
+    broker: { 
+        type: String, 
+        required: true, 
+        trim: true 
+    },
+    ticker: { 
+        type: String, 
+        required: true, 
+        uppercase: true, 
+        trim: true 
+    },
+    shares: { 
+        type: Number, 
+        required: true, 
+        min: 0 
+    },
+    buy_price: { 
+        type: Number, 
+        required: true, 
+        min: 0 
+    },
+    buy_date: { 
+        type: Date, 
+        required: true 
+    },
+    asset_class: { // Used for chart classification (e.g., Tech/Growth, Income/ETF, Crypto, Cash)
+        type: String, 
+        default: 'Equity' 
+    },
+    annual_dividend: { 
+        type: Number, 
+        default: 0 
+    } 
+});
+PortfolioHoldingSchema.index({ user: 1, ticker: 1 }, { unique: false }); 
+const PortfolioHolding = mongoose.model('PortfolioHolding', PortfolioHoldingSchema);
+// --- End NEW Schema User Portfolio Holding ---
 
 // ############### NEW SCHEMA FOR BUDGET PLANNER ###############
 /**
@@ -162,15 +206,84 @@ BudgetProjectionSchema.index({ user: 1, monthYear: 1 }, { unique: true });
 const BudgetProjection = mongoose.model('BudgetProjection', BudgetProjectionSchema);
 // -- end new schema for BUDGET PLANNER---############################
 
+// -------------------------------------------------------------------
+// --- RETIREMENT TRACKER SCHEMAS (NEW) ---
+// -------------------------------------------------------------------
+const RetirementProfileSchema = new mongoose.Schema({
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
+    annualExpenses: { type: Number, default: 60000 },
+    annualTravelSpending: { type: Number, default: 0 },
+    monthlyContribution: { type: Number, default: 500 },
+    expectedReturn: { type: Number, default: 8 }, 
+    safeWithdrawalRate: { type: Number, default: 4 },
+});
+const RetirementProfile = mongoose.model('RetirementProfile', RetirementProfileSchema);
+
+const FinancialAssetSchema = new mongoose.Schema({
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    ticker: { type: String, uppercase: true, trim: true },
+    shares: { type: Number, default: 0 },
+    annualYieldPct: { type: Number, default: 0 },
+    lastPrice: { type: Number, default: 0 }, 
+    type: { type: String, enum: ['stock', 'etf', 'crypto'], default: 'stock' },
+    
+    // ---------------------------------------------
+    // CRITICAL FIELDS TO ADD FOR RETIREMENT TRACKER
+    // ---------------------------------------------
+    broker: { type: String, trim: true },         // Broker Name (for Ticker assets)
+    nickname: { type: String, trim: true },       // Account Nickname (for Broker totals)
+    totalValue: { type: Number, default: null },  // Total Value (for Broker totals)
+    annualIncome: { type: Number, default: null }, // Annual Income (for Broker totals)
+});
+const FinancialAsset = mongoose.model('FinancialAsset', FinancialAssetSchema);
+
+const PropertyAssetSchema = new mongoose.Schema({
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    nickname: { type: String, required: true },
+    marketValue: { type: Number, default: 0 },
+    loanBalance: { type: Number, default: 0 },
+    rentalIncome: { type: Number, default: 0 },
+    loanPayment: { type: Number, default: 0 },
+    yearsRemaining: { type: Number, default: 30 }
+});
+const PropertyAsset = mongoose.model('PropertyAsset', PropertyAssetSchema);
+
+const BusinessAssetSchema = new mongoose.Schema({
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    nickname: { type: String, required: true },
+    monthlyProfit: { type: Number, default: 0 },
+    currentValuation: { type: Number, default: 0 }
+});
+const BusinessAsset = mongoose.model('BusinessAsset', BusinessAssetSchema);
+
+const NetWorthSnapshotSchema = new mongoose.Schema({
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    date: { type: Date, required: true },
+    totalNetWorth: Number,
+    totalPassiveIncome: Number,
+    financialAssetsValue: Number,
+    propertyEquity: Number,
+});
+const NetWorthSnapshot = mongoose.model('NetWorthSnapshot', NetWorthSnapshotSchema);
+
+// -------------------------------------------------------------------
+// --- END RETIREMENT TRACKER SCHEMAS ---
+// -------------------------------------------------------------------
+
 // Import the shared middleware
 const { authMiddleware, adminAuthMiddleware, superAdminAuthMiddleware } = require('./middleware/auth');
 
 // Import your new route files
 const tmtDashboardRoutes = require('./routes/tmt_dashboard_be');
 const budgetPlannerRoutes = require('./routes/budget_planner_be.js');
-// *** NEW IMPORT ***
 const currencyRateRoutes = require('./routes/currency_rate_be.js');
 const stockAnalysisRoutes = require('./routes/stock_analysis_be.js');
+// *** NEW: Import the dedicated fixed metrics route file ***
+const fixedMetricsRoutes = require('./routes/stock_analysis_fixed_metrics.js'); 
+// *** NEW IMPORT FOR PORTFOLIO TRACKER ***
+const portfolioRoutes = require('./routes/api_portfolio.js');
+const portfolioHoldingsRoutes = require('./routes/api_holdings.js');
+const retirementRoutes = require('./routes/retirement_tracker_be.js');
 
 const app = express();
 // Coolify provides the PORT environment variable; fall back to 3000 for local use
@@ -270,7 +383,6 @@ app.post('/api/auth/register', async (req, res) => {
         res.status(500).json({ success: false, message: 'Server error during registration.' });
     }
 });
-
 
 /**
  * @route   POST /api/auth/login
@@ -830,290 +942,6 @@ app.get('/api/search-tickers', async (req, res) => {
     }
 });
 
-// *** MODIFIED SIMFIN HISTORICALS ROUTE (Uses Weighted Shares + 10yr CAGR + Separated Logic) ***
-app.get('/api/stock/historicals/:ticker', async (req, res) => {
-    const { ticker } = req.params;
-
-    // API Key Check
-    if (!SIMFIN_API_KEY || SIMFIN_API_KEY.includes("YOUR_API_KEY") || (SIMFIN_API_KEY === "2a8d888b-daef-49fd-9736-b80328a9ea23" && process.env.NODE_ENV === 'production' && !process.env.SIMFIN_API_KEY)) {
-        console.warn("SimFin API key not set via environment variable or is using default key in production.");
-        return res.status(500).json({ success: false, message: "Server not properly configured for SimFin historical data." });
-    }
-
-    const isNumber = (val) => typeof val === 'number' && !isNaN(val);
-
-    // *** MODIFIED: Added 'bs' (Balance Sheet) to statements ***
-    const statementsUrl = `${SIMFIN_BASE_URL}/statements/compact?ticker=${ticker}&statements=pl,cf,bs&period=fy`;
-    const sharesUrl = `${SIMFIN_BASE_URL}/weighted-shares-outstanding?ticker=${ticker}&period=fy`; // Use WEIGHTED shares endpoint
-
-    // --- Default Averages (Add 10yr Growth Key) ---
-    let historicalAverages = {
-        avgNetIncome5Yr: "N/A", avgProfitMargin5Yr: "N/A", avgFCF5Yr: "N/A",
-        avgEps5Yr: "N/A", avgCashFlowPerShare5Yr: "N/A", avgRevenuePerShare5Yr: "N/A",
-        compoundRevenueGrowth3Yr: "N/A", compoundRevenueGrowth5Yr: "N/A",
-        compoundRevenueGrowth10Yr: "N/A", // <-- Added Key
-        compoundShareGrowth5Yr: "N/A", // *** NEWLY ADDED KEY ***
-        netAssets: "N/A", // *** NEW: Add Net Assets default ***
-    };
-    const options = { method: 'GET', headers: { 'accept': 'application/json', 'Authorization': `api-key ${SIMFIN_API_KEY}` } };
-
-    try {
-        console.log(`Fetching PL/CF/BS statements for ${ticker} from SimFin...`);
-        console.log(`Fetching Weighted Shares Outstanding for ${ticker} from SimFin...`);
-
-        // Make API calls concurrently
-        const [statementsResponse, sharesResponse] = await Promise.all([
-            axios.get(statementsUrl, options),
-            axios.get(sharesUrl, options)
-        ]);
-
-        // Process Statements Response (PL, CF)
-        const statementsResult = statementsResponse.data;
-        if (!statementsResult || statementsResult.length === 0 || !statementsResult[0].statements) { console.warn(`No PL/CF/BS statement data found for ${ticker}.`); return res.json({ success: true, data: historicalAverages }); }
-        const companyData = statementsResult[0];
-        const plDefinition = companyData.statements.find(s => s.statement === 'PL');
-        const cfDefinition = companyData.statements.find(s => s.statement === 'CF');
-        // *** MODIFIED: Add 'bs' (Balance Sheet) definition ***
-        const bsDefinition = companyData.statements.find(s => s.statement === 'BS');
-
-        // *** MODIFIED: Check for 'bs' as well ***
-        if (!plDefinition || !cfDefinition || !bsDefinition) { console.warn(`Could not find PL, CF, or BS statements for ${ticker}.`); return res.json({ success: true, data: historicalAverages }); }
-
-        // Find PL and CF column indices
-        const plColumns = plDefinition.columns; const cfColumns = cfDefinition.columns; let missingColumn = null;
-        const revenueIndex = plColumns.indexOf("Revenue"); if (revenueIndex === -1) missingColumn = "Revenue (PL)";
-        const netIncomeIndex = plColumns.indexOf("Net Income"); if (netIncomeIndex === -1 && !missingColumn) missingColumn = "Net Income (PL)";
-        let opCashFlowIndex = cfColumns.indexOf("Cash from Operating Activities"); if (opCashFlowIndex === -1) opCashFlowIndex = cfColumns.indexOf("Net Cash from Operating Activities"); if (opCashFlowIndex === -1 && !missingColumn) missingColumn = "Operating Cash Flow (CF)";
-        let capExIndex = cfColumns.indexOf("Acquisition of Fixed Assets & Intangibles"); if (capExIndex === -1) capExIndex = cfColumns.indexOf("Capital Expenditures"); if (capExIndex === -1 && !missingColumn) missingColumn = "Capital Expenditures (CF)";
-
-        // *** NEW: Balance Sheet Indices for Net Assets ***
-        const bsColumns = bsDefinition.columns;
-        const totalAssetsIndex = bsColumns.indexOf("Total Assets");
-        const totalLiabilitiesIndex = bsColumns.indexOf("Total Liabilities");
-
-
-        // Process Weighted Shares Response
-        const sharesResult = sharesResponse.data;
-        const sharesMap = new Map();
-        if (Array.isArray(sharesResult)) { sharesResult.forEach(item => { if (item.fyear && item.period === 'FY' && isNumber(item.diluted)) { sharesMap.set(item.fyear, item.diluted); } }); }
-        else { console.warn(`No Weighted Shares array found for ${ticker}.`); }
-        console.log(`Weighted Shares map created for ${ticker} with ${sharesMap.size} FY entries.`);
-
-        // Combine and Calculate
-        const plDataRows = plDefinition.data.filter(row => row[0] === 'FY'); const cfDataRows = cfDefinition.data.filter(row => row[0] === 'FY');
-        // *** MODIFIED: Get 'bs' (Balance Sheet) data rows ***
-        const bsDataRows = bsDefinition.data.filter(row => row[0] === 'FY');
-
-        const yearIndexPL = plColumns.indexOf("Fiscal Year"); const yearIndexCF = cfColumns.indexOf("Fiscal Year");
-        if (yearIndexPL === -1 || yearIndexCF === -1) { console.error(`Missing 'Fiscal Year' column in PL/CF for ${ticker}.`); return res.json({ success: true, data: historicalAverages }); }
-
-        // Fetch up to 10 years for CAGR calculation
-        const yearsToFetch = 10;
-        const plRecentRowsRaw = plDataRows.slice(-yearsToFetch); // Get last 10 years of PL
-        const cfRecentRowsRaw = cfDataRows.slice(-yearsToFetch); // Get last 10 years of CF
-        // *** NEW: Get only the most recent BS row for Net Assets ***
-        const latestBsRow = bsDataRows.length > 0 ? bsDataRows[bsDataRows.length - 1] : null;
-
-
-        const plYears = new Set(plRecentRowsRaw.map(row => row[yearIndexPL])); const cfYears = new Set(cfRecentRowsRaw.map(row => row[yearIndexCF]));
-        const commonYears = [...plYears].filter(year => cfYears.has(year)).sort((a,b) => a-b); // All common years found (max 10)
-
-        // Create a specific list for 5-year averages
-        const recentCommonYearsForAvg = commonYears.slice(-5); // Last 5
-
-        if (recentCommonYearsForAvg.length === 0) { console.warn(`No common FY years found for ${ticker}.`); return res.json({ success: true, data: historicalAverages }); }
-        console.log(`Processing ${recentCommonYearsForAvg.length} common years for averages: ${recentCommonYearsForAvg.join(', ')}`);
-        console.log(`Found ${commonYears.length} total common years for CAGR: ${commonYears.join(', ')}`);
-
-        // Calculation Loop
-        // *** NEW: Separated counters and sums ***
-        let sumNetIncome = 0, sumProfitMargin = 0, sumFCF = 0, sumEPS = 0, sumRevPerShare = 0, sumCFPerShare = 0;
-        let countNetIncome = 0, countProfitMargin = 0, countFCF = 0, countEPS = 0, countRevPerShare = 0, countCFPerShare = 0;
-        let revenueData = []; // This will hold ALL (up to 10) revenue points
-
-        // First loop: populate revenueData from ALL common years
-        for (const year of commonYears) { // Loop through up to 10 years
-            const plRow = plRecentRowsRaw.find(row => row[yearIndexPL] === year);
-
-            // **FIX 1a: Check for plRow, not plRow[2]**
-            if (plRow) {
-                // **FIX 1b: Use plRow, not plRow[2]**
-                const plRowData = plRow;
-                // **FIX 2a: Parse data to a number**
-                const revenue = plRowData.length > revenueIndex ? parseFloat(plRowData[revenueIndex]) : null;
-
-                if (isNumber(revenue)) {
-                    revenueData.push({ year: year, value: revenue });
-                }
-            }
-        }
-        revenueData.sort((a, b) => a.year - b.year); // Ensure sorted oldest to newest for CAGR calculation
-
-        // Second loop: calculate 5-year averages using only the last 5 years
-        for (const year of recentCommonYearsForAvg) { // Loop through only last 5
-            const plRow = plRecentRowsRaw.find(row => row[yearIndexPL] === year);
-            const cfRow = cfRecentRowsRaw.find(row => row[yearIndexCF] === year);
-
-            // **FIX 1c: Check for plRow/cfRow, not plRow[2]/cfRow[2]**
-            if (!plRow || !cfRow) continue;
-
-            // **FIX 1d: Use plRow/cfRow, not plRow[2]/cfRow[2]**
-            const plRowData = plRow; const cfRowData = cfRow;
-
-            // Extract all potential data points
-            // **FIX 2b: Parse all data to numbers**
-            const netIncome = plRowData.length > netIncomeIndex ? parseFloat(plRowData[netIncomeIndex]) : null;
-            const revenue = plRowData.length > revenueIndex ? parseFloat(plRowData[revenueIndex]) : null;
-            const opCashFlow = cfRowData.length > opCashFlowIndex ? parseFloat(cfRowData[opCashFlowIndex]) : null;
-            const capEx = cfRowData.length > capExIndex ? parseFloat(cfRowData[capExIndex]) : 0; // Default CapEx to 0
-            const shares = sharesMap.get(year); // Get weighted diluted shares
-
-            // *** DEBUG LOGGING ***
-            console.log(`--- Processing Year ${year} for ${ticker} (Avg Loop) ---`);
-            console.log(`Revenue: ${revenue} (Type: ${typeof revenue}), isNumber: ${isNumber(revenue)}`);
-            console.log(`Net Income: ${netIncome} (Type: ${typeof netIncome}), isNumber: ${isNumber(netIncome)}`);
-            console.log(`Op. Cash Flow: ${opCashFlow} (Type: ${typeof opCashFlow}), isNumber: ${isNumber(opCashFlow)}`);
-            console.log(`Shares: ${shares} (Type: ${typeof shares}), isNumber: ${isNumber(shares)}`);
-            // *** END DEBUG LOGGING ***
-
-            // --- *** NEW: SEPARATED CALCULATIONS *** ---
-
-            // Calculate Net Income & Profit Margin
-            if (isNumber(netIncome) && isNumber(revenue) && revenue !== 0) {
-                console.log(`Year ${year}: Valid for NetIncome/ProfitMargin`);
-                sumNetIncome += netIncome;
-                sumProfitMargin += (netIncome / revenue);
-                countNetIncome++;
-                countProfitMargin++;
-            }
-
-            // Calculate FCF
-            if (isNumber(opCashFlow)) {
-                console.log(`Year ${year}: Valid for FCF`);
-                const validCapEx = isNumber(capEx) ? capEx : 0;
-                const fcf = opCashFlow + validCapEx; // Note: CapEx is often negative
-                sumFCF += fcf;
-                countFCF++;
-            }
-
-            // Calculate Per-Share Metrics (only if shares are valid)
-            if (isNumber(shares) && shares !== 0) {
-                if (isNumber(netIncome)) {
-                    console.log(`Year ${year}: Valid for EPS`);
-                    sumEPS += (netIncome / shares);
-                    countEPS++;
-                }
-                if (isNumber(revenue)) {
-                    console.log(`Year ${year}: Valid for RevPerShare`);
-                    sumRevPerShare += (revenue / shares);
-                    countRevPerShare++;
-                }
-                // Check for FCF per share
-                if (isNumber(opCashFlow)) {
-                    console.log(`Year ${year}: Valid for CFPerShare`);
-                    const validCapEx = isNumber(capEx) ? capEx : 0;
-                    const fcf = opCashFlow + validCapEx;
-                    sumCFPerShare += (fcf / shares);
-                    countCFPerShare++;
-                }
-            } else if (isNumber(netIncome) || isNumber(revenue) || isNumber(opCashFlow)) {
-                // Only warn if we had other data but were missing shares
-                console.warn(`Weighted shares missing/invalid for ${ticker}, year ${year}. Per-share metrics will be N/A for this year.`);
-            }
-            // --- *** END SEPARATED CALCULATIONS *** ---
-
-        } // End 5-year average loop
-
-        // Calculate Averages based on new counts
-        if (countNetIncome > 0) {
-            historicalAverages.avgNetIncome5Yr = ((sumNetIncome / countNetIncome) / 1e9).toFixed(2) + "B";
-        }
-        if (countProfitMargin > 0) {
-            historicalAverages.avgProfitMargin5Yr = `${((sumProfitMargin / countProfitMargin) * 100).toFixed(2)}%`;
-        }
-        if (countFCF > 0) {
-            historicalAverages.avgFCF5Yr = ((sumFCF / countFCF) / 1e9).toFixed(2) + "B";
-        }
-        if (countEPS > 0) {
-            historicalAverages.avgEps5Yr = `$${(sumEPS / countEPS).toFixed(2)}`;
-        }
-        if (countRevPerShare > 0) {
-            historicalAverages.avgRevenuePerShare5Yr = `$${(sumRevPerShare / countRevPerShare).toFixed(2)}`;
-        }
-        if (countCFPerShare > 0) {
-            historicalAverages.avgCashFlowPerShare5Yr = `$${(sumCFPerShare / countCFPerShare).toFixed(2)}`;
-        }
-
-
-        // Calculate CAGR (using the revenueData array built from up to 10 years)
-        const numRevenueYears = revenueData.length;
-        if (numRevenueYears >= 3) { // 3 years needed for 3yr CAGR (2 periods)
-            const revenueNow = revenueData[numRevenueYears - 1].value;
-            const revenue3yrAgo = revenueData[numRevenueYears - 3].value;
-            if (isNumber(revenueNow) && isNumber(revenue3yrAgo) && revenue3yrAgo > 0) {
-                const cagr3 = (Math.pow(revenueNow / revenue3yrAgo, 1 / 2) - 1) * 100;
-                if (!isNaN(cagr3)) historicalAverages.compoundRevenueGrowth3Yr = `${cagr3.toFixed(2)}%`;
-            }
-        }
-        if (numRevenueYears >= 5) { // 5 years needed for 5yr CAGR (4 periods)
-            const revenueNow = revenueData[numRevenueYears - 1].value;
-            const revenue5yrAgo = revenueData[numRevenueYears - 5].value;
-            if (isNumber(revenueNow) && isNumber(revenue5yrAgo) && revenue5yrAgo > 0) {
-                const cagr5 = (Math.pow(revenueNow / revenue5yrAgo, 1 / 4) - 1) * 100;
-                if (!isNaN(cagr5)) historicalAverages.compoundRevenueGrowth5Yr = `${cagr5.toFixed(2)}%`;
-            }
-        }
-        // *** ADD 10 YEAR CAGR CALCULATION ***
-        if (numRevenueYears >= 10) { // Need 10 years of data for 10yr CAGR (9 periods)
-            const revenueNow = revenueData[numRevenueYears - 1].value;       // Most recent year's revenue
-            const revenue10yrAgo = revenueData[numRevenueYears - 10].value; // 10th year's revenue
-            if (isNumber(revenueNow) && isNumber(revenue10yrAgo) && revenue10yrAgo > 0) {
-                const cagr10 = (Math.pow(revenueNow / revenue10yrAgo, 1 / 9) - 1) * 100; // 9 periods (10 data points)
-                 if (!isNaN(cagr10)) historicalAverages.compoundRevenueGrowth10Yr = `${cagr10.toFixed(2)}%`;
-            } else { console.warn(`Could not calculate 10yr CAGR for ${ticker}, insufficient valid revenue data points.`); }
-        } else { console.log(`Insufficient revenue history (${numRevenueYears} years) to calculate 10yr CAGR for ${ticker}.`); }
-        // *** END 10 YEAR CAGR CALCULATION ***
-
-        // *** ADD 5 YEAR SHARE GROWTH CALCULATION ***
-        const sortedShareYears = [...sharesMap.keys()].sort((a, b) => a - b);
-        const numShareYears = sortedShareYears.length;
-        if (numShareYears >= 5) { // Need 5 years of data for 5yr CAGR (4 periods)
-            const sharesNow = sharesMap.get(sortedShareYears[numShareYears - 1]);
-            const shares5yrAgo = sharesMap.get(sortedShareYears[numShareYears - 5]);
-            if (isNumber(sharesNow) && isNumber(shares5yrAgo) && shares5yrAgo > 0) {
-                const cagr5Share = (Math.pow(sharesNow / shares5yrAgo, 1 / 4) - 1) * 100; // 4 periods
-                if (!isNaN(cagr5Share)) historicalAverages.compoundShareGrowth5Yr = `${cagr5Share.toFixed(2)}%`;
-            } else { console.warn(`Could not calculate 5yr Share CAGR for ${ticker}, insufficient valid share data points.`); }
-        } else { console.log(`Insufficient share history (${numShareYears} years) to calculate 5yr Share CAGR for ${ticker}.`); }
-        // *** END 5 YEAR SHARE GROWTH CALCULATION ***
-
-        // *** NEW: NET ASSETS CALCULATION from SimFin ***
-        if (latestBsRow && totalAssetsIndex !== -1 && totalLiabilitiesIndex !== -1) {
-             const assets = parseFloat(latestBsRow[totalAssetsIndex]);
-             const liabilities = parseFloat(latestBsRow[totalLiabilitiesIndex]);
-
-             if (isNumber(assets) && isNumber(liabilities)) {
-                 const netAssetsRaw = assets - liabilities;
-                 // Format as Billions (B)
-                 historicalAverages.netAssets = (netAssetsRaw / 1e9).toFixed(2) + "B";
-                 console.log(`[SimFin] Calculated Net Assets for ${ticker}: ${historicalAverages.netAssets}`);
-             }
-        }
-        // *** END NET ASSETS CALCULATION ***
-
-
-        console.log("Calculated SimFin averages (using weighted shares) for", ticker, ":", historicalAverages);
-        res.json({ success: true, data: historicalAverages });
-
-    } catch (err) {
-        // Combined Error Handling
-        let errorMessage = `Server error fetching SimFin data for ${ticker}.`; let statusCode = 500;
-        if (axios.isAxiosError(err)) { if (err.response) { console.error(`SimFin API Error: Status ${err.response.status}`, err.response.data); statusCode = err.response.status; const errorDetail = err.response.data?.message || err.response.statusText || 'Unknown API error'; if (statusCode === 401) errorMessage = "Invalid SimFin API Key."; else if (statusCode === 404) { console.warn(`SimFin data not found (404) for ${ticker}.`); return res.json({ success: true, data: historicalAverages }); } else errorMessage = `Error from SimFin API: ${errorDetail} (Status ${statusCode})`; } else if (err.request) { console.error('SimFin Request Error (No Response):', err.request); errorMessage = "No response from SimFin API."; statusCode = 504; } else { console.error('SimFin Axios Setup Error:', err.message); errorMessage = `Error setting up request to SimFin: ${err.message}`; } } else { console.error("SimFin Data Processing Error:", err.message, err.stack); errorMessage = `Internal error processing SimFin data: ${err.message}`; }
-        res.status(statusCode).json({ success: false, message: errorMessage });
-    }
-});
-// *** END CORRECTED STOCK DASHBOARD-- SIMFIN ROUTE ***
-
 // *** NEW DEDICATED ROUTE FOR STOCK VALUATION PAGE *** SIMFIN--
 app.get('/api/stock/valuation/:ticker', async (req, res) => {
     const { ticker } = req.params;
@@ -1418,7 +1246,6 @@ app.get('/api/stock-snapshot/:ticker', async (req, res) => {
         data.dividendYield = quote.summaryDetail?.dividendYield?.raw ? `${(quote.summaryDetail.dividendYield.raw * 100).toFixed(2)}%` : "N/A"; // Matches dashboard
         data.fiftyTwoWeekHigh = quote.summaryDetail?.fiftyTwoWeekHigh?.raw ? `$${quote.summaryDetail.fiftyTwoWeekHigh.raw.toFixed(2)}` : "N/A"; // Matches dashboard
         data.fiftyTwoWeekLow = quote.summaryDetail?.fiftyTwoWeekLow?.raw ? `$${quote.summaryDetail.fiftyTwoWeekLow.raw.toFixed(2)}` : "N/A"; // Matches dashboard
-        data.ath = quote.summaryDetail?.allTimeHigh?.raw ? `$${quote.summaryDetail.allTimeHigh.raw.toFixed(2)}` : "N/A";
 
         // Calculated fields
         // Cash Flow Per Share
@@ -1549,36 +1376,11 @@ app.get('/api/stock-yahu-snapshot/:ticker', async (req, res) => {
         data.enterpriseValueTraditional = quote.defaultKeyStatistics?.enterpriseValue?.raw ? (quote.defaultKeyStatistics.enterpriseValue.raw / 1e9).toFixed(2) + "B" : "N/A";
         data.fiftyTwoWeekHigh = quote.summaryDetail?.fiftyTwoWeekHigh?.raw ? `$${quote.summaryDetail.fiftyTwoWeekHigh.raw.toFixed(2)}` : "N/A";
         data.fiftyTwoWeekLow = quote.summaryDetail?.fiftyTwoWeekLow?.raw ? `$${quote.summaryDetail.fiftyTwoWeekLow.raw.toFixed(2)}` : "N/A";
-        data.ath = "N/A";
 
         if (isNumber(rawFCF) && isNumber(rawShares) && rawShares !== 0) data.cashFlowPerShare = `$${(rawFCF / rawShares).toFixed(2)}`;
         else data.cashFlowPerShare = "N/A";
         if (isNumber(rawMarketCap) && isNumber(rawFCF) && rawFCF !== 0) data.priceToFCF = (rawMarketCap / rawFCF).toFixed(2);
         else data.priceToFCF = "N/A";
-
-        // --- MODIFICATION: Calculate Net Assets from Yahu Balance Sheet ---
-        data.netAssets = "N/A"; // Default
-        try {
-            // Get the most recent balance sheet statement
-            const latestBS = quote.balanceSheetHistory?.balanceSheetStatements?.[0];
-            if (latestBS) {
-                const rawAssets = latestBS.totalAssets?.raw;
-                const rawLiabilities = latestBS.totalLiab?.raw; // Yahu often uses 'totalLiab'
-                console.log(`[${new Date().toISOString()}] Yahu BS Data for ${ticker}: Assets=${rawAssets}, Liabilities=${rawLiabilities}`);
-                if (isNumber(rawAssets) && isNumber(rawLiabilities)) {
-                    const netAssetsRaw = rawAssets - rawLiabilities;
-                    data.netAssets = (netAssetsRaw / 1e9).toFixed(2) + "B"; // Format same as others
-                    console.log(`[${new Date().toISOString()}] Calculated Net Assets from Yahu for ${ticker}: ${data.netAssets}`);
-                } else {
-                     console.warn(`[${new Date().toISOString()}] Missing rawAssets or rawLiabilities in Yahu BS data for ${ticker}.`);
-                }
-            } else {
-                 console.warn(`[${new Date().toISOString()}] No balanceSheetStatements found in Yahu response for ${ticker}.`);
-            }
-        } catch(bsError) {
-             console.error(`[${new Date().toISOString()}] Error processing Yahu Balance Sheet data for ${ticker}:`, bsError.message);
-        }
-        // --- END NET ASSETS CALCULATION --- Yahu ---
 
         // Change Class/Icon logic
         const priceChangeValue = parseFloat(data.priceChange);
@@ -2169,6 +1971,12 @@ app.use('/api/tmt', tmtDashboardRoutes);
 app.use('/api/projections', budgetPlannerRoutes);
 app.use('/api/currency', currencyRateRoutes);
 app.use('/api/stockanalysis', stockAnalysisRoutes);
+app.use('/api/fixedmetrics', fixedMetricsRoutes); // Maps /api/fixedmetrics/* to your new router
+app.use('/api/portfolio', authMiddleware, portfolioHoldingsRoutes);
+// *** MOUNT NEW PORTFOLIO ROUTER ***
+app.use('/api/v1', portfolioRoutes);
+app.use('/api/retirement', retirementRoutes);
+
 // -------------------------------------------------------------------
 // 8a. OTHER EXISTING ROUTES (Copied from your uploaded file)
 // -------------------------------------------------------------------

@@ -1,10 +1,12 @@
 /**
  * script.js
- * Global functions for Think Money Tree landing page interactivity and Access Control.
+ * Global functions for Nixtz landing page interactivity and Access Control.
  */
 
 // --- CORE GLOBAL UTILITIES ---
-const API_BASE_URL = window.location.origin; // ADDED
+// FIX: Expose API_BASE_URL globally via the window object
+window.API_BASE_URL = window.location.origin; 
+
 const getAuthStatus = () => localStorage.getItem('tmt_auth_token') !== null;
 const getUserRole = () => localStorage.getItem('tmt_user_role'); // NEW
 const getPageAccess = () => { // NEW
@@ -43,7 +45,8 @@ function showMessage(text, isError = false) {
     if (isError) {
         msgBox.classList.add('bg-red-500'); 
     } else {
-        msgBox.classList.add('bg-tmt-primary'); 
+        // MODIFIED: Use Nixtz color class name
+        msgBox.classList.add('bg-nixtz-primary'); 
     }
 
     // Trigger transition by removing opacity-0 and adding opacity-100
@@ -395,7 +398,8 @@ async function changePassword(e) {
 
         // Success
         passwordMessageBox.textContent = result.message || "Password updated successfully!";
-        passwordMessageBox.className = 'p-3 rounded-lg text-white mb-3 bg-tmt-primary'; 
+        // MODIFIED: Use Nixtz color class name
+        passwordMessageBox.className = 'p-3 rounded-lg text-white mb-3 bg-nixtz-primary'; 
         document.getElementById('change-password-form').reset();
         
         showMessage("Password updated. Please log in again.", false);
@@ -427,73 +431,26 @@ async function changePassword(e) {
  * Fetches ticker suggestions from the backend API.
  */
 async function fetchRealSuggestions(query) {
-    if (!query || query.length < 1) return []; // Basic validation
-
-    try {
-        // This API_BASE_URL is already defined at the top of this file
-        const response = await fetch(`${API_BASE_URL}/api/search-tickers?q=${encodeURIComponent(query)}`);
-        if (!response.ok) throw new Error(`Search API failed: ${response.status}`);
-        const result = await response.json();
-
-        if (result.success && Array.isArray(result.data)) {
-            return result.data.map(item => ({ ticker: item.ticker, text: `${item.ticker} - ${item.name}` }));
-        }
-        console.warn("Search suggestions API returned success=false or invalid data.");
-        return [];
-    } catch (error) {
-        console.error("Error fetching real suggestions:", error);
-        return [];
-    }
+    // MODIFIED: This function is now irrelevant to Nixtz and will be mocked/removed in the future.
+    // For now, let's keep it mocked to prevent errors if UI elements call it.
+    console.warn("Stock search suggestions are mocked/disabled in Nixtz.");
+    return [];
 }
 
 /**
  * Handles user input in a search box to show suggestions.
  */
 function handleSearchInput(event, suggestionsId) {
-    const inputElement = event.target;
-    const query = inputElement.value.trim();
-    const suggestionsContainer = document.getElementById(suggestionsId);
-    if (!suggestionsContainer) return; // Exit if container doesn't exist
-
-    // If Enter key pressed, let the form submit handle it (hide suggestions)
-    if (event.key === 'Enter' && query) {
-        suggestionsContainer.classList.add('hidden');
-        return;
-    }
-
-    // Hide suggestions if query is empty
-    if (!query) {
-        suggestionsContainer.classList.add('hidden');
-        suggestionsContainer.innerHTML = '';
-        return;
-    }
-
-    // Debounce the API call
-    clearTimeout(inputElement.suggestionTimeout);
-    inputElement.suggestionTimeout = setTimeout(async () => {
-        const suggestions = await fetchRealSuggestions(query);
-        if (suggestions.length > 0) {
-            suggestionsContainer.innerHTML = suggestions.map(suggestion =>
-                `<div class="suggestion-item" onclick="selectSuggestion('${suggestion.ticker}')">${suggestion.text}</div>`
-            ).join('');
-            suggestionsContainer.classList.remove('hidden'); // Show container
-        } else {
-            suggestionsContainer.classList.add('hidden'); // Hide if no suggestions
-            suggestionsContainer.innerHTML = '';
-        }
-    }, 250); // 250ms debounce
+    // MODIFIED: Disabled for Nixtz
+    // console.log("Search input disabled.");
 }
 
 /**
  * Handles selecting a suggestion from the dropdown.
  */
 function selectSuggestion(ticker) {
-    const targetUrl = `stock_dashboard.html?ticker=${ticker}`;
-    // Use the global checkAccessAndRedirect function (already in this file)
-    checkAccessAndRedirect(targetUrl);
-    
-    // Hide all suggestion dropdowns after selection
-    document.querySelectorAll('.search-suggestions').forEach(s => s.classList.add('hidden'));
+    // MODIFIED: Disabled for Nixtz
+    // console.log("Search selection disabled.");
 }
 // Make accessible globally for onclick attributes
 window.selectSuggestion = selectSuggestion;
@@ -507,32 +464,28 @@ document.addEventListener('DOMContentLoaded', () => {
     
     setupMobileMenuToggle();
 
-    // --- MODIFIED: SITE SEARCH LOGIC (NOW TICKER SEARCH) ---
-    const searchForm = document.getElementById('header-search-form'); // CHANGED ID
+    // --- MODIFIED: SITE SEARCH LOGIC (REMOVED) ---
+    // Since we removed the search form from index.html, this is commented out
+    /*
+    const searchForm = document.getElementById('header-search-form'); 
     if (searchForm) {
         searchForm.addEventListener('submit', (e) => {
-            e.preventDefault(); // Stop the form from submitting normally
-            const searchInput = document.getElementById('stock-search-input'); // CHANGED ID
-            const query = searchInput.value.trim().toUpperCase(); // CHANGED toUpperCase
+            e.preventDefault(); 
+            const searchInput = document.getElementById('stock-search-input'); 
+            const query = searchInput.value.trim().toUpperCase(); 
             
             if (query) {
-                // This will redirect to the stock dashboard page
-                showMessage(`Loading ticker: ${query}`, false); // CHANGED message
-                
-                setTimeout(() => {
-                    // We pass the search term in the URL
-                    // Use checkAccessAndRedirect to handle navigation
-                    checkAccessAndRedirect(`stock_dashboard.html?ticker=${encodeURIComponent(query)}`); // CHANGED URL and function
-                }, 500); // Wait half a second after showing the message
+                showMessage(`Search is disabled in Nixtz. Use navigation links.`, true); 
+                // checkAccessAndRedirect(`stock_dashboard.html?ticker=${encodeURIComponent(query)}`); 
             }
         });
     }
+    */
     // --- END MODIFIED SITE SEARCH LOGIC ---
 
     // --- START: ADDED LISTENERS FOR TICKER SUGGESTIONS ---
 
-    // Attach keyup listener for search suggestions
-    document.getElementById('stock-search-input')?.addEventListener('keyup', (e) => handleSearchInput(e, 'stock-search-suggestions'));
+    // document.getElementById('stock-search-input')?.addEventListener('keyup', (e) => handleSearchInput(e, 'stock-search-suggestions'));
 
     // Global click listener to hide suggestions when clicking outside
     document.addEventListener('click', (event) => {

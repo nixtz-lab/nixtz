@@ -64,6 +64,15 @@ tailwind.config = {
         background-color: #374151;
         color: #00A99D; /* Highlight color */
     }
+    
+    /* FIX: Watchlist link uses stacked style on all screens */
+    .stacked-nav-link {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        white-space: nowrap;
+    }
 </style>
 </head>
 <body class="bg-tmt-bg font-sans antialiased">
@@ -98,43 +107,56 @@ tailwind.config = {
         <div class="flex items-center space-x-4 sm:space-x-6">
             
             <a href="javascript:void(0)" onclick="checkAccessAndRedirect('watchlist.html')" 
-               class="text-tmt-primary hover:text-tmt-secondary transition duration-300 flex flex-col items-center md:flex-row focus:outline-none font-medium ml-4 md:ml-0" 
+               class="text-tmt-primary hover:text-tmt-secondary transition duration-300 stacked-nav-link focus:outline-none font-medium ml-4 sm:ml-6" 
                title="Watchlist">
-                <i data-lucide="eye" class="w-5 h-5 md:w-4 md:h-4 md:mr-1.5"></i>
-                <span class="inline text-[10px] leading-tight md:text-sm md:inline md:leading-normal">Watchlist</span>
+                <i data-lucide="eye" class="w-5 h-5"></i>
+                <span class="text-[10px] leading-tight md:text-[10px] md:leading-tight">Watchlist</span>
             </a>
-            
-            <nav id="desktop-nav-links" class="hidden md:flex space-x-4 text-sm">
+            <nav id="desktop-nav-links" class="hidden md:flex space-x-3 text-sm">
 
                 <div class="relative group">
-                    <button class="text-gray-400 hover:text-tmt-primary transition duration-300 flex items-center focus:outline-none">
+                    <button class="text-gray-400 hover:text-tmt-primary transition duration-300 flex items-center focus:outline-none whitespace-nowrap">
+                        Finance
+                        <svg class="w-4 h-4 ml-1 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div class="absolute left-1/2 transform -translate-x-1/2 top-full w-56 bg-gray-800 rounded-lg shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition duration-300 z-50 p-2 border border-gray-700 whitespace-nowrap">
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('budget_tracker.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">Budget Dashboard</a>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('budget_planner.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">Monthly Planner</a>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('transactions.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">Transaction History</a>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('reports.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">Reports & Analysis</a>
+                    </div>
+                </div>
+                
+                <div class="relative group">
+                    <button class="text-gray-400 hover:text-tmt-primary transition duration-300 flex items-center focus:outline-none whitespace-nowrap">
                         Stock
                         <svg class="w-4 h-4 ml-1 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                     </button>
                     <div class="absolute left-1/2 transform -translate-x-1/2 top-full w-60 bg-gray-800 rounded-lg shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition duration-300 z-50 p-2 border border-gray-700">
                         <a href="javascript:void(0)" onclick="checkAccessAndRedirect('tmt_dashboard.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">TMT Dashboard</a>
-                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('stock_dashboard.html?mode=search')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">TMT Stock Analyzer</a>
-                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('stock_valuation.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">TMT Valuation Tool</a>
-                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('investing_for_beginners.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">Investing for Beginners</a>
                         <a href="javascript:void(0)" onclick="checkAccessAndRedirect('52_week_low.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">52 Week Low</a>
-                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('stock_ranking_list.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">Think Money Tree Stock Ranking List</a>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('stock_ranking_list.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">TMT Stock Ranking List</a>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('stock_dashboard.html?mode=search')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">TMT Stock Analyzer</a> 
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('stock_valuation.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">TMT Valuation Tool</a>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('portfolio_tracker.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">TMT Portfolio Tracker</a>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('investing_for_beginners.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">Investing for Beginners</a>
                     </div>
                 </div>
 
                 <div class="relative group">
-                    <button class="text-gray-400 hover:text-tmt-primary transition duration-300 flex items-center focus:outline-none">
+                    <button class="text-gray-400 hover:text-tmt-primary transition duration-300 flex items-center focus:outline-none whitespace-nowrap">
                         Crypto
                         <svg class="w-4 h-4 ml-1 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                     </button>
                     <div class="absolute left-1/2 transform -translate-x-1/2 top-full w-56 bg-gray-800 rounded-lg shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition duration-300 z-50 p-2 border border-gray-700 whitespace-nowrap">
                         <a href="javascript:void(0)" onclick="checkAccessAndRedirect('crypto_market.html')"class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">Crypto Market</a>
                         <a href="javascript:void(0)" onclick="checkAccessAndRedirect('crypto_strategies.html')"class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">Crypto Strategies</a>
-                        <a href="Crypto_for_Beginners.html" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">Crypto for Beginners</a>
+                        <a href="crypto_for_beginners.html" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">Crypto for Beginners</a>
                     </div>
                 </div>
 
                 <div class="relative group">
-                    <button class="text-gray-400 hover:text-tmt-primary transition duration-300 flex items-center focus:outline-none">
+                    <button class="text-gray-400 hover:text-tmt-primary transition duration-300 flex items-center focus:outline-none whitespace-nowrap">
                         Real Estate
                         <svg class="w-4 h-4 ml-1 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                     </button>
@@ -146,19 +168,19 @@ tailwind.config = {
                 </div>
 
                 <div class="relative group">
-                    <button class="text-gray-400 hover:text-tmt-primary transition duration-300 flex items-center focus:outline-none">
+                    <button class="text-gray-400 hover:text-tmt-primary transition duration-300 flex items-center focus:outline-none whitespace-nowrap">
                         Retirement
                         <svg class="w-4 h-4 ml-1 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                     </button>
                     <div class="absolute left-1/2 transform -translate-x-1/2 top-full w-56 bg-gray-800 rounded-lg shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition duration-300 z-50 p-2 border border-gray-700 whitespace-nowrap">
                         <a href="javascript:void(0)" onclick="checkAccessAndRedirect('passive_income.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">Passive Income</a>
                         <a href="javascript:void(0)" onclick="checkAccessAndRedirect('retirement_tracker.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">Retirement Tracker</a>
-                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('Retirement_Calculator.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">Retirement Calculator</a>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('retirement_calculator.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">Retirement Calculator</a>
                     </div>
                 </div>
 
                 <div class="relative group">
-                    <button class="text-gray-400 hover:text-tmt-primary transition duration-300 flex items-center focus:outline-none">
+                    <button class="text-gray-400 hover:text-tmt-primary transition duration-300 flex items-center focus:outline-none whitespace-nowrap">
                         About
                         <svg class="w-4 h-4 ml-1 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                     </button>
@@ -184,14 +206,12 @@ tailwind.config = {
                 </a>
             </div>
             
+            <div id="admin-link-container" class="hidden">
+                 <a href="javascript:void(0)" onclick="checkAccessAndRedirect('admin_panel.html')" class="text-sm bg-tmt-secondary hover:bg-[#E5B800] text-tmt-bg font-bold py-1.5 px-3 rounded-full shadow-lg transition duration-300 transform hover:scale-105">
+                    Admin
+                </a>
+            </div>
             <div id="user-menu-container" class="group relative flex items-center space-x-2 hidden"> 
-                
-                <div id="admin-link-container" class="hidden">
-                     <a href="javascript:void(0)" onclick="checkAccessAndRedirect('admin_panel.html')" class="text-sm bg-tmt-secondary hover:bg-[#E5B800] text-tmt-bg font-bold py-1.5 px-3 rounded-full shadow-lg transition duration-300 transform hover:scale-105">
-                        Admin
-                    </a>
-                </div>
-
                 <button 
                     id="nav-user-button"
                     class="w-10 h-10 bg-tmt-primary rounded-full flex items-center justify-center font-bold text-tmt-bg hover:scale-105 transition duration-200"
@@ -228,11 +248,19 @@ tailwind.config = {
 
     <div id="mobile-menu" class="hidden md:hidden bg-gray-900 absolute w-full shadow-2xl border-b border-gray-800 z-40 text-sm">
         <div class="px-4 pt-2 pb-4 space-y-2">
-
-            <a href="javascript:void(0)" onclick="checkAccessAndRedirect('watchlist.html')" class="hidden w-full text-left py-2 px-3 text-tmt-primary hover:text-tmt-secondary flex items-center justify-start rounded-lg bg-gray-800 hover:bg-gray-700 font-semibold transition duration-200">
-                <i data-lucide="eye" class="w-4 h-4 mr-2"></i>
-                Watchlist
-            </a>
+            
+            <div>
+                <button onclick="toggleMobileDropdown(this)" class="w-full text-left py-2 px-3 text-gray-300 hover:text-tmt-primary flex items-center justify-between rounded-lg bg-gray-800 hover:bg-gray-700 font-semibold transition duration-200">
+                    Finance
+                    <svg class="w-4 h-4 transform transition duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                <div class="pl-4 pt-1 space-y-1 hidden" data-dropdown-content>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('budget_tracker.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">Budget Dashboard</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('budget_planner.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">Monthly Planner</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('transactions.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">Transaction History</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('reports.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">Reports & Analysis</a>
+                </div>
+            </div>
             <div>
                 <button onclick="toggleMobileDropdown(this)" class="w-full text-left py-2 px-3 text-gray-300 hover:text-tmt-primary flex items-center justify-between rounded-lg bg-gray-800 hover:bg-gray-700 font-semibold transition duration-200">
                     Stock
@@ -240,11 +268,13 @@ tailwind.config = {
                 </button>
                 <div class="pl-4 pt-1 space-y-1 hidden" data-dropdown-content>
                     <a href="javascript:void(0)" onclick="checkAccessAndRedirect('tmt_dashboard.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">TMT Dashboard</a>
-                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('stock_dashboard.html?mode=search')" class="block px-4 py-2 text-tmt-secondary hover:bg-gray-700 hover:text-tmt-primary rounded-md text-left font-semibold">TMT Stock Analyzer</a>
-                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('stock_valuation.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">TMT Valuation Tool</a>
-                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('investing_for_beginners.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">Investing for Beginners</a>
                     <a href="javascript:void(0)" onclick="checkAccessAndRedirect('52_week_low.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">52 Week Low</a>
-                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('stock_ranking_list.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">Think Money Tree Stock Ranking List</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('stock_ranking_list.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">TMT Stock Ranking List</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('stock_dashboard.html?mode=search')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">TMT Stock Analyzer</a> 
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('stock_valuation.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">TMT Valuation Tool</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('portfolio_tracker.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">TMT Portfolio Tracker</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('investing_for_beginners.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">Investing for Beginners</a>
+                    
                 </div>
             </div>
 
@@ -256,7 +286,7 @@ tailwind.config = {
                 <div class="pl-4 pt-1 space-y-1 hidden" data-dropdown-content>
                     <a href="javascript:void(0)" onclick="checkAccessAndRedirect('crypto_market.html')"class="block px-4 py-2 text-gray-400 hover:bg-gray-800 hover:text-tmt-secondary rounded-md">Crypto Market</a>
                     <a href="javascript:void(0)" onclick="checkAccessAndRedirect('crypto_strategies.html')"class="block px-4 py-2 text-gray-400 hover:bg-gray-800 hover:text-tmt-secondary rounded-md">Crypto Strategies</a>
-                    <a href="Crypto_for_Beginners.html" class="block px-4 py-2 text-gray-400 hover:bg-gray-800 hover:text-tmt-secondary rounded-md">Crypto for Beginners</a>
+                    <a href="crypto_for_beginners.html" class="block px-4 py-2 text-gray-400 hover:bg-gray-800 hover:text-tmt-secondary rounded-md">Crypto for Beginners</a>
                 </div>
             </div>
 
@@ -400,10 +430,10 @@ tailwind.config = {
             </div>
         </div>
     </section>
-    <section id="pillars" class="py-20 bg-tmt-bg">
+    <section id="pillars" class="py-10 bg-tmt-bg">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center mb-16">
-                <h2 class="text-4xl font-extrabold text-white mb-4">Our Core Topics</h2>
+            <div class="text-center mb-8">
+                <h2 class="text-4xl font-extrabold text-white mb-2">Our Core Topics</h2>
                 <p class="text-xl text-gray-400 max-w-2xl mx-auto">Actionable knowledge across the entire wealth-building spectrum.</p>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
