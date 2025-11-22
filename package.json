@@ -1,7 +1,7 @@
 {
-  "name": "tmtwebsite3",
+  "name": "nixtz",
   "version": "1.0.0",
-  "description": "Think Money Tree Website Backend",
+  "description": "Nixtz Business Operations Platform Backend",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -10,9 +10,11 @@
     "express",
     "mongoose",
     "mongodb",
-    "investing"
+    "business",
+    "operations",
+    "staff-roster"
   ],
-  "author": "",
+  "author": "Nixtz Lab",
   "license": "ISC",
   "dependencies": {
     "axios": "^1.7.2",
