@@ -54,50 +54,27 @@ const MembershipConfigSchema = new mongoose.Schema({
 });
 const MembershipConfig = mongoose.model('MembershipConfig', MembershipConfigSchema);
 
-// --- NIXTZ SCHEMA: STAFF PROFILE (NEW) ---
-const StaffProfileSchema = new mongoose.Schema({
-    name: { type: String, required: true, unique: true, trim: true },
-    employeeId: { type: String, unique: true, required: true, trim: true },
-    position: { type: String, required: true, enum: ['Manager', 'Supervisor', 'Delivery', 'Normal Staff'] },
-    shiftPreference: { type: String, default: 'Morning' }, 
-    fixedDayOff: { type: String, enum: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun', 'None'], default: 'None' },
-    isNightRotator: { type: Boolean, default: false },
-    currentRotationDay: { type: Number, default: 0 }, 
+// --- NIXTZ SCHEMA: STAFF ROSTER (New Operational Schema) ---
+const RosterEntrySchema = new mongoose.Schema({
+    weekStartDate: { type: Date, required: true }, 
+    employeeName: { type: String, required: true, trim: true },
+    employeeId: { type: String, trim: true },
+    weeklySchedule: [{
+        dayOfWeek: { type: String, enum: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], required: true },
+        shifts: [{ 
+            shiftId: { type: Number, enum: [1, 2, 3] },
+            jobRole: { type: String, enum: ['C1', 'C2', 'C3', 'C4', 'C5', 'Leave'] },
+            timeRange: { type: String, default: '' }
+        }],
+    }],
     user: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true
     }
 });
-StaffProfileSchema.index({ user: 1, employeeId: 1 }, { unique: true });
-const StaffProfile = mongoose.model('StaffProfile', StaffProfileSchema); 
-
-
-// --- NIXTZ SCHEMA: STAFF ROSTER (Existing) ---
-const RosterEntrySchema = new mongoose.Schema({
-    weekStartDate: { type: Date, required: true }, 
-    user: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
-    },
-    rosterData: [{ 
-        employeeName: { type: String, required: true, trim: true },
-        employeeId: { type: String, trim: true },
-        weeklySchedule: [{
-            dayOfWeek: { type: String, enum: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], required: true },
-            shifts: [{ 
-                shiftId: { type: Number },
-                jobRole: { type: String },
-                timeRange: { type: String, default: '' },
-                color: { type: String, default: '#FFFFFF' }
-            }],
-        }],
-    }],
-});
-RosterEntrySchema.index({ user: 1, weekStartDate: 1 }, { unique: true }); 
+RosterEntrySchema.index({ user: 1, employeeId: 1, weekStartDate: 1 }, { unique: true });
 const StaffRoster = mongoose.model('StaffRoster', RosterEntrySchema);
-
 
 // --- Configure Email Transport (Kept for password reset functionality) ---
 const transporter = nodemailer.createTransport({
@@ -116,6 +93,7 @@ const transporter = nodemailer.createTransport({
 // -------------------------------------------------------------------
 // 2. MIDDLEWARE SETUP
 // -------------------------------------------------------------------
+// Assuming auth middleware file exists and exports these:
 const { authMiddleware, adminAuthMiddleware, superAdminAuthMiddleware } = require('./middleware/auth'); 
 
 app.use(cors()); 
@@ -123,26 +101,26 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname)));
 
 // -------------------------------------------------------------------
-// 3. ROUTE IMPORTS (Updated File Names)
+// 3. ROUTE IMPORTS
 // -------------------------------------------------------------------
-const staffRosterRoutes = require('./staff_roster_api (1).js');
-const staffProfileRoutes = require('./routes/staff_profile_api_be.js'); // RENAMED
+// NEW: Import the dedicated Staff Roster API router
+const staffRosterRoutes = require('./routes/staff_roster_api.js');
 
 
 // -------------------------------------------------------------------
 // 4. ROUTE DEFINITIONS & MOUNTING
 // -------------------------------------------------------------------
 
-// --- AUTHENTICATION ROUTES (PLACEHOLDERS) ---
+// --- AUTHENTICATION ROUTES (PLACEHOLDERS - MUST BE REPLACED) ---
+// IMPORTANT: You MUST copy the full implementation of these functions 
+// (register, login, etc.) from your original TMT server.js file into 
+// this new server.js file to make authentication work.
 app.post('/api/auth/register', (req, res) => res.status(501).json({ success: false, message: 'Auth routes need to be copied from TMT server.js' }));
 app.post('/api/auth/login', (req, res) => res.status(501).json({ success: false, message: 'Auth routes need to be copied from TMT server.js' }));
 app.get('/api/user/profile', authMiddleware, (req, res) => res.status(501).json({ success: false, message: 'Profile route not implemented yet.' }));
 
 // --- NIXTZ OPERATIONAL ROUTES ---
-// Mount the Staff Profile routes (New)
-app.use('/api/staff/profile', authMiddleware, staffProfileRoutes); 
-
-// Mount the Staff Roster routes (Existing)
+// Mount the Staff Roster routes, protected by authentication
 app.use('/api/staff/roster', authMiddleware, staffRosterRoutes); 
 
 // -------------------------------------------------------------------
@@ -154,4 +132,4 @@ app.listen(PORT, () => {
     console.log(`Local access: http://localhost:${PORT}`);
 });
 
-module.exports = { app, User, StaffRoster, StaffProfile };
+module.exports = { app, User };
