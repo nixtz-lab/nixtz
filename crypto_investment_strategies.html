@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Think Money Tree | Crypto Investment Strategies</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+    theme: {
+        extend: {
+            colors: {
+                'tmt-primary': '#00A99D',
+                'tmt-secondary': '#FFC700',
+                'tmt-bg': '#121212',
+            },
+            fontFamily: {
+                sans: ['Inter', 'sans-serif'],
+            },
+        }
+    }
+}
+</script>
+
+<link rel="stylesheet" href="style.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+</head>
+<body class="bg-tmt-bg font-sans antialiased">
+
+<div id="message-box" class="fixed top-4 right-4 p-4 rounded-lg shadow-2xl z-[9999] hidden text-white bg-tmt-primary transition duration-300 opacity-0">
+    <p id="message-text" class="font-semibold"></p>
+</div>
+
+<header class="bg-tmt-bg shadow-2xl sticky top-0 z-50 border-b border-gray-800">
+    <div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-3 flex items-center justify-between">
+        <div class="flex items-center space-x-4">
+            <a href="index.html">
+                <img src="images/Think money tree logo 4.png" alt="Think Money Tree Logo" class="h-14 sm:h-16 w-auto rounded-xl" title="Think Money Tree Logo">
+            </a>
+            <form id="stock-search-form" class="hidden sm:block">
+                <div class="relative flex items-center w-full max-w-xs">
+                    <input type="text" id="stock-search-input" name="ticker" placeholder="Search a Stock Ticker (e.g., AAPL)" class="py-2 pl-4 pr-10 rounded-full bg-gray-800 text-gray-300 placeholder-gray-500 border border-gray-700 focus:ring-tmt-primary focus:border-tmt-primary transition duration-200 text-sm w-full" aria-label="Stock Ticker Search" required>
+                    <button type="submit" class="absolute right-0 top-0 mt-1 mr-1 p-1 rounded-full text-tmt-primary hover:text-tmt-secondary transition duration-200" aria-label="Search">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    </button>
+                </div>
+            </form>
+        </div>
+        <div class="flex items-center space-x-4 sm:space-x-6">
+            <a href="auth.html?mode=login" class="bg-gray-800 hover:bg-gray-700 text-white font-bold py-1.5 px-4 md:px-5 rounded-full shadow-lg transition duration-300 transform hover:scale-105 border border-gray-700 text-sm md:text-sm">Login</a>
+            <a href="auth.html?mode=join" class="bg-tmt-primary hover:bg-[#009287] text-tmt-bg font-bold py-1.5 px-4 md:px-5 rounded-full shadow-lg transition duration-300 transform hover:scale-105 text-sm md:text-sm">Join</a>
+        </div>
+    </div>
+</header>
+<main class="min-h-screen py-16">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <h1 class="text-4xl sm:text-5xl font-extrabold text-white mb-6">Crypto Investment Strategies</h1>
+        <p class="text-xl text-gray-400 max-w-4xl mx-auto">Explore advanced crypto strategies, from DeFi and staking to tokenomics analysis.</p>
+        
+        <div class="mt-12 bg-gray-800 p-8 rounded-xl shadow-2xl border border-tmt-primary max-w-md mx-auto">
+            <h2 class="text-2xl font-bold text-tmt-secondary mb-4">Exclusive Content</h2>
+            <p class="text-gray-300 mb-6">This premium educational content is restricted to Think Money Tree members.</p>
+            <a href="auth.html?mode=join" class="w-full inline-flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-full text-tmt-bg bg-tmt-primary hover:bg-[#009287] md:py-3 md:text-lg md:px-8 shadow-xl transition duration-300 transform hover:scale-105 font-bold">
+                Join Now to Unlock
+            </a>
+            <a href="index.html" class="mt-4 block text-gray-400 hover:text-tmt-secondary transition duration-200">
+                Go back to the homepage
+            </a>
+        </div>
+    </div>
+</main>
+
+<footer class="bg-gray-900 border-t border-gray-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <div class="mt-8 border-t border-gray-800 pt-8 text-center">
+            <p class="text-sm text-gray-500">&copy; 2024 Think Money Tree. Invest Smarter. Not Harder.</p>
+            <p class="text-xs text-gray-600 mt-2">Disclaimer: All content is for educational purposes only. Not financial advice.</p>
+        </div>
+    </div>
+</footer>
+<script src="script.js"></script>
+</body>
+</html>

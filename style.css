@@ -1,0 +1,21 @@
+/**
+ * style.css
+ * Custom styles for Think Money Tree Landing Page. 
+ * Most styling is handled by Tailwind CSS in the HTML.
+ */
+
+/* Sets the global font-family for better consistency */
+body {
+    font-family: 'Inter', sans-serif;
+}
+
+/* Custom background for the hero section (optional image/gradient) */
+.hero-custom-bg {
+    /* Example: subtle dark diagonal gradient */
+    background: linear-gradient(135deg, #121212 0%, #1a1a1a 100%);
+}
+
+/* Ensure transition is applied to message box for fade effects */
+#message-box {
+    transition: opacity 0.3s ease-in-out;
+}

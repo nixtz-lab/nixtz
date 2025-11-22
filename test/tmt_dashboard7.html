@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Think Money Tree | Dashboard</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+// Tailwind configuration copied from index.html (INCLUDES CUSTOM SHADOWS)
+tailwind.config = {
+    theme: {
+        extend: {
+            colors: {
+                'tmt-primary': '#00A99D', // Teal/Green
+                'tmt-secondary': '#FFC700', // Gold/Yellow
+                'tmt-bg': '#121212', // Dark background
+    
+                'tmt-card': '#1f1f1f', // ADDED: For dropdown background
+                'tmt-blue-light': '#4A90E2', 
+            },
+            fontFamily: {
+                sans: ['Inter', 'sans-serif'], 
+            },
+        
+            boxShadow: { 
+                '3xl-dark': '0 35px 60px -15px rgba(0, 0, 0, 0.5)',
+                // Added glow definitions from index(9).html
+                'tmt-primary/50': '0 10px 25px -5px rgba(0, 169, 157, 0.5), 0 8px 10px -6px rgba(0, 169, 157, 0.5)',
+                'tmt-secondary/50': '0 10px 25px -5px rgba(255, 199, 0, 0.5), 0 8px 10px -6px rgba(255, 199, 0, 0.5)',
+                // Added a red glow for decliners
+                'red-500/50': '0 10px 25px -5px rgba(239, 68, 68, 0.5), 0 8px 10px -6px rgba(239, 68, 68, 0.5)'
+            }
+        }
+    }
+}
+</script>
+
+<link rel="stylesheet" href="style.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script> 
+<script src="https://unpkg.com/lucide@latest"></script>
+
+<style>
+    .search-container { position: relative; }
+    .search-suggestions {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        z-index: 50;
+        max-height: 300px;
+        overflow-y: auto;
+        background-color: #1F2937;
+        border: 1px solid #374151;
+        border-top: none;
+        border-radius: 0 0 8px 8px;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+    }
+    .suggestion-item {
+        padding: 10px 15px;
+        cursor: pointer;
+        transition: background-color 0.15s;
+        color: #D1D5DB;
+        font-size: 14px;
+    }
+    .suggestion-item:hover {
+        background-color: #374151;
+        color: #00A99D;
+    }
+
+    /* --- NEW FEAR & GREED GAUGE STYLES --- */
+    .gauge-container {
+        width: 250px; /* Gauge size */
+        height: 125px; /* Half of the width */
+        position: relative;
+        overflow: hidden; /* This clips the bottom half */
+        margin: 0 auto 0; /* Center it */
+    }
+    .gauge-arc {
+        width: 250px;
+        height: 250px;
+        position: absolute;
+        top: 0;
+        left: 0;
+        border-radius: 50%;
+        /* The 180-degree color sweep */
+        /* === MODIFICATION HERE === */
+        background: conic-gradient(
+            from 180deg, 
+            #ef4444 0deg,   /* red-500 */
+            #facc15 90deg,  /* yellow-400 */
+            #22c55e 180deg /* green-500 */
+        );
+        /* === END MODIFICATION === */
+    }
+    .gauge-mask {
+        width: 190px; /* Must be smaller than gauge-arc */
+        height: 190px;
+        background: #1f1f1f; /* Use tmt-card color */
+        border-radius: 50%;
+        position: absolute;
+        top: 30px; /* (250 - 190) / 2 */
+        left: 30px; /* (250 - 190) / 2 */
+        z-index: 10;
+    }
+    .gauge-needle {
+        width: 4px; /* Needle width */
+        height: 110px; /* Needle length */
+        background: #ffffff; /* White needle */
+        border-radius: 2px;
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        margin-left: -2px; /* Half of width */
+        transform-origin: bottom center;
+        transform: rotate(0deg); /* Default rotation (50 = Neutral) */
+        transition: transform 0.7s ease-out; /* Smooth animation */
+        z-index: 20;
+    }
+    .gauge-needle-center {
+        width: 16px;
+        height: 16px;
+        background: #ffffff;
+        border-radius: 50%;
+        position: absolute;
+        bottom: -8px; /* Half of height */
+        left: 50%;
+        margin-left: -8px; /* Half of width */
+        z-index: 25;
+    }
+    /* --- END GAUGE STYLES --- */
+</style>
+
+</head>
+<body class="bg-tmt-bg font-sans antialiased">
+
+<div id="message-box" class="fixed top-4 right-4 p-4 rounded-lg shadow-2xl z-[9999] hidden text-white bg-tmt-primary transition duration-300 opacity-0">
+    <p id="message-text" class="font-semibold"></p>
+</div>
+
+<header class="bg-tmt-bg shadow-2xl sticky top-0 z-50 border-b border-gray-800">
+    <div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-3 flex items-center justify-between">
+
+        <div class="flex items-center space-x-4">
+            <a href="index.html">
+                <img
+                     src="images/Think money tree logo 4.png"
+                    alt="Think Money Tree Logo"
+                    class="h-14 sm:h-16 w-auto rounded-xl"
+                    title="Think Money Tree Logo"
+                >
+            </a>
+
+            <form id="site-search-form" class="hidden sm:block">
+                <div class="relative flex items-center w-full max-w-xs">
+                    <input
+                        type="text"
+                        id="site-search-input"
+                        name="q"
+                        placeholder="Search Think Money Tree..."
+                        class="py-2 pl-4 pr-10 rounded-full bg-gray-800 text-gray-300 placeholder-gray-500 border border-gray-700 focus:ring-tmt-primary focus:border-tmt-primary transition duration-200 text-sm w-full"
+                        aria-label="Site Search"
+                        required
+                    >
+                    <button
+                        type="submit"
+                        class="absolute right-0 top-0 mt-1 mr-1 p-1 rounded-full text-tmt-primary hover:text-tmt-secondary transition duration-200"
+                        aria-label="Search"
+                    >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="flex items-center space-x-4 sm:space-x-6">
+            
+            <a href="javascript:void(0)" onclick="checkAccessAndRedirect('watchlist.html')" 
+                class="text-tmt-secondary hover:text-tmt-primary transition duration-300 flex flex-col items-center md:flex-row focus:outline-none font-medium ml-4 md:ml-0" 
+               title="Watchlist">
+                <i data-lucide="eye" class="w-5 h-5 md:w-4 md:h-4 md:mr-1.5"></i>
+                <span class="inline text-[10px] leading-tight md:text-sm md:inline md:leading-normal">Watchlist</span>
+            </a>
+            
+            <nav id="desktop-nav-links" class="hidden md:flex space-x-4 text-sm">
+
+                <div class="relative group">
+                    <button class="text-gray-400 hover:text-tmt-primary transition duration-300 flex items-center focus:outline-none">
+                        Stock
+                        <svg class="w-4 h-4 ml-1 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div class="absolute left-1/2 transform -translate-x-1/2 top-full w-60 bg-gray-800 rounded-lg shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition duration-300 z-50 p-2 border border-gray-700">
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('tmt_dashboard.html')" class="block px-4 py-2 text-tmt-primary hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left font-bold">TMT Dashboard</a>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('stock_dashboard.html?mode=search')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-primary rounded-md text-left">TMT Stock Analyzer</a>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('stock_valuation.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">TMT Valuation Tool</a>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('investing_for_beginners.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">Investing for Beginners</a>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('52_week_low.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">52 Week Low</a>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('stock_ranking_list.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">Think Money Tree Stock Ranking List</a>
+                    </div>
+                </div>
+
+                <div class="relative group">
+                    <button class="text-gray-400 hover:text-tmt-primary transition duration-300 flex items-center focus:outline-none">
+                        Crypto
+                        <svg class="w-4 h-4 ml-1 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div class="absolute left-1/2 transform -translate-x-1/2 top-full w-56 bg-gray-800 rounded-lg shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition duration-300 z-50 p-2 border border-gray-700 whitespace-nowrap">
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('crypto_market.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">Crypto Market</a>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('crypto_strategies.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">Crypto Strategies</a>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('crypto_for_beginners.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">Crypto for Beginners</a>
+                    </div>
+                </div>
+
+                <div class="relative group">
+                    <button class="text-gray-400 hover:text-tmt-primary transition duration-300 flex items-center focus:outline-none">
+                        Real Estate
+                        <svg class="w-4 h-4 ml-1 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div class="absolute left-1/2 transform -translate-x-1/2 top-full w-56 bg-gray-800 rounded-lg shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition duration-300 z-50 p-2 border border-gray-700 whitespace-nowrap">
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('rental_property_analysis.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">Rental Property Analysis</a>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('reit_guides.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">REIT Investing Guides</a>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('crowdfunding_debt.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">Crowdfunding & Debt</a>
+                    </div>
+                </div>
+
+                <div class="relative group">
+                    <button class="text-gray-400 hover:text-tmt-primary transition duration-300 flex items-center focus:outline-none">
+                        Retirement
+                        <svg class="w-4 h-4 ml-1 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div class="absolute left-1/2 transform -translate-x-1/2 top-full w-56 bg-gray-800 rounded-lg shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition duration-300 z-50 p-2 border border-gray-700 whitespace-nowrap">
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('passive_income.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">Passive Income</a>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('retirement_tracker.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">Retirement Tracker</a>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('retirement_calculator.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">Retirement Calculator</a>
+                    </div>
+                </div>
+
+                <div class="relative group">
+                    <button class="text-gray-400 hover:text-tmt-primary transition duration-300 flex items-center focus:outline-none">
+                        About
+                        <svg class="w-4 h-4 ml-1 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div class="absolute right-0 top-full w-56 bg-gray-800 rounded-lg shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition duration-300 z-50 p-2 border border-gray-700 whitespace-nowrap">
+                        <a href="about.html" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">Our Story & Mission</a>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('meet_the_team.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">Meet the Team</a>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('disclaimer_legal.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">Disclaimer & Legal</a>
+                        <a href="contact.html" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md text-left">Contact Us</a>
+                    </div>
+                </div>
+            </nav>
+            <button id="menu-toggle" class="md:hidden p-2 rounded-lg text-gray-400 hover:text-tmt-primary transition duration-200" aria-label="Toggle Menu">
+                <svg id="icon-open" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                <svg id="icon-close" class="w-6 h-6 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            
+            <div id="auth-buttons-container" class="flex items-center space-x-4 sm:space-x-6">
+                <a href="auth.html?mode=login" id="login-button" class="bg-gray-800 hover:bg-gray-700 text-white font-bold py-1.5 px-4 md:px-5 rounded-full shadow-lg transition duration-300 transform hover:scale-105 border border-gray-700 text-sm md:text-sm">
+                    Login
+                </a>
+                <a href="auth.html?mode=join" id="join-button" class="bg-tmt-primary hover:bg-[#009287] text-tmt-bg font-bold py-1.5 px-4 md:px-5 rounded-full shadow-lg transition duration-300 transform hover:scale-105 text-sm md:text-sm">
+                    Join
+                </a>
+            </div>
+            
+            <div id="user-menu-container" class="group relative flex items-center space-x-2 hidden"> 
+                
+                <div id="admin-link-container" class="hidden">
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('admin_panel.html')" class="text-sm bg-tmt-secondary hover:bg-[#E5B800] text-tmt-bg font-bold py-1.5 px-3 rounded-full shadow-lg transition duration-300 transform hover:scale-105">
+                        Admin
+                    </a>
+                </div>
+
+                <button 
+                    id="nav-user-button"
+                    class="w-10 h-10 bg-tmt-primary rounded-full flex items-center justify-center font-bold text-tmt-bg hover:scale-105 transition duration-200"
+                    title="User Settings">
+                    <i data-lucide="user" class="w-6 h-6"></i>
+                </button>
+                <span id="username-display" class="font-semibold text-white hidden sm:inline">User</span>
+
+                <div id="user-dropdown" class="absolute right-0 top-full mt-3 w-64 bg-gray-800 rounded-xl shadow-3xl-dark border border-gray-700/50 p-4 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 origin-top-right scale-95 group-hover:scale-100 z-50">
+                    
+                    <p class="text-sm font-medium text-white mb-3 border-b border-gray-700 pb-2">Account: <span id="user-initials" class="font-normal text-tmt-secondary"></span></p>
+
+                    <button id="profile-button" class="w-full text-left text-sm text-gray-300 hover:text-white transition duration-200 font-medium py-2 px-3 rounded-lg hover:bg-gray-700 mb-3">
+                        <i data-lucide="settings" class="w-4 h-4 mr-2 inline"></i>
+                        Profile & Password
+                    </button>
+                    <div class="mb-4">
+                        <label for="currency-select" class="block text-xs font-medium text-gray-400 mb-1">Currency (Coming Soon)</label>
+                        <select id="currency-select" 
+                                class="w-full p-2 rounded-lg bg-tmt-card border border-gray-700 text-sm text-white appearance-none cursor-not-allowed transition duration-200 disabled:opacity-50" disabled>
+                            <option value="USD">USD ($)</option>
+                        </select>
+                    </div>
+
+                    <button id="logout-button" class="w-full text-center text-sm text-red-400 hover:text-red-500 transition duration-200 font-medium py-2 px-3 rounded-lg hover:bg-gray-700">
+                        <i data-lucide="log-out" class="w-4 h-4 mr-2 inline"></i>
+                        Logout
+                    </button>
+                </div>
+                
+            </div>
+            </div>
+    </div>
+
+    <div id="mobile-menu" class="hidden md:hidden bg-gray-900 absolute w-full shadow-2xl border-b border-gray-800 z-40 text-sm">
+        <div class="px-4 pt-2 pb-4 space-y-2">
+
+            <a href="javascript:void(0)" onclick="checkAccessAndRedirect('watchlist.html')" class="w-full text-left py-2 px-3 text-tmt-secondary hover:text-tmt-primary flex items-center justify-start rounded-lg bg-gray-800 hover:bg-gray-700 font-semibold transition duration-200">
+                <i data-lucide="eye" class="w-4 h-4 mr-2"></i>
+                Watchlist
+            </a>
+            
+            <div>
+                <button onclick="toggleMobileDropdown(this)" class="w-full text-left py-2 px-3 text-gray-300 hover:text-tmt-primary flex items-center justify-between rounded-lg bg-gray-800 hover:bg-gray-700 font-semibold transition duration-200">
+                    Stock
+                    <svg class="w-4 h-4 transform transition duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                <div class="pl-4 pt-1 space-y-1 hidden" data-dropdown-content>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('tmt_dashboard.html')" class="block px-4 py-2 text-tmt-secondary hover:bg-gray-700 hover:text-tmt-primary rounded-md text-left font-bold">TMT Dashboard</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('stock_dashboard.html?mode=search')" class="block px-4 py-2 text-gray-400 hover:bg-gray-800 hover:text-tmt-secondary rounded-md">TMT Stock Analyzer</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('stock_valuation.html')" class="block px-4 py-2 text-gray-400 hover:bg-gray-800 hover:text-tmt-secondary rounded-md">TMT Valuation Tool</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('investing_for_beginners.html')" class="block px-4 py-2 text-gray-400 hover:bg-gray-800 hover:text-tmt-secondary rounded-md">Investing for Beginners</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('52_week_low.html')" class="block px-4 py-2 text-gray-400 hover:bg-gray-800 hover:text-tmt-secondary rounded-md">52 Week Low</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('stock_ranking_list.html')" class="block px-4 py-2 text-gray-400 hover:bg-gray-800 hover:text-tmt-secondary rounded-md">Think Money Tree Stock Ranking List</a>
+                </div>
+            </div>
+
+            <div>
+                <button onclick="toggleMobileDropdown(this)" class="w-full text-left py-2 px-3 text-gray-300 hover:text-tmt-primary flex items-center justify-between rounded-lg bg-gray-800 hover:bg-gray-700 font-semibold transition duration-200">
+                    Crypto
+                    <svg class="w-4 h-4 transform transition duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                <div class="pl-4 pt-1 space-y-1 hidden" data-dropdown-content>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('crypto_market.html')" class="block px-4 py-2 text-gray-400 hover:bg-gray-800 hover:text-tmt-secondary rounded-md">Crypto Market</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('crypto_strategies.html')" class="block px-4 py-2 text-gray-400 hover:bg-gray-800 hover:text-tmt-secondary rounded-md">Crypto Strategies</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('crypto_for_beginners.html')" class="block px-4 py-2 text-gray-400 hover:bg-gray-800 hover:text-tmt-secondary rounded-md">Crypto for Beginners</a>
+                </div>
+            </div>
+
+            <div>
+                <button onclick="toggleMobileDropdown(this)" class="w-full text-left py-2 px-3 text-gray-300 hover:text-tmt-primary flex items-center justify-between rounded-lg bg-gray-800 hover:bg-gray-700 font-semibold transition duration-200">
+                    Real Estate
+                    <svg class="w-4 h-4 transform transition duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                <div class="pl-4 pt-1 space-y-1 hidden" data-dropdown-content>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('rental_property_analysis.html')" class="block px-4 py-2 text-gray-400 hover:bg-gray-800 hover:text-tmt-secondary rounded-md">Rental Property Analysis</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('reit_guides.html')" class="block px-4 py-2 text-gray-400 hover:bg-gray-800 hover:text-tmt-secondary rounded-md">REIT Investing Guides</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('crowdfunding_debt.html')" class="block px-4 py-2 text-gray-400 hover:bg-gray-800 hover:text-tmt-secondary rounded-md">Crowdfunding & Debt</a>
+                </div>
+            </div>
+
+            <div>
+                <button onclick="toggleMobileDropdown(this)" class="w-full text-left py-2 px-3 text-gray-300 hover:text-tmt-primary flex items-center justify-between rounded-lg bg-gray-800 hover:bg-gray-700 font-semibold transition duration-200">
+                    Retirement
+                    <svg class="w-4 h-4 transform transition duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                <div class="pl-4 pt-1 space-y-1 hidden" data-dropdown-content>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('passive_income.html')" class="block px-4 py-2 text-gray-400 hover:bg-gray-800 hover:text-tmt-secondary rounded-md">Passive Income</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('retirement_tracker.html')" class="block px-4 py-2 text-gray-400 hover:bg-gray-800 hover:text-tmt-secondary rounded-md">Retirement Tracker</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('retirement_calculator.html')" class="block px-4 py-2 text-gray-400 hover:bg-gray-800 hover:text-tmt-secondary rounded-md">Retirement Calculator</a>
+                </div>
+            </div>
+
+            <div>
+                <button onclick="toggleMobileDropdown(this)" class="w-full text-left py-2 px-3 text-gray-300 hover:text-tmt-primary flex items-center justify-between rounded-lg bg-gray-800 hover:bg-gray-700 font-semibold transition duration-200">
+                    About
+                    <svg class="w-4 h-4 transform transition duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                <div class="pl-4 pt-1 space-y-1 hidden" data-dropdown-content>
+                    <a href="about.html" class="block px-4 py-2 text-gray-400 hover:bg-gray-800 hover:text-tmt-secondary rounded-md">Our Story & Mission</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('meet_the_team.html')" class="block px-4 py-2 text-gray-400 hover:bg-gray-800 hover:text-tmt-secondary rounded-md">Meet the Team</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('disclaimer_legal.html')" class="block px-4 py-2 text-gray-400 hover:bg-gray-800 hover:text-tmt-secondary rounded-md">Disclaimer & Legal</a>
+                    <a href="contact.html" class="block px-4 py-2 text-gray-400 hover:bg-gray-800 hover:text-tmt-secondary rounded-md">Contact Us</a>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</header>
+
+<main class="min-h-screen pt-8 pb-16">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        
+        <div class="text-center mb-12 p-6 bg-gray-900 rounded-xl shadow-2xl border-l-4 border-tmt-primary shadow-tmt-primary/50">
+            <h1 class="text-4xl sm:text-5xl font-extrabold tracking-tight text-white mb-2">Think Money Tree Dashboard</h1>
+            <p class="text-xl text-gray-400 max-w-2xl mx-auto">Key market indicators for the value investor.</p>
+        </div>
+
+        <section id="market-ticker" class="bg-gray-900 py-3 sm:py-4 border-b border-gray-800 mb-8">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="grid grid-cols-12">
+                    <div class="col-span-12">
+                        <div class="tradingview-widget-container overflow-hidden">
+                            <div class="tradingview-widget-container__widget"></div>
+                            <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js" async>
+                            {
+                                "symbols": [
+                                    { "description": "S&P 500", "proName": "FOREXCOM:SPXUSD" },
+                                    { "description": "Nasdaq 100", "proName": "NASDAQ:NDX" },
+                                    { "description": "Bitcoin", "proName": "BINANCE:BTCUSDT" },
+                                    { "description": "Ethereum", "proName": "BINANCE:ETHUSDT" },
+                                    { "description": "Gold", "proName": "FX_IDC:XAUUSD" },
+                                    { "description": "Google", "proName": "NASDAQ:GOOGL" },
+                                    { "description": "Brk B", "proName": "NYSE:BRK.B" }
+                                ],
+                                "showSymbolLogo": true,
+                                "isTransparent": true,
+                                "displayMode": "adaptive",
+                                "colorTheme": "dark",
+                                "locale": "en"
+                            }
+                            </script>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="mb-16">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                
+                <div class="lg:col-span-2 space-y-8">
+                    
+                    <section>
+                        <h2 class="text-2xl font-bold text-tmt-primary mb-4 border-b border-gray-800 pb-2">Technical Indicators (Sentiment Gauges)</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            
+                            
+                            <div class="bg-gray-900 p-4 rounded-xl shadow-xl border border-gray-800">
+                                <h3 class="text-lg font-semibold text-white mb-3 text-center">Stock Market Index (S&P 500)</h3>
+                                <div class="tradingview-widget-container mx-auto" style="width: 100%; height: 250px;">
+                                    <div class="tradingview-widget-container__widget"></div>
+                                    <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js" async>
+                                    {
+                                        "interval": "1D", "width": "100%", "is24H": false, "symbol": "SP:SPX", 
+                                        "showIntervalTabs": true, "displayMode": "single", "locale": "en", "colorTheme": "dark"
+                                    }
+                                    </script>
+                                </div>
+                            </div>
+
+                            <div class="bg-gray-900 p-4 rounded-xl shadow-xl border border-gray-800">
+                                <h3 class="text-lg font-semibold text-white mb-3 text-center">Crypto Market Index (Bitcoin)</h3>
+                                <div class="tradingview-widget-container mx-auto" style="width: 100%; height: 250px;">
+                                    <div class="tradingview-widget-container__widget"></div>
+                                    <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js" async>
+                                    {
+                                        "interval": "1D", "width": "100%", "is24H": true, "symbol": "BINANCE:BTCUSDT", 
+                                        "showIntervalTabs": true, "displayMode": "single", "locale": "en", "colorTheme": "dark"
+                                    }
+                                    </script>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section>
+                        <h2 class="text-2xl font-bold text-tmt-primary mb-4 border-b border-gray-800 pb-2">TMT Strategy Tools & Macro Benchmarks</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            
+                            <div class="bg-gray-900 p-4 rounded-xl shadow-xl border border-gray-800">
+                                <h3 class="text-lg font-semibold text-white mb-3 text-center">Crypto Market Heatmap</h3>
+                                <div class="tradingview-widget-container mx-auto" style="width: 100%; height: 320px;">
+                                    <div class="tradingview-widget-container__widget"></div>
+                                    <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-crypto-coins-heatmap.js" async>
+                                    {
+                                        "dataSource": "Crypto", "colorTheme": "dark", "borderRadius": "6",
+                                        "primaryColor": "00A99D", "secondaryColor": "FFC700", "width": "100%", "height": "320", "locale": "en"
+                                    }
+                                    </script>
+                                </div>
+                            </div>
+
+                            <div class="bg-gray-900 p-4 rounded-xl shadow-xl border-l-4 border-tmt-secondary">
+                                <h3 class="text-xl font-semibold text-white mb-4 border-b border-gray-800 pb-2 flex items-center">
+                                    <i data-lucide="shield-check" class="w-5 h-5 text-tmt-secondary mr-2"></i>
+                                    Crypto & Commodities Benchmarks
+                                </h3>
+                                <div class="grid grid-cols-2 gap-4">
+                                
+                                    
+                                    <div class="p-3 bg-gray-800 rounded-lg border-l-4 border-tmt-primary h-28 flex flex-col justify-center">
+                                        <p class="text-xs font-medium text-gray-400">BTC Avg. Mining Cost</p>
+                                        <p id="btc-mining-cost-value" class="text-xl font-extrabold text-white mt-1">Loading...</p> 
+                                        <p class="text-xs text-green-400">Fundamental Floor</p>
+                                    </div>
+                                    
+                                    <div class="p-3 bg-gray-800 rounded-lg border-l-4 border-tmt-primary h-28 flex flex-col justify-center">
+                                        <p class="text-xs font-medium text-gray-400">Gold Avg. Mining Cost</p>
+                                        <p id="gold-mining-cost-value" class="text-xl font-extrabold text-white mt-1">Loading...</p>
+                                        <p class="text-xs text-green-400">AISC Baseline</p>
+                                    </div>
+
+                                    <div class="p-3 bg-gray-800 rounded-lg border-l-4 border-tmt-primary h-28 flex flex-col justify-center">
+                                        <p class="text-xs font-medium text-gray-400">S&P 500 Div. Yield</p>
+                                        <p class="text-xl font-extrabold text-white mt-1">~1.5%</p>
+                                        <p class="text-xs text-yellow-400">Benchmark Return</p>
+                                    </div>
+
+                                    <div class="p-3 bg-gray-800 rounded-lg border-l-4 border-tmt-primary h-28 flex flex-col justify-center">
+                                        <p class="text-xs font-medium text-gray-400">US 10-Year Yield</p>
+                                        <p class="text-xl font-extrabold text-white mt-1">~4.75%</p>
+                                        <p class="text-xs text-red-400">Risk-Free Rate</p>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <div class="lg:col-span-1 space-y-8">
+                    
+                    <div class="p-4 rounded-xl shadow-2xl border-l-4 border-tmt-secondary bg-gray-900">
+                        <h2 class="text-lg font-bold text-white mb-3 border-b border-gray-800 pb-2">
+                            <i data-lucide="scale" class="w-5 h-5 text-tmt-secondary mr-1 inline"></i>
+                            Core Analytics: Sentiment Gauge
+                        </h2>
+                        
+                        <div class="text-center mb-4">
+                            <div class="gauge-container">
+                                <div class="gauge-arc"></div>
+                                <div class="gauge-mask" style="background-color: #1f1f1f;"></div> <div id="gauge-needle" class="gauge-needle"></div>
+                                <div class="gauge-needle-center"></div>
+                            </div>
+                            
+                            <p id="stockFearGreedValue" class="text-5xl font-extrabold text-red-500 -mt-20 relative z-30">...</p>
+                            <p id="stockFearGreedLabel" class="text-xl font-bold text-red-500 transition duration-300 relative z-30">
+                                (Loading...)
+                            </p>
+                            <p class="text-sm text-gray-400 mt-10 relative z-30"> A gauge of the S&P 500's emotional standing. </p>
+                        </div>
+                        
+                        <div class="tradingview-widget-container mx-auto" style="width: 100%; height: 120px; max-width: 250px;">
+                            <div class="tradingview-widget-container__widget"></div>
+                            <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
+                            {
+                                "symbol": "INDEX:VIX", "width": "100%", "isTransparent": true, "colorTheme": "dark", "locale": "en"
+                            }
+                            </script>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2 text-center">
+                            Proxy: VIX Volatility Index. Extreme Fear = Potential Buy.
+                        </p>
+                    </div>
+                    <div class="p-4 rounded-xl shadow-2xl border-l-4 border-tmt-primary bg-gray-900 space-y-4">
+                        <h2 class="text-xl font-bold text-tmt-primary mb-3 border-b border-gray-800 pb-2">
+                            <i data-lucide="bar-chart-3" class="w-5 h-5 text-tmt-primary mr-1 inline"></i>
+                            Macro Valuation Indicators
+                        </h2>
+                        
+                        <div class="flex justify-between items-center p-3 bg-gray-800 rounded-lg border-l-4 border-green-500">
+                            <div>
+                                <p class="text-sm font-bold text-white">Stock Market Cap to GDP Ratio</p>
+                                <p class="text-xs text-gray-400">The 'Buffett Indicator'.</p>
+                            </div>
+                            <p id="buffett-indicator-value" class="text-2xl font-extrabold text-green-500">Loading...</p>
+                        </div>
+
+                        <div class="flex justify-between items-center p-3 bg-gray-800 rounded-lg border-l-4 border-red-500">
+                            <div>
+                                <p class="text-sm font-bold text-white">S&P 500 P/E Ratio (Trailing)</p>
+                                <p class="text-xs text-gray-400">Historically elevated above 20x.</p>
+                            </div>
+                            <p id="sp500-pe-ratio-value" class="text-2xl font-extrabold text-red-500">Loading...</p>
+                        </div>
+                        
+                        <div class="flex justify-between items-center p-3 bg-gray-800 rounded-lg border-l-4 border-red-500">
+                            <div>
+                                <p class="text-sm font-bold text-white">S&P 500 Shiller P/E (CAPE)</p>
+                                <p class="text-xs text-gray-400">Long-term mean is ~17x.</p>
+                            </div>
+                            <p id="sp500-cape-ratio-value" class="text-2xl font-extrabold text-red-500">Loading...</p>
+                        </div>
+
+                        <div class="flex justify-between items-center p-3 bg-gray-800 rounded-lg border-l-4 border-yellow-500">
+                            <div>
+                                <p class="text-sm font-bold text-white">S&P 500 P/B Ratio</p>
+                                <p class="text-xs text-gray-400">Asset-based valuation comparison.</p>
+                            </div>
+                            <p id="sp500-pb-ratio-value" class="text-2xl font-extrabold text-yellow-500">Loading...</p>
+                        </div>
+                    </div>
+
+                    <div class="p-4 rounded-xl shadow-2xl border-l-4 border-tmt-secondary bg-gray-900">
+                        <h3 class="text-xl font-semibold text-white mb-3 border-b border-gray-800 pb-2">
+                            <i data-lucide="list-ordered" class="w-5 h-5 text-tmt-secondary mr-1 inline"></i>
+                            Full TMT Stock Ranking List
+                        </h3>
+                        <p class="text-sm text-gray-400">The actionable, full list data is rendered below. Use this dashboard for macro context before diving in.</p>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('stock_ranking_list.html')" class="mt-4 w-full block text-center py-2 px-4 rounded-full bg-tmt-primary text-tmt-bg font-bold hover:bg-[#009287] transition text-sm">
+                            View Full Ranking List
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <section class="py-8 sm:py-10 bg-gray-900 border-y border-gray-800">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <h2 class="text-3xl font-extrabold text-white mb-8 text-center">Key Tickers Overview</h2>
+                
+                <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4 lg:gap-6">
+                    
+                    <div class="tradingview-widget-container h-[150px]">
+                        <div class="tradingview-widget-container__widget h-full"></div>
+                        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
+                        {
+                            "symbol": "NASDAQ:AAPL",
+                            "width": "100%",
+                            "isTransparent": true,
+                            "colorTheme": "dark",
+                            "locale": "en",
+                            "fontFamily": "Inter, sans-serif",
+                            "showPriceAndPercentChange": true
+                        }
+                        </script>
+                    </div>
+
+                    <div class="tradingview-widget-container h-[150px]">
+                        <div class="tradingview-widget-container__widget h-full"></div>
+                        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
+                        {
+                            "symbol": "NASDAQ:GOOG",
+                            "width": "100%",
+                            "isTransparent": true,
+                            "colorTheme": "dark",
+                            "locale": "en",
+                            "fontFamily": "Inter, sans-serif",
+                            "showPriceAndPercentChange": true
+                        }
+                        </script>
+                    </div>
+                    
+                    <div class="tradingview-widget-container h-[150px]">
+                        <div class="tradingview-widget-container__widget h-full"></div>
+                        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
+                        {
+                            "symbol": "NASDAQ:MSFT",
+                            "width": "100%",
+                            "isTransparent": true,
+                            "colorTheme": "dark",
+                            "locale": "en",
+                            "fontFamily": "Inter, sans-serif",
+                            "showPriceAndPercentChange": true
+                        }
+                        </script>
+                    </div>
+
+                    <div class="tradingview-widget-container h-[150px]">
+                        <div class="tradingview-widget-container__widget h-full"></div>
+                        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
+                        {
+                            "symbol": "NASDAQ:TSLA",
+                            "width": "100%",
+                            "isTransparent": true,
+                            "colorTheme": "dark",
+                            "locale": "en",
+                            "fontFamily": "Inter, sans-serif",
+                            "showPriceAndPercentChange": true
+                        }
+                        </script>
+                    </div>
+                    
+                    <div class="tradingview-widget-container h-[150px]">
+                        <div class="tradingview-widget-container__widget h-full"></div>
+                        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
+                        {
+                            "symbol": "NYSE:BRK.B",
+                            "width": "100%",
+                            "isTransparent": true,
+                            "colorTheme": "dark",
+                            "locale": "en",
+                            "fontFamily": "Inter, sans-serif",
+                            "showPriceAndPercentChange": true
+                        }
+                        </script>
+                    </div>
+
+                    <div class="tradingview-widget-container h-[150px]">
+                        <div class="tradingview-widget-container__widget h-full"></div>
+                        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
+                        {
+                            "symbol": "BINANCE:BTCUSDT",
+                            "width": "100%",
+                            "isTransparent": true,
+                            "colorTheme": "dark",
+                            "locale": "en",
+                            "fontFamily": "Inter, sans-serif",
+                            "showPriceAndPercentChange": true
+                        }
+                        </script>
+                    </div>
+
+                </div>
+                
+                <div class="max-w-4xl mx-auto py-4">
+                    <hr class="border-t border-tmt-blue-light/50">
+                </div>
+
+
+                <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4 lg:gap-6">
+
+                    <div class="tradingview-widget-container h-[150px]">
+                        <div class="tradingview-widget-container__widget h-full"></div>
+                        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
+                        {
+                            "symbol": "NASDAQ:NVDA",
+                            "width": "100%",
+                            "isTransparent": true,
+                            "colorTheme": "dark",
+                            "locale": "en",
+                            "fontFamily": "Inter, sans-serif",
+                            "showPriceAndPercentChange": true
+                        }
+                        </script>
+                    </div>
+
+                    <div class="tradingview-widget-container h-[150px]">
+                        <div class="tradingview-widget-container__widget h-full"></div>
+                        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
+                        {
+                            "symbol": "NASDAQ:AMZN",
+                            "width": "100%",
+                            "isTransparent": true,
+                            "colorTheme": "dark",
+                            "locale": "en",
+                            "fontFamily": "Inter, sans-serif",
+                            "showPriceAndPercentChange": true
+                        }
+                        </script>
+                    </div>
+
+                    <div class="tradingview-widget-container h-[150px]">
+                        <div class="tradingview-widget-container__widget h-full"></div>
+                        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
+                        {
+                            "symbol": "NASDAQ:META",
+                            "width": "100%",
+                            "isTransparent": true,
+                            "colorTheme": "dark",
+                            "locale": "en",
+                            "fontFamily": "Inter, sans-serif",
+                            "showPriceAndPercentChange": true
+                        }
+                        </script>
+                    </div>
+
+                    <div class="tradingview-widget-container h-[150px]">
+                        <div class="tradingview-widget-container__widget h-full"></div>
+                        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
+                        {
+                            "symbol": "EURONEXT:MC",
+                            "width": "100%",
+                            "isTransparent": true,
+                            "colorTheme": "dark",
+                            "locale": "en",
+                            "fontFamily": "Inter, sans-serif",
+                            "showPriceAndPercentChange": true
+                        }
+                        </script>
+                    </div>
+
+                    <div class="tradingview-widget-container h-[150px]">
+                        <div class="tradingview-widget-container__widget h-full"></div>
+                        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
+                        {
+                            "symbol": "NYSE:KO",
+                            "width": "100%",
+                            "isTransparent": true,
+                            "colorTheme": "dark",
+                            "locale": "en",
+                            "fontFamily": "Inter, sans-serif",
+                            "showPriceAndPercentChange": true
+                        }
+                        </script>
+                    </div>
+                    
+                    <div class="tradingview-widget-container h-[150px]">
+                        <div class="tradingview-widget-container__widget h-full"></div>
+                        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
+                        {
+                            "symbol": "NASDAQ:LULU",
+                            "width": "100%",
+                            "isTransparent": true,
+                            "colorTheme": "dark",
+                            "locale": "en",
+                            "fontFamily": "Inter, sans-serif",
+                            "showPriceAndPercentChange": true
+                        }
+                        </script>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+        
+        <section id="tmt-stock-lists-section" class="py-16 sm:py-20">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <h2 class="text-3xl font-extrabold text-tmt-secondary mb-8 text-center">TMT Stock Lists</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+                    
+                    <div class="bg-gray-900 rounded-xl shadow-2xl border-t-4 border-tmt-secondary p-6 transform transition duration-500 hover:scale-[1.03] hover:shadow-tmt-secondary/50">
+                        <h3 class="text-xl font-bold text-tmt-secondary mb-4">TMT Top 5 Value Stocks</h3>
+                        <p class="text-gray-400 text-sm mb-4">Our highest-rated stocks based on TMT value metrics.</p>
+                        <div id="tmt-top-5-list" class="space-y-3">
+                            <div class="text-gray-500 text-center py-4">Loading TMT list...</div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-gray-900 rounded-xl shadow-2xl border-t-4 border-tmt-primary p-6 transform transition duration-500 hover:scale-[1.03] hover:shadow-tmt-primary/50">
+                        <h3 class="text-xl font-bold text-tmt-primary mb-4">Near 52-Week Lows</h3>
+                        <p class="text-gray-400 text-sm mb-4">Potential value opportunities (S&P 500).</p>
+                        <div id="52-week-low-list" class="space-y-3">
+                            <div class="text-gray-500 text-center py-4">Loading 52-week low list...</div>
+                        </div>
+                    </div>
+
+                    <div class="bg-gray-900 rounded-xl shadow-2xl border-t-4 border-red-500 p-6 transform transition duration-500 hover:scale-[1.03] hover:shadow-red-500/50">
+                        <h3 class="text-xl font-bold text-red-500 mb-4">Top Decliners</h3>
+                        <p class="text-gray-400 text-sm mb-4">Companies with the largest daily price drop.</p>
+                        <div id="top-decliners-list" class="space-y-3">
+                            <div class="text-gray-500 text-center py-4">Loading top decliners list...</div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+        </div>
+</main>
+<footer class="bg-tmt-bg py-12 border-t border-gray-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <p class="text-white text-lg font-semibold mb-4">Ready to start investing like a value master?</p>
+        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('budget_tracker.html')" class="inline-flex items-center justify-center px-6 py-3 mr-4 border border-tmt-primary text-base font-medium rounded-full text-tmt-primary hover:bg-tmt-primary hover:text-tmt-bg transition duration-300 transform hover:scale-105 font-bold">
+            Start Tracking Your Budget
+        </a>
+        <a href="https://youtube.com/@thinkmoneytree" target="_blank" class="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-full text-tmt-secondary hover:bg-[#E5B800] transition duration-300 transform hover:scale-105 font-bold">
+            Subscribe to Think Money Tree
+        </a>
+        <div class="mt-8 border-t border-gray-800 pt-8">
+            <p class="text-sm text-gray-500">&copy; 2024 Think Money Tree. Invest Smarter. Not Harder.</p>
+            <p class="text-xs text-gray-600 mt-2">Disclaimer: All content is for educational purposes only. Not financial advice.</p>
+        </div>
+    </div>
+</footer>
+
+<div id="profile-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[9999] hidden flex items-center justify-center p-4 transition-opacity duration-300">
+    <div class="bg-tmt-card w-full max-w-lg rounded-xl shadow-3xl-dark p-6 md:p-8 border border-gray-700/50">
+        <h2 class="text-2xl font-bold text-tmt-secondary mb-4 border-b border-gray-700 pb-3 flex justify-between items-center">
+            User Profile Settings
+            <button id="close-profile-modal" class="text-gray-400 hover:text-white transition duration-200">
+                <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
+        </h2>
+
+        <div class="mb-6">
+            <p class="text-lg font-semibold text-white mb-2">Account Details</p>
+            <div class="space-y-2 text-sm">
+                <p class="text-gray-400">Username: <span id="modal-username" class="text-white font-medium">Loading...</span></p>
+                <p class="text-gray-400">Email: <span id="modal-email" class="text-white font-medium">Loading...</span></p>
+            </div>
+        </div>
+
+        <div class="mt-8 border-t border-gray-700 pt-6">
+            <h3 class="text-xl font-semibold text-tmt-primary mb-4">Change Password</h3>
+            <div id="password-message-box" class="p-3 rounded-lg text-white mb-3 hidden"></div>
+            <form id="change-password-form" class="space-y-4">
+                <div>
+                    <label for="current-password" class="block text-sm font-medium text-gray-400 mb-1">Current Password</label>
+                    <input type="password" id="current-password" required
+                           class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-tmt-primary transition duration-200">
+                </div>
+                <div>
+                    <label for="new-password" class="block text-sm font-medium text-gray-400 mb-1">New Password</label>
+                    <input type="password" id="new-password" required minlength="8"
+                           class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-tmt-primary transition duration-200">
+                </div>
+                <div>
+                    <label for="confirm-new-password" class="block text-sm font-medium text-gray-400 mb-1">Confirm New Password</label>
+                    <input type="password" id="confirm-new-password" required minlength="8"
+                           class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-tmt-primary transition duration-200">
+                </div>
+                <button type="submit" id="save-password-button"
+                        class="w-full p-3 bg-tmt-primary text-tmt-bg rounded-lg font-bold shadow-lg hover:bg-[#009287] transition duration-300 transform hover:scale-[1.01] disabled:opacity-50">
+                    Update Password
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div id="cookie-consent-banner" class="fixed bottom-0 left-0 right-0 p-4 bg-gray-900 border-t border-tmt-primary z-[60] text-sm text-white shadow-2xl md:flex items-center justify-center space-x-6">
+    <p class="text-gray-400 text-center md:text-left">
+        This website uses cookies to enhance your experience. By clicking "Accept" or continuing to use the site, you agree to our 
+        <a href="cookie_policy.html" class="text-tmt-secondary hover:text-tmt-primary transition duration-200 underline font-semibold" target="_blank">
+            Cookie Policy.
+        </a>
+    </p>
+    <button onclick="acceptCookies()" class="flex-shrink-0 bg-tmt-primary hover:bg-[#009287] text-tmt-bg font-bold py-2 px-6 rounded-full shadow-lg transition duration-300 transform hover:scale-105 text-sm">
+        Accept
+    </button>
+</div>
+
+<script src="script.js"></script>
+
+<script src="tmt_dashboard.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Render Lucide icons after DOM content is loaded
+        try {
+            lucide.createIcons();
+        } catch (e) {
+            console.error("Lucide icons failed to render.", e);
+        }
+    });
+</script>
+</body>
+</html>

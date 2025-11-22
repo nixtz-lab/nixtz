@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Think Money Tree | Dashboard</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                colors: {
+                    'tmt-primary': '#00A99D', // Teal/Green
+                    'tmt-secondary': '#FFC700', // Gold/Yellow
+                    'tmt-bg': '#121212', // Dark background
+                },
+                fontFamily: {
+                    sans: ['Inter', 'sans-serif'], // Sets Inter as default font
+                },
+            }
+        }
+    }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            /* Tailwind classes cover most of this, but ensure background is set */
+            background-color: #121212;
+            color: white;
+            line-height: 1.6;
+        }
+
+        .dashboard-container {
+            max-width: 90rem; /* Wide container */
+            margin-left: auto;
+            margin-right: auto;
+            padding: 30px 20px;
+            display: grid;
+            gap: 25px;
+            grid-template-columns: repeat(4, 1fr);
+        }
+
+        /* Responsive Layout */
+        @media (max-width: 1280px) { /* xl breakpoint */
+            .dashboard-container {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+        @media (max-width: 1024px) { /* lg breakpoint */
+            .dashboard-container {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @media (max-width: 640px) { /* sm breakpoint */
+            .dashboard-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background-color: #1f2937; /* Darker background for card */
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+            border: 1px solid #374151; /* Subtle border */
+            transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6), 0 0 10px rgba(0, 169, 157, 0.2);
+        }
+
+        .card h2 {
+            margin-top: 0;
+            font-size: 1.5em;
+            font-weight: 700;
+            color: #FFC700; /* TMT Secondary color for headings */
+            border-bottom: 2px solid #374151;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+
+        /* Specific Grid Areas */
+        .fear-greed-section {
+            grid-column: span 2;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 640px) {
+            .fear-greed-section {
+                grid-column: span 1;
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .trading-view-section {
+            grid-column: 1 / -1; /* Full width for chart */
+            min-height: 480px;
+        }
+        
+        .heat-map-section {
+            grid-column: span 2;
+        }
+        
+        .stock-list-section {
+            grid-column: span 2;
+        }
+        
+        @media (max-width: 1024px) {
+            .heat-map-section, .stock-list-section {
+                grid-column: 1 / -1; /* Full width on tablets */
+            }
+        }
+
+
+        /* Fear & Greed Index Styling */
+        .fgi-card {
+            text-align: center;
+            padding: 15px;
+            border-radius: 8px;
+            background-color: #2c3e50; /* Slightly different background */
+        }
+
+        .fgi-value {
+            font-size: 3.5em;
+            font-weight: 900;
+            margin: 10px 0;
+            display: block;
+        }
+
+        .fgi-status {
+            font-size: 1.1em;
+            padding: 5px 20px;
+            border-radius: 25px;
+            color: #121212;
+            font-weight: bold;
+            display: inline-block;
+        }
+        
+        /* Specific colors for FGI placeholders */
+        .fgi-status-fear { background-color: #f44336; } /* Red */
+        .fgi-status-greed { background-color: #4caf50; } /* Green */
+
+        /* Placeholder styles for static data */
+        .data-point {
+            font-size: 3em;
+            font-weight: bold;
+            margin: 10px 0;
+            display: block;
+            text-align: center;
+        }
+        
+        .placeholder-note {
+            font-size: 0.9em;
+            color: #9ca3af; /* Gray-400 */
+            text-align: center;
+            margin-top: 10px;
+            font-style: italic;
+        }
+
+        /* Table Styling for Top 5 Stocks */
+        .stock-table {
+            width: 100%;
+            border-collapse: separate; /* Use separate for rounded corners/spacing */
+            border-spacing: 0 8px; /* Vertical spacing between rows */
+            margin-top: 10px;
+        }
+        
+        .stock-table th, .stock-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border: none;
+        }
+
+        .stock-table thead tr {
+            background-color: #00A99D; /* TMT Primary */
+            color: #121212;
+            text-transform: uppercase;
+            font-size: 0.85em;
+            font-weight: 700;
+        }
+        
+        .stock-table thead th:first-child { border-top-left-radius: 8px; }
+        .stock-table thead th:last-child { border-top-right-radius: 8px; }
+        .stock-table thead th { border-bottom: 2px solid #FFC700; }
+        
+        .stock-table tbody tr {
+            background-color: #2c3e50;
+            transition: background-color 0.2s ease;
+        }
+        .stock-table tbody tr:hover {
+            background-color: #374151;
+        }
+        .stock-table td {
+            color: #d1d5db;
+        }
+        
+        .rating-buy { color: #4caf50; font-weight: bold; }
+        .rating-hold { color: #FFC700; font-weight: bold; }
+        .rating-strong-buy { color: #00A99D; font-weight: bold; }
+
+    </style>
+</head>
+<body class="bg-tmt-bg font-sans antialiased">
+
+<header class="bg-tmt-bg shadow-2xl sticky top-0 z-50 border-b border-gray-800">
+    <div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-3 flex items-center justify-between">
+
+        <div class="flex items-center space-x-4">
+            <a href="index.html">
+                <img
+                    src="images/Think money tree logo 4.png"
+                    alt="Think Money Tree Logo"
+                    class="h-14 sm:h-16 w-auto rounded-xl"
+                    title="Think Money Tree Logo"
+                >
+            </a>
+
+            <form id="stock-search-form" class="hidden sm:block">
+                <div class="relative flex items-center w-full max-w-xs">
+                    <input
+                        type="text"
+                        id="stock-search-input"
+                        name="ticker"
+                        placeholder="Search a Stock Ticker (e.g., AAPL)"
+                        class="py-2 pl-4 pr-10 rounded-full bg-gray-800 text-gray-300 placeholder-gray-500 border border-gray-700 focus:ring-tmt-primary focus:border-tmt-primary transition duration-200 text-sm w-full"
+                        aria-label="Stock Ticker Search"
+                        required
+                    >
+                    <button
+                        type="submit"
+                        class="absolute right-0 top-0 mt-1 mr-1 p-1 rounded-full text-tmt-primary hover:text-tmt-secondary transition duration-200"
+                        aria-label="Search"
+                    >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="flex items-center space-x-4 sm:space-x-6">
+            <nav id="desktop-nav-links" class="hidden md:flex space-x-4 text-sm">
+                 <a href="tmt_dashboard.html" class="text-tmt-secondary font-bold hover:text-white transition duration-300 flex items-center focus:outline-none">
+                    <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                    DASHBOARD
+                </a>
+                <a href="javascript:void(0)" onclick="alert('Stock Menu Redirect')" class="text-gray-400 hover:text-tmt-primary transition duration-300">Stock</a>
+                <a href="javascript:void(0)" onclick="alert('Crypto Menu Redirect')" class="text-gray-400 hover:text-tmt-primary transition duration-300">Crypto</a>
+                <a href="javascript:void(0)" onclick="alert('About Menu Redirect')" class="text-gray-400 hover:text-tmt-primary transition duration-300">About</a>
+            </nav>
+            <button id="menu-toggle" class="md:hidden p-2 rounded-lg text-gray-400 hover:text-tmt-primary transition duration-200" aria-label="Toggle Menu">
+                <svg id="icon-open" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                <svg id="icon-close" class="w-6 h-6 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            
+            <div id="auth-buttons-container" class="flex items-center space-x-4 sm:space-x-6">
+                <a href="auth.html?mode=login" id="login-button" class="bg-gray-800 hover:bg-gray-700 text-white font-bold py-1.5 px-4 md:px-5 rounded-full shadow-lg transition duration-300 transform hover:scale-105 border border-gray-700 text-sm md:text-sm">
+                    Login
+                </a>
+                <a href="auth.html?mode=join" id="join-button" class="bg-tmt-primary hover:bg-[#009287] text-tmt-bg font-bold py-1.5 px-4 md:px-5 rounded-full shadow-lg transition duration-300 transform hover:scale-105 text-sm md:text-sm">
+                    Join
+                </a>
+            </div>
+            
+            <div id="user-menu-container" class="flex items-center space-x-2 hidden">
+                <div class="w-10 h-10 bg-tmt-primary rounded-full flex items-center justify-center font-bold text-tmt-bg">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14c0 3.866-2.686 7-6 7s-6-3.134-6-7h12z" transform="translate(6 0)"/></svg>
+                </div>
+                <span id="username-display" class="font-semibold text-white hidden sm:inline">User</span>
+                <button id="logout-button" class="text-sm text-red-400 hover:text-red-500 transition duration-200 font-medium py-1.5 px-3 rounded-full hover:bg-gray-800">
+                    Logout
+                </button>
+            </div>
+        </div>
+    </div>
+    <div id="mobile-menu" class="hidden md:hidden bg-gray-900 absolute w-full shadow-2xl border-b border-gray-800 z-40 text-sm">
+        <div class="px-4 pt-2 pb-4 space-y-2">
+            <a href="tmt_dashboard.html" class="block w-full text-left py-2 px-3 text-tmt-secondary hover:text-tmt-primary flex items-center justify-between rounded-lg bg-gray-800 hover:bg-gray-700 font-semibold transition duration-200">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                TMT DASHBOARD
+            </a>
+            <a href="javascript:void(0)" onclick="alert('Stock Market Redirect')" class="block px-4 py-2 text-gray-400 hover:bg-gray-800 hover:text-tmt-secondary rounded-md">Stock Market</a>
+            <a href="javascript:void(0)" onclick="alert('Crypto Market Redirect')" class="block px-4 py-2 text-gray-400 hover:bg-gray-800 hover:text-tmt-secondary rounded-md">Crypto Market</a>
+            <a href="about.html" class="block px-4 py-2 text-gray-400 hover:bg-gray-800 hover:text-tmt-secondary rounded-md">About Us</a>
+        </div>
+    </div>
+</header>
+<main>
+    <div class="pt-8 pb-4 border-b border-gray-800 bg-gray-900">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h1 class="text-4xl sm:text-5xl font-extrabold tracking-tight text-white mb-2">
+                Think Money Tree Dashboard
+            </h1>
+            <p class="text-xl text-gray-400">
+                Your **essential live view** of market sentiment and fundamental indicators.
+            </p>
+        </div>
+    </div>
+
+    <div class="dashboard-container">
+
+        <div class="card fear-greed-section">
+            <div class="fgi-card">
+                <h2>Stock F&G Index</h2>
+                <span id="stock-fgi-value" class="fgi-value" style="color: #FFC700;">42</span>
+                <span id="stock-fgi-status" class="fgi-status fgi-status-fear">NEUTRAL/FEAR</span>
+                <p class="placeholder-note">Traditional Market Sentiment (Simulated)</p>
+            </div>
+            <div class="fgi-card">
+                <h2>Crypto F&G Index</h2>
+                <span id="crypto-fgi-value" class="fgi-value" style="color: #00A99D;">71</span>
+                <span id="crypto-fgi-status" class="fgi-status fgi-status-greed">GREED</span>
+                <p class="placeholder-note">Digital Asset Sentiment (Simulated)</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>S&P 500 P/E Ratio</h2>
+            <span class="data-point text-tmt-primary">27.1x</span>
+            <p class="placeholder-note">Based on Trailing 12-Month Earnings (API)</p>
+        </div>
+
+        <div class="card">
+            <h2>Market Cap to GDP Ratio</h2>
+            <span class="data-point text-red-500">182%</span>
+            <p class="placeholder-note">A measure of market valuation (API)</p>
+        </div>
+
+        <div class="card trading-view-section">
+            <h2>Trading View Live Price Section (Major Indices)</h2>
+            <div class="tradingview-widget-container overflow-hidden mb-4">
+                <div class="tradingview-widget-container__widget"></div>
+                <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js" async>
+                {
+                    "symbols": [
+                        { "description": "S&P 500", "proName": "FOREXCOM:SPXUSD" },
+                        { "description": "Nasdaq 100", "proName": "NASDAQ:NDX" },
+                        { "description": "Bitcoin", "proName": "BINANCE:BTCUSDT" },
+                        { "description": "Gold", "proName": "FX_IDC:XAUUSD" }
+                    ],
+                    "showSymbolLogo": true,
+                    "isTransparent": true,
+                    "displayMode": "adaptive",
+                    "colorTheme": "dark",
+                    "locale": "en"
+                }
+                </script>
+            </div>
+            
+            <div class="tradingview-widget-container" style="height:380px;width:100%;">
+                <div id="tradingview_chart" style="height:100%;width:100%;"></div>
+                <script type="text/javascript" src="https://s3.tradingview.com/external-js/widgets/v1.js"></script>
+                <script type="text/javascript">
+                    new TradingView.widget(
+                    {
+                        "autosize": true,
+                        "symbol": "FOREXCOM:SPXUSD", /* Default to S&P 500 */
+                        "interval": "D",
+                        "timezone": "Etc/UTC",
+                        "theme": "dark", /* Using the dark theme for dashboard */
+                        "style": "1",
+                        "locale": "en",
+                        "toolbar_bg": "#1f2937",
+                        "enable_publishing": false,
+                        "allow_symbol_change": true,
+                        "container_id": "tradingview_chart"
+                    }
+                    );
+                </script>
+            </div>
+        </div>
+
+        <div class="card heat-map-section">
+            <h2>Bitcoin & Crypto Heat Map</h2>
+            <div class="tradingview-widget-container" style="height: 450px; width: 100%;">
+                <div class="tradingview-widget-container__widget"></div>
+                <script type="text/javascript" src="https://s3.tradingview.com/external-js/widgets/v1.js"></script>
+                <script type="text/javascript">
+                new TradingView.widget(
+                {
+                    "width": "100%",
+                    "height": "450",
+                    "dataSource": "Crypto",
+                    "showFloatingTooltip": true,
+                    "locale": "en",
+                    "colorTheme": "dark", /* Dark theme to match the dashboard */
+                    "columns": [
+                        "change|1D"
+                    ],
+                    "screener_type": "crypto_mkt",
+                    "container_id": "tradingview-cryptomap"
+                }
+                );
+                </script>
+            </div>
+        </div>
+
+        <div class="card stock-list-section">
+            <h2>TMT Top 5 Stock List 🏆</h2>
+            <p class="text-gray-400 mb-4">Our top-rated picks based on proprietary TMT Value/Growth scoring.</p>
+            <table class="stock-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Stock/Ticker</th>
+                        <th>TMT Rating</th>
+                        <th>Price Target</th>
+                        <th>Current Price (Simulated)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>1</td>
+                        <td>Berkshire (BRK.B)</td>
+                        <td class="rating-strong-buy">Strong Buy</td>
+                        <td class="rating-strong-buy">$450.00</td>
+                        <td>$410.50</td>
+                    </tr>
+                    <tr>
+                        <td>2</td>
+                        <td>Amazon (AMZN)</td>
+                        <td class="rating-buy">Buy</td>
+                        <td class="rating-buy">$220.00</td>
+                        <td>$185.30</td>
+                    </tr>
+                    <tr>
+                        <td>3</td>
+                        <td>Google (GOOGL)</td>
+                        <td class="rating-strong-buy">Strong Buy</td>
+                        <td class="rating-strong-buy">$200.00</td>
+                        <td>$172.75</td>
+                    </tr>
+                    <tr>
+                        <td>4</td>
+                        <td>Exxon Mobil (XOM)</td>
+                        <td class="rating-hold">Hold</td>
+                        <td class="rating-hold">$125.00</td>
+                        <td>$115.20</td>
+                    </tr>
+                    <tr>
+                        <td>5</td>
+                        <td>Mastercard (MA)</td>
+                        <td class="rating-buy">Buy</td>
+                        <td class="rating-buy">$550.00</td>
+                        <td>$480.90</td>
+                    </tr>
+                    </tbody>
+            </table>
+            <p class="placeholder-note" style="text-align: left; margin-top: 20px;">
+                *Note: This data is simulated. Integrate your actual TMT proprietary stock data and rankings here.
+            </p>
+        </div>
+
+    </div>
+</main>
+
+<footer class="bg-tmt-bg py-12 border-t border-gray-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <p class="text-white text-lg font-semibold mb-4">Ready to start investing like a value master?</p>
+        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('budget_tracker.html')" class="inline-flex items-center justify-center px-6 py-3 mr-4 border border-tmt-primary text-base font-medium rounded-full text-tmt-primary hover:bg-tmt-primary hover:text-tmt-bg transition duration-300 transform hover:scale-105 font-bold">
+            Start Tracking Your Budget
+        </a>
+        <a href="https://www.youtube.com/@thinkmoneytree" target="_blank" class="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-full text-tmt-secondary hover:bg-[#E5B800] transition duration-300 transform hover:scale-105 font-bold">
+            Subscribe to Think Money Tree
+        </a>
+        <div class="mt-8 border-t border-gray-800 pt-8">
+            <p class="text-sm text-gray-500">&copy; 2024 Think Money Tree. Invest Smarter. Not Harder.</p>
+            <p class="text-xs text-gray-600 mt-2">Disclaimer: All content is for educational purposes only. Not financial advice.</p>
+        </div>
+    </div>
+</footer>
+<script>
+    // These functions are placeholders since I cannot execute or provide the full JS file (script.js)
+    function checkAccessAndRedirect(url) {
+        alert('Redirecting to: ' + url + '. (Access check skipped in this example)');
+        // In your live site, this would contain logic to check if the user is logged in/subscribed
+        // window.location.href = url;
+    }
+    
+    function acceptCookies() {
+        const banner = document.getElementById('cookie-consent-banner');
+        if (banner) {
+            banner.style.display = 'none';
+        }
+        // In a real application, you'd set a cookie here
+    }
+    
+    // Toggle mobile menu logic (basic implementation)
+    document.getElementById('menu-toggle').addEventListener('click', function() {
+        const mobileMenu = document.getElementById('mobile-menu');
+        const iconOpen = document.getElementById('icon-open');
+        const iconClose = document.getElementById('icon-close');
+        
+        mobileMenu.classList.toggle('hidden');
+        iconOpen.classList.toggle('hidden');
+        iconClose.classList.toggle('hidden');
+    });
+
+    // Mobile dropdown toggle logic
+    function toggleMobileDropdown(button) {
+        const content = button.nextElementSibling;
+        const icon = button.querySelector('svg');
+        content.classList.toggle('hidden');
+        icon.classList.toggle('rotate-180');
+    }
+    
+    // Hide cookie banner if already accepted (simple simulation)
+    window.onload = function() {
+        if (!localStorage.getItem('tmt_cookies_accepted')) {
+            document.getElementById('cookie-consent-banner').style.display = 'flex';
+        }
+    };
+    
+</script>
+
+</body>
+</html>

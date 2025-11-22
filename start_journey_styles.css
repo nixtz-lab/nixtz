@@ -1,0 +1,12 @@
+/*
+ * File: start_journey_styles.css
+ * This file is linked in start_journey.html
+ * Use this file for any custom CSS that cannot be easily done with Tailwind utility classes.
+ */
+
+/* Example of a custom style you might add here: */
+/*
+.timeline-dot {
+    z-index: 10;
+}
+*/

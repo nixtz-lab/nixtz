@@ -1,0 +1,24 @@
+# --- GENERAL CONFIG ---
+JWT_SECRET="your_default_jwt_secret_please_change_this_for_prod"
+MONGODB_URI="mongodb+srv://..."
+
+# --- API KEYS ---
+# Yahu Key (from your previous server.js)
+YAHU_RAPIDAPI_KEY="395e634198msh3ce064e80779cb8p161601jsn07aeb51f16ae" 
+
+# Fear & Greed Key (Placeholder - Replace with your key)
+FEAR_GREED_API_KEY="YOUR_RAPIDAPI_FEAR_GREED_KEY_HERE" 
+
+# SCRAPER API Key (Your private key inserted here)
+SCRAPER_API_KEY="pbU9cuF3nPFkIAjvCnRZsMCqtzs9CQ0F"
+
+# --- API ENDPOINTS ---
+SCRAPER_API_ENDPOINT="https://api.apilayer.com/url_data_api/scrape"
+
+# =======================================================
+# --- EMAIL CONFIGURATION FOR NODEMAILER (MANDATORY) ---
+# =======================================================
+SMTP_USER="support@thinkmoneytree.com"
+SMTP_PASSWORD="Nina1312!" 
+# NOTE: If using a modern provider like Gmail, this must be an "App Password" 
+# generated specifically for application use, not your main email login password.

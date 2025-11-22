@@ -1,0 +1,55 @@
+/* ------------------------------------------------------------------------- */
+/* Custom Scrollbar Styling (for dark mode aesthetic) */
+/* ------------------------------------------------------------------------- */
+
+.custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: #1f1f1f; /* tmt-card */
+    border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #4a4a4a;
+    border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #00A99D; /* tmt-primary hover */
+}
+
+/* ------------------------------------------------------------------------- */
+/* Dropdown arrow fix for dark-themed select box */
+/* ------------------------------------------------------------------------- */
+#type {
+    /* Custom arrow for dark theme select */
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%23d1d5db'%3e%3cpath d='M7 7l3 3 3-3 1 1-4 4-4-4 1-1z' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1.5em 1.5em;
+    padding-right: 2.5rem;
+}
+
+/* ------------------------------------------------------------------------- */
+/* Animation for Stat Card Hover Effect */
+/* ------------------------------------------------------------------------- */
+.stat-card:hover {
+    transform: translateY(-2px);
+}
+
+.stat-card {
+    transition: transform 0.3s ease-out, box-shadow 0.3s ease-out;
+}
+
+/* Specific styling for the delete button inside transaction list */
+.delete-button:hover svg {
+    transform: scale(1.1);
+    color: #ef4444; /* red-500 */
+}
+
+.delete-button {
+    transition: transform 0.2s;
+}

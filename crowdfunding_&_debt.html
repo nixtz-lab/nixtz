@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crowdfunding & Debt Investing | Think Money Tree</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+    theme: {
+        extend: {
+            colors: {
+                'tmt-primary': '#00A99D', // Teal/Green
+                'tmt-secondary': '#FFC700', // Gold/Yellow
+                'tmt-bg': '#121212', // Dark background
+                'tmt-card': '#1f1f1f', // For card/dropdown background
+            },
+            fontFamily: {
+                sans: ['Inter', 'sans-serif'], 
+            },
+            boxShadow: { 
+                '3xl-dark': '0 35px 60px -15px rgba(0, 0, 0, 0.5)',
+                'tmt-primary/50': '0 10px 25px -5px rgba(0, 169, 157, 0.5), 0 8px 10px -6px rgba(0, 169, 157, 0.5)',
+                'tmt-secondary/50': '0 10px 25px -5px rgba(255, 199, 0, 0.5), 0 8px 10px -6px rgba(255, 199, 0, 0.5)'
+            }
+        }
+    }
+}
+</script>
+
+<link rel="stylesheet" href="style.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest"></script>
+
+<style>
+    .search-container { position: relative; }
+    .search-suggestions {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        z-index: 50;
+        max-height: 300px;
+        overflow-y: auto;
+        background-color: #1F2937;
+        border: 1px solid #374151;
+        border-top: none;
+        border-radius: 0 0 8px 8px;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+    }
+    .suggestion-item {
+        padding: 10px 15px;
+        cursor: pointer;
+        transition: background-color 0.15s;
+        color: #D1D5DB;
+        font-size: 14px;
+    }
+    .suggestion-item:hover {
+        background-color: #374151;
+        color: #00A99D; 
+    }
+    .stacked-nav-link {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        white-space: nowrap;
+    }
+</style>
+</head>
+<body class="bg-tmt-bg font-sans antialiased text-white">
+
+<div id="message-box" class="fixed top-4 right-4 p-4 rounded-lg shadow-2xl z-[9999] hidden text-white bg-tmt-primary transition duration-300 opacity-0">
+    <p id="message-text" class="font-semibold"></p>
+</div>
+
+<header class="bg-tmt-bg shadow-2xl sticky top-0 z-50 border-b border-gray-800">
+    <div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-3 flex items-center justify-between">
+
+        <div class="flex items-center space-x-4">
+            <a href="index.html">
+                <img
+                    src="images/Think money tree logo 4.png"
+                    alt="Think Money Tree Logo"
+                    class="h-14 sm:h-16 w-auto rounded-xl"
+                    title="Think Money Tree Logo"
+                >
+            </a>
+
+            <form id="header-search-form" class="mx-4 flex-grow max-w-lg hidden sm:block"> 
+                <div class="relative search-container">
+                    <input type="text" id="stock-search-input" placeholder="Search Ticker (e.g., O, PLD)" class="w-full bg-gray-700 text-white border border-gray-600 rounded-full py-2 pl-4 pr-12 text-sm focus:border-tmt-primary focus:ring-1 focus:ring-tmt-primary transition duration-200">
+                    <button type="submit" class="absolute inset-y-0 right-0 flex items-center pr-3 text-tmt-primary hover:text-tmt-secondary transition duration-150">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    </button>
+                    <div id="stock-search-suggestions" class="search-suggestions hidden"></div>
+                </div>
+            </form>
+        </div>
+
+        <div class="flex items-center space-x-4 sm:space-x-6">
+            <a href="javascript:void(0)" onclick="checkAccessAndRedirect('watchlist.html')" 
+               class="text-tmt-primary hover:text-tmt-secondary transition duration-300 stacked-nav-link focus:outline-none font-medium ml-4 sm:ml-6" 
+               title="Watchlist">
+                <i data-lucide="eye" class="w-5 h-5"></i>
+                <span class="text-[10px] leading-tight md:text-[10px] md:leading-tight">Watchlist</span>
+            </a>
+            
+            <nav id="desktop-nav-links" class="hidden md:flex space-x-3 text-sm">
+                <div class="relative group">
+                    <button class="text-gray-400 hover:text-tmt-primary transition duration-300 flex items-center focus:outline-none whitespace-nowrap">Finance <svg class="w-4 h-4 ml-1 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></button>
+                    <div class="absolute left-1/2 transform -translate-x-1/2 top-full w-56 bg-gray-800 rounded-lg shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition duration-300 z-50 p-2 border border-gray-700">
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('budget_tracker.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Budget Dashboard</a>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('budget_planner.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Monthly Planner</a>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('transactions.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Transaction History</a>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('reports.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Reports & Analysis</a>
+                    </div>
+                </div>
+                <div class="relative group">
+                    <button class="text-gray-400 hover:text-tmt-primary transition duration-300 flex items-center focus:outline-none whitespace-nowrap">Stock <svg class="w-4 h-4 ml-1 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></button>
+                    <div class="absolute left-1/2 transform -translate-x-1/2 top-full w-60 bg-gray-800 rounded-lg shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition duration-300 z-50 p-2 border border-gray-700">
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('tmt_dashboard.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">TMT Dashboard</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('52_week_low.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">52 Week Low</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('stock_ranking_list.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Stock Ranking List</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('stock_dashboard.html?mode=search')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">TMT Stock Analyzer</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('stock_valuation.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">TMT Valuation Tool</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('portfolio_tracker.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">TMT Portfolio Tracker</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('investing_for_beginners.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Investing for Beginners</a>
+                    </div>
+                </div>
+                <div class="relative group">
+                    <button class="text-gray-400 hover:text-tmt-primary transition duration-300 flex items-center focus:outline-none whitespace-nowrap">Crypto <svg class="w-4 h-4 ml-1 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></button>
+                    <div class="absolute left-1/2 transform -translate-x-1/2 top-full w-56 bg-gray-800 rounded-lg shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition duration-300 z-50 p-2 border border-gray-700">
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('crypto_market.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Crypto Market</a>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('crypto_strategies.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Crypto Strategies</a>
+                        <a href="Crypto_for_Beginners.html" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Crypto for Beginners</a>
+                    </div>
+                </div>
+                
+                <div class="relative group">
+                    <button class="text-tmt-primary font-bold transition duration-300 flex items-center focus:outline-none whitespace-nowrap">Real Estate <svg class="w-4 h-4 ml-1 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></button>
+                    <div class="absolute left-1/2 transform -translate-x-1/2 top-full w-56 bg-gray-800 rounded-lg shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition duration-300 z-50 p-2 border border-gray-700">
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('rental_property_analysis.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Rental Property Analysis</a>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('reit_investing_guide.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">REIT Investing Guides</a>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('crowdfunding_&_debt.html')" class="block px-4 py-2 text-tmt-primary font-bold bg-gray-700 rounded-md">Crowdfunding & Debt</a>
+                    </div>
+                </div>
+                
+                <div class="relative group">
+                    <button class="text-gray-400 hover:text-tmt-primary transition duration-300 flex items-center focus:outline-none whitespace-nowrap">Retirement <svg class="w-4 h-4 ml-1 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></button>
+                    <div class="absolute left-1/2 transform -translate-x-1/2 top-full w-56 bg-gray-800 rounded-lg shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition duration-300 z-50 p-2 border border-gray-700">
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('passive_income.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Passive Income</a>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('retirement_tracker.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Retirement Tracker</a>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('retirement_calculator.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Retirement Calculator</a>
+                    </div>
+                </div>
+                <div class="relative group">
+                    <button class="text-gray-400 hover:text-tmt-primary transition duration-300 flex items-center focus:outline-none whitespace-nowrap">About <svg class="w-4 h-4 ml-1 transition-transform duration-200 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></button>
+                    <div class="absolute right-0 top-full w-56 bg-gray-800 rounded-lg shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition duration-300 z-50 p-2 border border-gray-700">
+                        <a href="about.html" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Our Story & Mission</a>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('meet_the_team.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Meet the Team</a>
+                        <a href="disclaimer_legal.html" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Disclaimer & Legal</a>
+                        <a href="contact.html" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Contact Us</a>
+                    </div>
+                </div>
+            </nav>
+            <button id="menu-toggle" class="md:hidden p-2 rounded-lg text-gray-400 hover:text-tmt-primary transition duration-200"><svg id="icon-open" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg><svg id="icon-close" class="w-6 h-6 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+            
+            <div id="auth-buttons-container" class="flex items-center space-x-4 sm:space-x-6">
+                <a href="auth.html?mode=login" id="login-button" class="bg-gray-800 hover:bg-gray-700 text-white font-bold py-1.5 px-4 md:px-5 rounded-full shadow-lg transition duration-300 border border-gray-700 text-sm md:text-sm">Login</a>
+                <a href="auth.html?mode=join" id="join-button" class="bg-tmt-primary hover:bg-[#009287] text-tmt-bg font-bold py-1.5 px-4 md:px-5 rounded-full shadow-lg transition duration-300 text-sm md:text-sm">Join</a>
+            </div>
+            
+            <div id="admin-link-container" class="hidden">
+                <a href="javascript:void(0)" onclick="checkAccessAndRedirect('admin_panel.html')" class="text-sm bg-tmt-secondary hover:bg-[#E5B800] text-tmt-bg font-bold py-1.5 px-3 rounded-full shadow-lg transition duration-300">Admin</a>
+            </div>
+            <div id="user-menu-container" class="group relative flex items-center space-x-2 hidden">
+                <button id="nav-user-button" class="w-10 h-10 bg-tmt-primary rounded-full flex items-center justify-center font-bold text-tmt-bg hover:scale-105 transition duration-200"><i data-lucide="user" class="w-6 h-6"></i></button>
+                <span id="username-display" class="font-semibold text-white hidden sm:inline">User</span>
+                <div id="user-dropdown" class="absolute right-0 top-full mt-3 w-64 bg-gray-800 rounded-xl shadow-3xl-dark border border-gray-700/50 p-4 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 origin-top-right scale-95 group-hover:scale-100 z-50">
+                    <p class="text-sm font-medium text-white mb-3 border-b border-gray-700 pb-2">Account: <span id="user-initials" class="font-normal text-tmt-secondary"></span></p>
+                    <button id="profile-button" class="w-full text-left text-sm text-gray-300 hover:text-white transition duration-200 font-medium py-2 px-3 rounded-lg hover:bg-gray-700 mb-3"><i data-lucide="settings" class="w-4 h-4 mr-2 inline"></i>Profile & Password</button>
+                    <button id="logout-button" class="w-full text-center text-sm text-red-400 hover:text-red-500 transition duration-200 font-medium py-2 px-3 rounded-lg hover:bg-gray-700"><i data-lucide="log-out" class="w-4 h-4 mr-2 inline"></i>Logout</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="mobile-menu" class="hidden md:hidden bg-gray-900 absolute w-full shadow-2xl border-b border-gray-800 z-40 text-sm">
+        <div class="px-4 pt-2 pb-4 space-y-2">
+
+            <div>
+                <button onclick="toggleMobileDropdown(this)" class="w-full text-left py-2 px-3 text-gray-300 hover:text-tmt-primary flex items-center justify-between rounded-lg bg-gray-800 hover:bg-gray-700 font-semibold transition duration-200">
+                    Finance <svg class="w-4 h-4 transform transition duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                <div class="pl-4 pt-1 space-y-1 hidden">
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('budget_tracker.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Budget Dashboard</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('budget_planner.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Monthly Planner</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('transactions.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Transaction History</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('reports.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Reports & Analysis</a>
+                </div>
+            </div>
+
+            <div>
+                <button onclick="toggleMobileDropdown(this)" class="w-full text-left py-2 px-3 text-gray-300 hover:text-tmt-primary flex items-center justify-between rounded-lg bg-gray-800 hover:bg-gray-700 font-semibold transition duration-200">
+                    Stock <svg class="w-4 h-4 transform transition duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                <div class="pl-4 pt-1 space-y-1 hidden">
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('tmt_dashboard.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">TMT Dashboard</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('52_week_low.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">52 Week Low</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('stock_ranking_list.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Stock Ranking List</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('stock_dashboard.html?mode=search')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">TMT Stock Analyzer</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('stock_valuation.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">TMT Valuation Tool</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('portfolio_tracker.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">TMT Portfolio Tracker</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('investing_for_beginners.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Investing for Beginners</a>
+                </div>
+            </div>
+
+            <div>
+                <button onclick="toggleMobileDropdown(this)" class="w-full text-left py-2 px-3 text-gray-300 hover:text-tmt-primary flex items-center justify-between rounded-lg bg-gray-800 hover:bg-gray-700 font-semibold transition duration-200">
+                    Crypto <svg class="w-4 h-4 transform transition duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                <div class="pl-4 pt-1 space-y-1 hidden">
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('crypto_market.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Crypto Market</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('crypto_strategies.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Crypto Strategies</a>
+                    <a href="Crypto_for_Beginners.html" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Crypto for Beginners</a>
+                </div>
+            </div>
+
+            <div>
+                <button onclick="toggleMobileDropdown(this)" class="w-full text-left py-2 px-3 text-tmt-primary flex items-center justify-between rounded-lg bg-gray-800 hover:bg-gray-700 font-bold transition duration-200">
+                    Real Estate <svg class="w-4 h-4 transform transition duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                <div class="pl-4 pt-1 space-y-1 hidden">
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('rental_property_analysis.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Rental Property Analysis</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('reit_investing_guide.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">REIT Investing Guides</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('crowdfunding_&_debt.html')" class="block px-4 py-2 text-tmt-primary font-bold bg-gray-700 rounded-md">Crowdfunding & Debt</a>
+                </div>
+            </div>
+
+            <div>
+                <button onclick="toggleMobileDropdown(this)" class="w-full text-left py-2 px-3 text-gray-300 hover:text-tmt-primary flex items-center justify-between rounded-lg bg-gray-800 hover:bg-gray-700 font-semibold transition duration-200">
+                    Retirement <svg class="w-4 h-4 transform transition duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                <div class="pl-4 pt-1 space-y-1 hidden">
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('passive_income.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Passive Income</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('retirement_tracker.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Retirement Tracker</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('retirement_calculator.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Retirement Calculator</a>
+                </div>
+            </div>
+
+            <div>
+                <button onclick="toggleMobileDropdown(this)" class="w-full text-left py-2 px-3 text-gray-300 hover:text-tmt-primary flex items-center justify-between rounded-lg bg-gray-800 hover:bg-gray-700 font-semibold transition duration-200">
+                    About <svg class="w-4 h-4 transform transition duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                <div class="pl-4 pt-1 space-y-1 hidden">
+                    <a href="about.html" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Our Story & Mission</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('meet_the_team.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Meet the Team</a>
+                    <a href="disclaimer_legal.html" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Disclaimer & Legal</a>
+                    <a href="contact.html" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Contact Us</a>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</header>
+
+<main>
+    <section class="bg-gray-900 py-16 border-b border-gray-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-4xl sm:text-6xl font-extrabold tracking-tight text-white mb-6">
+                Crowdfunding & <span class="text-tmt-secondary">Private Credit</span>
+            </h1>
+            <p class="mt-4 max-w-2xl mx-auto text-xl text-gray-400">
+                Go beyond the stock market. Become the bank or the developer by investing in private real estate deals.
+            </p>
+        </div>
+    </section>
+
+    <section class="py-16 bg-tmt-bg">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 class="text-3xl font-bold text-white mb-12 text-center">Two Ways to Participate</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                
+                <div class="bg-tmt-card p-8 rounded-2xl shadow-2xl border-t-4 border-tmt-primary hover:shadow-tmt-primary/50 transition duration-500">
+                    <div class="flex items-center mb-6">
+                        <div class="bg-gray-800 p-3 rounded-full text-tmt-primary mr-4">
+                            <i data-lucide="building" class="w-8 h-8"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold text-white">Equity Crowdfunding</h3>
+                    </div>
+                    <p class="text-gray-300 mb-6">
+                        You buy a small slice of ownership in a specific building or a fund of buildings. You make money if the property appreciates in value or generates rental income.
+                    </p>
+                    <ul class="space-y-3 text-sm text-gray-400">
+                        <li class="flex items-center"><i data-lucide="arrow-up-right" class="text-tmt-primary w-4 h-4 mr-2"></i> Higher potential returns (10% - 20%+)</li>
+                        <li class="flex items-center"><i data-lucide="clock" class="text-tmt-primary w-4 h-4 mr-2"></i> Long lock-up periods (5+ years)</li>
+                        <li class="flex items-center"><i data-lucide="pie-chart" class="text-tmt-primary w-4 h-4 mr-2"></i> You are an owner (Junior position)</li>
+                    </ul>
+                </div>
+
+                <div class="bg-tmt-card p-8 rounded-2xl shadow-2xl border-t-4 border-tmt-secondary hover:shadow-tmt-secondary/50 transition duration-500">
+                    <div class="flex items-center mb-6">
+                        <div class="bg-gray-800 p-3 rounded-full text-tmt-secondary mr-4">
+                            <i data-lucide="banknote" class="w-8 h-8"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold text-white">Real Estate Debt</h3>
+                    </div>
+                    <p class="text-gray-300 mb-6">
+                        You act as the bank. You lend money to a developer to renovate or build a property. You get paid back with interest on a fixed schedule.
+                    </p>
+                    <ul class="space-y-3 text-sm text-gray-400">
+                        <li class="flex items-center"><i data-lucide="check" class="text-tmt-secondary w-4 h-4 mr-2"></i> Consistent, fixed income (7% - 12%)</li>
+                        <li class="flex items-center"><i data-lucide="clock" class="text-tmt-secondary w-4 h-4 mr-2"></i> Shorter terms (6 - 24 months)</li>
+                        <li class="flex items-center"><i data-lucide="shield" class="text-tmt-secondary w-4 h-4 mr-2"></i> Senior position (Paid before owners)</li>
+                    </ul>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <section class="py-16 bg-gray-900 border-y border-gray-800">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 class="text-3xl font-bold text-white mb-8 text-center">Detailed Comparison</h2>
+            <div class="overflow-x-auto rounded-xl shadow-lg">
+                <table class="w-full text-left text-sm text-gray-400">
+                    <thead class="bg-gray-800 text-xs uppercase font-bold text-white">
+                        <tr>
+                            <th class="px-6 py-4">Feature</th>
+                            <th class="px-6 py-4 text-tmt-primary">Equity Investing</th>
+                            <th class="px-6 py-4 text-tmt-secondary">Debt Investing</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-700 bg-tmt-card">
+                        <tr>
+                            <td class="px-6 py-4 font-medium text-white">Primary Goal</td>
+                            <td class="px-6 py-4">Maximum Total Return (Growth)</td>
+                            <td class="px-6 py-4">Steady Cash Flow (Income)</td>
+                        </tr>
+                        <tr>
+                            <td class="px-6 py-4 font-medium text-white">Risk Profile</td>
+                            <td class="px-6 py-4">Higher (Market fluctuations)</td>
+                            <td class="px-6 py-4">Lower (Backed by property collateral)</td>
+                        </tr>
+                        <tr>
+                            <td class="px-6 py-4 font-medium text-white">Liquidity</td>
+                            <td class="px-6 py-4 text-red-400">Very Low (Hard to sell)</td>
+                            <td class="px-6 py-4 text-yellow-500">Low (Wait until loan matures)</td>
+                        </tr>
+                        <tr>
+                            <td class="px-6 py-4 font-medium text-white">Tax Treatment</td>
+                            <td class="px-6 py-4">Capital Gains (Potential benefits)</td>
+                            <td class="px-6 py-4">Ordinary Income (Taxed at regular rate)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <section class="py-12 bg-tmt-bg">
+        <div class="max-w-4xl mx-auto px-4">
+            <div class="bg-tmt-card border border-red-900/50 p-6 rounded-xl flex items-start gap-4 shadow-lg">
+                <i data-lucide="alert-triangle" class="w-10 h-10 text-red-500 flex-shrink-0"></i>
+                <div>
+                    <h3 class="text-xl font-bold text-red-500 mb-2">The Liquidity Warning</h3>
+                    <p class="text-gray-300 text-sm leading-relaxed">
+                        Unlike stocks or REITs, you cannot click a "Sell" button to get your money back instantly. Money invested in private real estate is often locked up for years. Only invest funds you will not need for the medium-to-long term.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="py-16 bg-gray-900">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 class="text-3xl font-bold text-white mb-10 text-center">Popular Platforms to Explore</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                
+                <div class="bg-tmt-card p-6 rounded-lg border border-gray-700 hover:border-tmt-primary transition duration-300 text-center">
+                    <div class="mb-4 inline-block p-3 rounded-full bg-gray-800 text-white font-bold text-xl">F</div>
+                    <h3 class="text-lg font-bold text-white mb-2">Fundrise</h3>
+                    <p class="text-gray-400 text-sm mb-4">Best for beginners. Low minimums ($10). Offers primarily Equity eREITs and some private credit funds.</p>
+                    <span class="text-xs text-tmt-primary border border-tmt-primary px-2 py-1 rounded">Open to All Investors</span>
+                </div>
+
+                <div class="bg-tmt-card p-6 rounded-lg border border-gray-700 hover:border-tmt-secondary transition duration-300 text-center">
+                    <div class="mb-4 inline-block p-3 rounded-full bg-gray-800 text-white font-bold text-xl">Y</div>
+                    <h3 class="text-lg font-bold text-white mb-2">Yieldstreet</h3>
+                    <p class="text-gray-400 text-sm mb-4">Focuses heavily on alternative debt deals: Real Estate, Art, and Legal finance. Higher minimums.</p>
+                    <span class="text-xs text-tmt-secondary border border-tmt-secondary px-2 py-1 rounded">Accredited Mostly</span>
+                </div>
+
+                <div class="bg-tmt-card p-6 rounded-lg border border-gray-700 hover:border-blue-500 transition duration-300 text-center">
+                    <div class="mb-4 inline-block p-3 rounded-full bg-gray-800 text-white font-bold text-xl">C</div>
+                    <h3 class="text-lg font-bold text-white mb-2">CrowdStreet</h3>
+                    <p class="text-gray-400 text-sm mb-4">Direct equity deals. You pick specific commercial buildings to invest in. Higher risk/reward.</p>
+                    <span class="text-xs text-blue-500 border border-blue-500 px-2 py-1 rounded">Accredited Only</span>
+                </div>
+
+            </div>
+            <p class="text-center text-xs text-gray-600 mt-8">
+                *Think Money Tree is not affiliated with these platforms. Always do your own due diligence.
+            </p>
+        </div>
+    </section>
+
+</main>
+
+<footer class="bg-tmt-bg py-12 border-t border-gray-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <p class="text-white text-lg font-semibold mb-4">Ready to start investing like a value master?</p>
+        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('budget_tracker.html')" class="inline-flex items-center justify-center px-6 py-3 mr-4 border border-tmt-primary text-base font-medium rounded-full text-tmt-primary hover:bg-tmt-primary hover:text-tmt-bg transition duration-300 transform hover:scale-105 font-bold">
+            Start Tracking Your Budget
+        </a>
+        <a href="https://www.youtube.com/@thinkmoneytree" target="_blank" class="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-full text-tmt-secondary hover:bg-[#E5B800] transition duration-300 transform hover:scale-105 font-bold">
+            Subscribe to Think Money Tree
+        </a>
+        <div class="mt-8 border-t border-gray-800 pt-8">
+            <p class="text-sm text-gray-500">&copy; 2024 Think Money Tree. Invest Smarter. Not Harder.</p>
+            <p class="text-xs text-gray-600 mt-2">Disclaimer: All content is for educational purposes only. Not financial advice.</p>
+        </div>
+    </div>
+</footer>
+
+<div id="profile-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[9999] hidden flex items-center justify-center p-4 transition-opacity duration-300">
+    <div class="bg-tmt-card w-full max-w-lg rounded-xl shadow-3xl-dark p-6 md:p-8 border border-gray-700/50">
+        <h2 class="text-2xl font-bold text-tmt-secondary mb-4 border-b border-gray-700 pb-3 flex justify-between items-center">
+            User Profile Settings
+            <button id="close-profile-modal" class="text-gray-400 hover:text-white transition duration-200"><i data-lucide="x" class="w-6 h-6"></i></button>
+        </h2>
+        <div class="mb-6">
+            <p class="text-lg font-semibold text-white mb-2">Account Details</p>
+            <div class="space-y-2 text-sm">
+                <p class="text-gray-400">Username: <span id="modal-username" class="text-white font-medium">Loading...</span></p>
+                <p class="text-gray-400">Email: <span id="modal-email" class="text-white font-medium">Loading...</span></p>
+            </div>
+        </div>
+        <div class="mt-8 border-t border-gray-700 pt-6">
+             <h3 class="text-xl font-semibold text-tmt-primary mb-4">Change Password</h3>
+             <form id="change-password-form" class="space-y-4"><button type="submit" id="save-password-button" class="hidden"></button></form>
+        </div>
+    </div>
+</div>
+
+<script src="script.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        try {
+            lucide.createIcons();
+        } catch (e) {
+            console.error("Lucide icons failed to render.", e);
+        }
+    });
+</script>
+</body>
+</html>

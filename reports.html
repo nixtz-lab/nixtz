@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TMT Budget Tracker | Reports & Analysis</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'tmt-primary': '#00A99D', // Teal/Green (Success/Action)
+                        'tmt-secondary': '#FFC700', // Gold/Yellow (Highlight/Warning)
+                        'tmt-bg': '#121212', // Dark background
+                        'tmt-card': '#1f1f1f', // Slightly lighter card background
+                        'tmt-planner-bg': '#2b2b2b', 
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'], // Sets Inter as default font
+                    },
+                    boxShadow: {
+                        'xl-tmt': '0 20px 25px -5px rgba(0, 169, 157, 0.1), 0 10px 10px -5px rgba(0, 169, 157, 0.04)',
+                        '3xl-dark': '0 35px 60px -15px rgba(0, 0, 0, 0.5)',
+                        'xl-report': '0 10px 15px -3px rgba(0, 169, 157, 0.2), 0 4px 6px -2px rgba(0, 169, 157, 0.05)',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <link rel="stylesheet" href="budget_tracker_style.css">
+    
+    <style>
+        /* FIX: Calendar icon visibility on dark theme */
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+            cursor: pointer;
+        }
+        input[type="date"] {
+            color: #ffffff; 
+        }
+    </style>
+    
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+</head>
+<body class="bg-gradient-to-br from-tmt-bg to-[#0d0d0d] font-sans min-h-screen text-gray-100 pt-20">
+    
+    <div id="message-box" class="fixed top-20 right-5 p-4 rounded-xl shadow-2xl text-white z-50 transition-all duration-300 opacity-0 transform translate-x-10 pointer-events-none">
+        <span id="message-text"></span>
+    </div>
+
+   <nav class="fixed top-0 left-0 right-0 h-20 bg-gray-900/95 backdrop-blur-sm border-b border-gray-700/50 z-50 flex items-center justify-between px-4 md:px-8 shadow-2xl">
+    
+    <div class="flex items-center space-x-6 flex-shrink-0 lg:ml-32">
+        <a href="index.html" class="flex items-center text-xl font-extrabold tracking-tight text-white">
+            <img src="images/Think money tree logo 4.png"
+                 alt="Think Money Tree Logo"
+                 class="h-12 w-auto object-contain transition-transform duration-300 hover:scale-[1.05] sm:h-14"
+                 onerror="this.onerror=null;this.src='https://placehold.co/72x72/00A99D/FFFFFF?text=TMT+Logo';">
+        </a>
+        
+        <div class="hidden md:flex flex-shrink-0 w-64 lg:w-80">
+            <div class="w-full relative">
+                <input type="text" id="transaction-search" placeholder="Search Transactions..." 
+                       class="w-full py-2 pl-4 pr-10 rounded-xl bg-gray-800 border border-gray-700 focus:border-tmt-primary focus:ring-1 focus:ring-tmt-primary/50 text-white text-sm transition duration-200"
+                >
+                <div class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400">
+                    <i data-lucide="search" class="h-4 w-4"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="flex items-center space-x-6 lg:mr-32">
+        
+        <div class="hidden md:flex space-x-6 font-medium text-gray-300">
+            <a href="javascript:void(0)" onclick="checkAccessAndRedirect('budget_tracker.html')" class="transition hover:text-tmt-secondary">Dashboard</a>
+            <a href="javascript:void(0)" onclick="checkAccessAndRedirect('budget_planner.html')" class="transition hover:text-tmt-secondary">Planning</a>
+            <a href="javascript:void(0)" onclick="checkAccessAndRedirect('transactions.html')" class="transition hover:text-tmt-secondary">Transactions</a>
+            <a href="javascript:void(0)" onclick="checkAccessAndRedirect('reports.html')" class="text-tmt-primary font-bold transition hover:text-white">Reports</a>
+        </div>
+        
+        <button id="mobile-menu-button" class="md:hidden p-2 text-white hover:text-tmt-secondary transition duration-200 focus:outline-none">
+            <i data-lucide="menu" class="h-6 w-6"></i>
+        </button>
+        
+        <div id="auth-buttons-container" class="hidden">
+             <a href="auth.html?mode=login" id="login-button" class="bg-gray-800 hover:bg-gray-700 text-white font-bold py-1.5 px-4 md:px-5 rounded-full shadow-lg transition duration-300 transform hover:scale-105 border border-gray-700 text-sm md:text-sm">Login</a>
+            <a href="auth.html?mode=join" id="join-button" class="bg-tmt-primary hover:bg-[#009287] text-tmt-bg font-bold py-1.5 px-4 md:px-5 rounded-full shadow-lg transition duration-300 transform hover:scale-105 text-sm md:text-sm">Join</a>
+        </div>
+
+        <div id="user-menu-container" class="group relative flex items-center space-x-2"> 
+            <button 
+                id="nav-user-button"
+                class="w-10 h-10 bg-tmt-primary rounded-full flex items-center justify-center font-bold text-tmt-bg hover:scale-105 transition duration-200"
+                title="User Settings">
+                <i data-lucide="user" class="w-6 h-6"></i>
+            </button>
+            <span id="username-display" class="font-semibold text-white hidden sm:inline">User</span>
+
+            <div id="user-dropdown" class="absolute right-0 top-full mt-3 w-64 bg-gray-800 rounded-xl shadow-3xl-dark border border-gray-700/50 p-4 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 origin-top-right scale-95 group-hover:scale-100 z-50">
+                
+                <p class="text-sm font-medium text-white mb-3 border-b border-gray-700 pb-2">Account: <span id="user-initials" class="font-normal text-tmt-secondary"></span></p>
+
+                <button id="profile-button" class="w-full text-left text-sm text-gray-300 hover:text-white transition duration-200 font-medium py-2 px-3 rounded-lg hover:bg-gray-700 mb-3">
+                    <i data-lucide="settings" class="w-4 h-4 mr-2 inline"></i>
+                    Profile & Password
+                </button>
+                
+                <div class="mb-4">
+                    <label for="currency-select" class="block text-xs font-medium text-gray-400 mb-1">Preferred Currency</label>
+                    <select id="currency-select" 
+                            class="w-full p-2 rounded-lg bg-tmt-card border border-gray-700 focus:border-tmt-primary focus:ring-1 focus:ring-tmt-primary/70 text-sm text-white appearance-none cursor-pointer transition duration-200">
+                        <option value="USD">USD ($)</option>
+                        <option value="EUR">EUR (€)</option>
+                        <option value="GBP">GBP (£)</option>
+                        <option value="JPY">JPY (¥)</option>
+                        <option value="THB">THB (฿)</option> 
+                        <option value="AUD">AUD (A$)</option>
+                    </select>
+                </div>
+
+                <button id="logout-button" class="w-full text-center text-sm text-red-400 hover:text-red-500 transition duration-200 font-medium py-2 px-3 rounded-lg hover:bg-gray-700">
+                    <i data-lucide="log-out" class="w-4 h-4 mr-2 inline"></i>
+                    Logout
+                </button>
+            </div>
+            
+        </div>
+        
+    </div>
+    <div id="mobile-menu" class="md:hidden absolute top-20 left-0 right-0 bg-gray-900/95 border-b border-gray-700/50 shadow-xl p-4 space-y-2 hidden">
+        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('budget_tracker.html')" class="block py-2 px-4 text-gray-300 transition hover:bg-gray-800 rounded-lg">Dashboard</a>
+        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('budget_planner.html')" class="block py-2 px-4 text-gray-300 transition hover:bg-gray-800 hover:text-tmt-secondary rounded-lg">Planning</a>
+        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('transactions.html')" class="block py-2 px-4 text-gray-300 transition hover:bg-gray-800 hover:text-tmt-secondary rounded-lg">Transactions</a>
+        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('reports.html')" class="block py-2 px-4 text-tmt-primary font-bold transition hover:bg-gray-800 rounded-lg">Reports</a>
+        <div class="mt-4 pt-2 border-t border-gray-700/50">
+            <div class="w-full relative">
+                <input type="text" id="transaction-search-mobile" placeholder="Search Transactions..." 
+                       class="w-full py-2 pl-4 pr-10 rounded-xl bg-gray-800 border border-gray-700 focus:border-tmt-primary focus:ring-1 focus:ring-tmt-primary/50 text-white text-sm transition duration-200"
+                >
+                <div class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400">
+                    <i data-lucide="search" class="h-4 w-4"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    </nav>
+
+    <div class="flex justify-center w-full p-4">
+        <div class="w-full max-w-4xl bg-tmt-card rounded-2xl shadow-3xl-dark p-6 md:p-10 border border-gray-700/50 transition duration-500 hover:border-tmt-primary/30">
+            
+            <header class="text-center mb-10">
+                <h1 class="text-4xl font-extrabold mb-1 tracking-tight text-tmt-primary">
+                    Budget Reports<br><span class="text-tmt-secondary">Analyze Your Progress</span>
+                </h1>
+                <p id="user-info" class="text-xs text-gray-500 mt-2">Authentication Status: Connecting...</p>
+                
+                <div class="mt-4 flex justify-end">
+                    <button id="toggle-report-button"
+                            class="p-2.5 bg-tmt-secondary text-tmt-bg rounded-full shadow-lg shadow-tmt-secondary/50 hover:bg-[#E5B800] transition duration-300 transform hover:scale-105 active:scale-100 disabled:opacity-50"
+                            title="Toggle Report Generation Controls">
+                        <i data-lucide="file-plus-2" class="w-6 h-6"></i>
+                    </button>
+                </div>
+                </header>
+
+            <div id="report-controls-container" class="mb-10 p-6 bg-gray-800/70 rounded-xl shadow-xl-report border border-tmt-primary/30 hidden">
+                <h2 class="text-2xl font-bold text-white mb-4 border-b border-gray-700 pb-3">Report Generation</h2>
+                
+                <div class="space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label for="report-date-from" class="block text-sm font-medium text-gray-400 mb-1">Start Date</label>
+                            <input type="date" id="report-date-from"
+                                   class="w-full p-3 rounded-lg bg-tmt-card border border-gray-700 text-sm text-white focus:border-tmt-primary">
+                        </div>
+                        <div>
+                            <label for="report-date-to" class="block text-sm font-medium text-gray-400 mb-1">End Date</label>
+                            <input type="date" id="report-date-to"
+                                   class="w-full p-3 rounded-lg bg-tmt-card border border-gray-700 text-sm text-white focus:border-tmt-primary">
+                        </div>
+                    </div>
+                    
+                    <div>
+                         <label for="report-type" class="block text-sm font-medium text-gray-400 mb-1">Report Type</label>
+                         <select id="report-type"
+                                class="w-full p-3 rounded-lg bg-tmt-card border border-gray-700 text-sm text-white appearance-none cursor-pointer focus:border-tmt-primary">
+                            <option value="summary">Monthly Summary (Net/Savings Rate)</option>
+                            <option value="category" selected>Category Spending Breakdown</option> 
+                            <option value="transactions">Raw Transactions (CSV/PDF)</option>
+                        </select>
+                    </div>
+
+                    <button id="generate-report-button"
+                            class="w-full p-3 bg-tmt-primary text-tmt-bg rounded-lg font-bold shadow-lg shadow-tmt-primary/30 hover:bg-[#009287] transition duration-300 transform hover:scale-[1.01] active:scale-100 disabled:opacity-50 mt-6">
+                        <i data-lucide="file-text" class="w-5 h-5 mr-2 inline"></i>
+                        Generate Report (PDF/Download)
+                    </button>
+                    
+                    <p id="report-status" class="text-center text-sm text-gray-400 pt-2 hidden">
+                        Report generation is complex and is currently a placeholder.
+                    </p>
+
+                </div>
+            </div>
+            <div class="mt-10 p-6 bg-gray-900 rounded-2xl shadow-xl border border-tmt-primary/50">
+                <h2 class="text-2xl font-bold text-white mb-4 border-b border-gray-700 pb-3 flex items-center">
+                    <i data-lucide="pie-chart" class="w-6 h-6 mr-3 text-tmt-primary"></i>
+                    Category Spending Breakdown
+                </h2>
+                <div id="chart-area-container" class="relative w-full max-w-lg mx-auto p-4">
+                    <canvas id="spending-chart" class="w-full h-auto"></canvas>
+                    <p id="chart-message" class="text-center text-gray-500 italic pt-4 hidden">Not enough expense data to generate a chart.</p>
+                </div>
+            </div>
+            
+            <div class="mt-10 p-6 bg-gray-900 rounded-2xl shadow-xl border border-tmt-secondary/50">
+                <h2 class="text-2xl font-bold text-white mb-4 border-b border-gray-700 pb-3 flex items-center">
+                    <i data-lucide="bar-chart-2" class="w-6 h-6 mr-3 text-tmt-secondary"></i>
+                    Monthly Budget Performance (Planned vs. Actual)
+                </h2>
+                <div id="comparison-chart-area-container" class="relative w-full mx-auto p-4 min-h-[400px]">
+                    <canvas id="comparison-chart" class="w-full h-auto"></canvas>
+                    <p id="comparison-chart-message" class="text-center text-gray-500 italic pt-4">Load a Category Spending Breakdown report to view planned vs actual comparison.</p>
+                </div>
+            </div>
+
+
+        </div>
+    </div>
+
+    <div id="profile-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[9999] hidden flex items-center justify-center p-4 transition-opacity duration-300">
+        <div class="bg-tmt-card w-full max-w-lg rounded-xl shadow-3xl-dark p-6 md:p-8 border border-gray-700/50">
+            <h2 class="text-2xl font-bold text-tmt-secondary mb-4 border-b border-gray-700 pb-3 flex justify-between items-center">
+                User Profile Settings
+                <button id="close-profile-modal" class="text-gray-400 hover:text-white transition duration-200">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </h2>
+
+            <div class="mb-6">
+                <p class="text-lg font-semibold text-white mb-2">Account Details</p>
+                <div class="space-y-2 text-sm">
+                    <p class="text-gray-400">Username: <span id="modal-username" class="text-white font-medium">Loading...</span></p>
+                    <p class="text-gray-400">Email: <span id="modal-email" class="text-white font-medium">Loading...</span></p>
+                </div>
+            </div>
+
+            <div class="mt-8 border-t border-gray-700 pt-6">
+                <h3 class="text-xl font-semibold text-tmt-primary mb-4">Change Password</h3>
+                <div id="password-message-box" class="p-3 rounded-lg text-white mb-3 hidden"></div>
+                <form id="change-password-form" class="space-y-4">
+                    <div>
+                        <label for="current-password" class="block text-sm font-medium text-gray-400 mb-1">Current Password</label>
+                        <input type="password" id="current-password" required
+                               class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-tmt-primary transition duration-200">
+                    </div>
+                    <div>
+                        <label for="new-password" class="block text-sm font-medium text-gray-400 mb-1">New Password</label>
+                        <input type="password" id="new-password" required minlength="8"
+                               class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-tmt-primary transition duration-200">
+                    </div>
+                    <div>
+                        <label for="confirm-new-password" class="block text-sm font-medium text-gray-400 mb-1">Confirm New Password</label>
+                        <input type="password" id="confirm-new-password" required minlength="8"
+                               class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-tmt-primary transition duration-200">
+                    </div>
+                    <button type="submit" id="save-password-button"
+                            class="w-full p-3 bg-tmt-primary text-tmt-bg rounded-lg font-bold shadow-lg hover:bg-[#009287] transition duration-300 transform hover:scale-[1.01] disabled:opacity-50">
+                        Update Password
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+    <script src="reports_script.js" type="module"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Mobile Menu Toggle Logic (Copied from dashboard)
+            const mobileMenuButton = document.getElementById('mobile-menu-button');
+            const mobileMenu = document.getElementById('mobile-menu');
+            const searchInputMobile = document.getElementById('transaction-search-mobile');
+            const searchInputDesktop = document.getElementById('transaction-search');
+
+            if (mobileMenuButton && mobileMenu) {
+                mobileMenuButton.addEventListener('click', () => {
+                    mobileMenu.classList.toggle('hidden');
+                    if(searchInputMobile && searchInputDesktop) {
+                        searchInputMobile.value = searchInputDesktop.value;
+                    }
+                });
+            }
+            if(searchInputMobile && searchInputDesktop) {
+                 searchInputMobile.addEventListener('input', () => {
+                     searchInputDesktop.value = searchInputMobile.value;
+                 });
+            }
+            
+            // Render Lucide icons
+            lucide.createIcons();
+            
+            // Initialize dates to current month range (first day to current day)
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            const firstDayOfMonth = `${yyyy}-${mm}-01`;
+            const todayDate = `${yyyy}-${mm}-${dd}`;
+            
+            document.getElementById('report-date-from').value = firstDayOfMonth;
+            document.getElementById('report-date-to').value = todayDate;
+            
+            // --- Toggle button logic for Report Generation box ---
+            const toggleReportButton = document.getElementById('toggle-report-button');
+            const reportControlsContainer = document.getElementById('report-controls-container');
+            
+            if (toggleReportButton && reportControlsContainer) {
+                toggleReportButton.addEventListener('click', () => {
+                    const isHidden = reportControlsContainer.classList.toggle('hidden');
+                    const icon = toggleReportButton.querySelector('i');
+                    if (icon) {
+                         icon.setAttribute('data-lucide', isHidden ? 'file-plus-2' : 'file-minus-2');
+                         lucide.createIcons();
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

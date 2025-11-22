@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Retirement Tracker | Think Money Tree</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+    theme: {
+        extend: {
+            colors: {
+                'tmt-primary': '#00A99D', // Teal
+                'tmt-secondary': '#FFC700', // Gold
+                'tmt-bg': '#121212', // Dark background
+                'tmt-card': '#1f1f1f',
+            },
+            fontFamily: { sans: ['Inter', 'sans-serif'] },
+            boxShadow: { 
+                '3xl-dark': '0 35px 60px -15px rgba(0, 0, 0, 0.5)',
+                'tmt-primary/50': '0 10px 25px -5px rgba(0, 169, 157, 0.5), 0 8px 10px -6px rgba(0, 169, 157, 0.5)',
+                'tmt-secondary/50': '0 10px 25px -5px rgba(255, 199, 0, 0.5), 0 8px 10px -6px rgba(255, 199, 0, 0.5)'
+            }
+        }
+    }
+}
+</script>
+
+<link rel="stylesheet" href="style.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+
+<style>
+    .search-container { position: relative; }
+    .search-suggestions {
+        position: absolute; top: 100%; left: 0; right: 0; z-index: 50;
+        max-height: 300px; overflow-y: auto; background-color: #1F2937;
+        border: 1px solid #374151; border-top: none; border-radius: 0 0 8px 8px;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+    }
+    .stacked-nav-link {
+        display: flex; flex-direction: column; align-items: center; text-align: center; white-space: nowrap;
+    }
+    .tab-button { padding: 10px 20px; font-weight: bold; border-bottom: 2px solid transparent; transition: all 0.2s; }
+    .tab-button.active { border-color: #FFC700; color: #FFC700; }
+    /* INPUT FIELD STYLING */
+    .input-field { width: 100%; padding: 0.75rem; border-radius: 0.5rem; background-color: #1F2937; border: 1px solid #374151; color: white; transition: all 0.2s; }
+    .input-field:focus { border-color: #00A99D; outline: none; box-shadow: 0 0 0 2px rgba(0, 169, 157, 0.2); }
+</style>
+</head>
+<body class="bg-tmt-bg font-sans antialiased text-white">
+
+<div id="message-box" class="fixed top-4 right-4 p-4 rounded-lg shadow-2xl z-[9999] hidden text-white bg-tmt-primary transition duration-300 opacity-0">
+    <p id="message-text" class="font-semibold"></p>
+</div>
+
+<header class="bg-tmt-bg shadow-2xl sticky top-0 z-50 border-b border-gray-800">
+    <div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-3 flex items-center justify-between">
+
+        <div class="flex items-center space-x-4">
+            <a href="index.html">
+                <img
+                    src="images/Think money tree logo 4.png"
+                    alt="Think Money Tree Logo"
+                    class="h-14 sm:h-16 w-auto rounded-xl"
+                    title="Think Money Tree Logo"
+                >
+            </a>
+            <form id="header-search-form" class="mx-4 flex-grow max-w-lg hidden sm:block"> 
+                <div class="relative search-container">
+                    <input type="text" id="stock-search-input" placeholder="Search Ticker (e.g., SPY, VTI)" class="w-full bg-gray-700 text-white border border-gray-600 rounded-full py-2 pl-4 pr-12 text-sm focus:border-tmt-primary focus:ring-1 focus:ring-tmt-primary transition duration-200">
+                    <button type="submit" class="absolute inset-y-0 right-0 flex items-center pr-3 text-tmt-primary hover:text-tmt-secondary transition duration-150">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    </button>
+                    <div id="stock-search-suggestions" class="search-suggestions hidden"></div>
+                </div>
+            </form>
+        </div>
+
+        <div class="flex items-center space-x-4 sm:space-x-6">
+            <a href="javascript:void(0)" onclick="checkAccessAndRedirect('watchlist.html')" 
+               class="text-tmt-primary hover:text-tmt-secondary transition duration-300 stacked-nav-link focus:outline-none font-medium ml-4 sm:ml-6" 
+               title="Watchlist">
+                <i data-lucide="eye" class="w-5 h-5"></i>
+                <span class="text-[10px] leading-tight md:text-[10px] md:leading-tight">Watchlist</span>
+            </a>
+            
+            <nav id="desktop-nav-links" class="hidden md:flex space-x-3 text-sm">
+                <div class="relative group">
+                    <button class="text-gray-400 hover:text-tmt-primary transition duration-300 flex items-center focus:outline-none whitespace-nowrap">Finance <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></button>
+                    <div class="absolute left-1/2 transform -translate-x-1/2 top-full w-56 bg-gray-800 rounded-lg shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition duration-300 z-50 p-2 border border-gray-700">
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('budget_tracker.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Budget Dashboard</a>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('budget_planner.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Monthly Planner</a>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('transactions.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Transaction History</a>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('reports.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Reports & Analysis</a>
+                    </div>
+                </div>
+                <div class="relative group">
+                    <button class="text-gray-400 hover:text-tmt-primary transition duration-300 flex items-center focus:outline-none whitespace-nowrap">Stock <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></button>
+                    <div class="absolute left-1/2 transform -translate-x-1/2 top-full w-60 bg-gray-800 rounded-lg shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition duration-300 z-50 p-2 border border-gray-700">
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('tmt_dashboard.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">TMT Dashboard</a>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('portfolio_tracker.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Portfolio Tracker</a>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('stock_dashboard.html?mode=search')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">TMT Stock Analyzer</a>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('stock_valuation.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">TMT Valuation Tool</a>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('investing_for_beginners.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Investing for Beginners</a>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('52_week_low.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">52 Week Low</a>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('stock_ranking_list.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Stock Ranking List</a>
+                    </div>
+                </div>
+                <div class="relative group">
+                    <button class="text-gray-400 hover:text-tmt-primary transition duration-300 flex items-center focus:outline-none whitespace-nowrap">Crypto <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></button>
+                    <div class="absolute left-1/2 transform -translate-x-1/2 top-full w-56 bg-gray-800 rounded-lg shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition duration-300 z-50 p-2 border border-gray-700">
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('crypto_market.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Crypto Market</a>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('crypto_strategies.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Crypto Strategies</a>
+                        <a href="Crypto_for_Beginners.html" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Crypto for Beginners</a>
+                    </div>
+                </div>
+                <div class="relative group">
+                    <button class="text-gray-400 hover:text-tmt-primary transition duration-300 flex items-center focus:outline-none whitespace-nowrap">Real Estate <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></button>
+                    <div class="absolute left-1/2 transform -translate-x-1/2 top-full w-56 bg-gray-800 rounded-lg shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition duration-300 z-50 p-2 border border-gray-700">
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('rental_property_analysis.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Rental Property Analysis</a>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('reit_investing_guide.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">REIT Investing Guides</a>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('crowdfunding_&_debt.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Crowdfunding & Debt</a>
+                    </div>
+                </div>
+                
+                <div class="relative group">
+                    <button class="text-tmt-primary font-bold transition duration-300 flex items-center focus:outline-none whitespace-nowrap">Retirement <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></button>
+                    <div class="absolute left-1/2 transform -translate-x-1/2 top-full w-56 bg-gray-800 rounded-lg shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition duration-300 z-50 p-2 border border-gray-700">
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('passive_income.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Passive Income</a>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('retirement_tracker.html')" class="block px-4 py-2 text-tmt-primary font-bold bg-gray-700 rounded-md">Retirement Tracker</a>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('retirement_calculator.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Retirement Calculator</a>
+                    </div>
+                </div>
+
+                <div class="relative group">
+                    <button class="text-gray-400 hover:text-tmt-primary transition duration-300 flex items-center focus:outline-none whitespace-nowrap">About <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></button>
+                    <div class="absolute right-0 top-full w-56 bg-gray-800 rounded-lg shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition duration-300 z-50 p-2 border border-gray-700">
+                        <a href="about.html" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Our Story & Mission</a>
+                        <a href="javascript:void(0)" onclick="checkAccessAndRedirect('meet_the_team.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Meet the Team</a>
+                        <a href="disclaimer_legal.html" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Disclaimer & Legal</a>
+                        <a href="contact.html" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Contact Us</a>
+                    </div>
+                </div>
+            </nav>
+            
+            <button id="menu-toggle" class="md:hidden p-2 rounded-lg text-gray-400 hover:text-tmt-primary transition duration-200"><svg id="icon-open" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg><svg id="icon-close" class="w-6 h-6 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+            
+            <div id="auth-buttons-container" class="flex items-center space-x-4 sm:space-x-6">
+                <a href="auth.html?mode=login" id="login-button" class="bg-gray-800 hover:bg-gray-700 text-white font-bold py-1.5 px-4 md:px-5 rounded-full shadow-lg transition duration-300 border border-gray-700 text-sm md:text-sm">Login</a>
+                <a href="auth.html?mode=join" id="join-button" class="bg-tmt-primary hover:bg-[#009287] text-tmt-bg font-bold py-1.5 px-4 md:px-5 rounded-full shadow-lg transition duration-300 text-sm md:text-sm">Join</a>
+            </div>
+            
+            <div id="admin-link-container" class="hidden">
+                <a href="javascript:void(0)" onclick="checkAccessAndRedirect('admin_panel.html')" class="text-sm bg-tmt-secondary hover:bg-[#E5B800] text-tmt-bg font-bold py-1.5 px-3 rounded-full shadow-lg transition duration-300">Admin</a>
+            </div>
+            <div id="user-menu-container" class="group relative flex items-center space-x-2 hidden">
+                <button id="nav-user-button" class="w-10 h-10 bg-tmt-primary rounded-full flex items-center justify-center font-bold text-tmt-bg hover:scale-105 transition duration-200"><i data-lucide="user" class="w-6 h-6"></i></button>
+                <span id="username-display" class="font-semibold text-white hidden sm:inline">User</span>
+                <div id="user-dropdown" class="absolute right-0 top-full mt-3 w-64 bg-gray-800 rounded-xl shadow-3xl-dark border border-gray-700/50 p-4 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 origin-top-right scale-95 group-hover:scale-100 z-50">
+                    <p class="text-sm font-medium text-white mb-3 border-b border-gray-700 pb-2">Account: <span id="user-initials" class="font-normal text-tmt-secondary"></span></p>
+                    <button id="profile-button" class="w-full text-left text-sm text-gray-300 hover:text-white transition duration-200 font-medium py-2 px-3 rounded-lg hover:bg-gray-700 mb-3"><i data-lucide="settings" class="w-4 h-4 mr-2 inline"></i>Profile & Password</button>
+                    <button id="logout-button" class="w-full text-center text-sm text-red-400 hover:text-red-500 transition duration-200 font-medium py-2 px-3 rounded-lg hover:bg-gray-700"><i data-lucide="log-out" class="w-4 h-4 mr-2 inline"></i>Logout</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="mobile-menu" class="hidden md:hidden bg-gray-900 absolute w-full shadow-2xl border-b border-gray-800 z-40 text-sm">
+        <div class="px-4 pt-2 pb-4 space-y-2">
+
+            <div>
+                <button onclick="toggleMobileDropdown(this)" class="w-full text-left py-2 px-3 text-gray-300 hover:text-tmt-primary flex items-center justify-between rounded-lg bg-gray-800 hover:bg-gray-700 font-semibold transition duration-200">Finance <svg class="w-4 h-4 transform transition duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></button>
+                <div class="pl-4 pt-1 space-y-1 hidden">
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('budget_tracker.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Budget Dashboard</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('budget_planner.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Monthly Planner</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('transactions.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Transaction History</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('reports.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Reports & Analysis</a>
+                </div>
+            </div>
+            <div>
+                <button onclick="toggleMobileDropdown(this)" class="w-full text-left py-2 px-3 text-gray-300 hover:text-tmt-primary flex items-center justify-between rounded-lg bg-gray-800 hover:bg-gray-700 font-semibold transition duration-200">Stock <svg class="w-4 h-4 transform transition duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></button>
+                <div class="pl-4 pt-1 space-y-1 hidden">
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('tmt_dashboard.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">TMT Dashboard</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('portfolio_tracker.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Portfolio Tracker</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('stock_dashboard.html?mode=search')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">TMT Stock Analyzer</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('stock_valuation.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">TMT Valuation Tool</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('investing_for_beginners.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Investing for Beginners</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('52_week_low.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">52 Week Low</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('stock_ranking_list.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Stock Ranking List</a>
+                </div>
+            </div>
+            <div>
+                <button onclick="toggleMobileDropdown(this)" class="w-full text-left py-2 px-3 text-gray-300 hover:text-tmt-primary flex items-center justify-between rounded-lg bg-gray-800 hover:bg-gray-700 font-semibold transition duration-200">Crypto <svg class="w-4 h-4 transform transition duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></button>
+                <div class="pl-4 pt-1 space-y-1 hidden">
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('crypto_market.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Crypto Market</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('crypto_strategies.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Crypto Strategies</a>
+                    <a href="Crypto_for_Beginners.html" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Crypto for Beginners</a>
+                </div>
+            </div>
+            <div>
+                <button onclick="toggleMobileDropdown(this)" class="w-full text-left py-2 px-3 text-gray-300 hover:text-tmt-primary flex items-center justify-between rounded-lg bg-gray-800 hover:bg-gray-700 font-semibold transition duration-200">Real Estate <svg class="w-4 h-4 transform transition duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></button>
+                <div class="pl-4 pt-1 space-y-1 hidden">
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('rental_property_analysis.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Rental Property Analysis</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('reit_investing_guide.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">REIT Investing Guides</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('crowdfunding_&_debt.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Crowdfunding & Debt</a>
+                </div>
+            </div>
+            <div>
+                <button onclick="toggleMobileDropdown(this)" class="w-full text-left py-2 px-3 text-tmt-primary flex items-center justify-between rounded-lg bg-gray-800 hover:bg-gray-700 font-bold transition duration-200">Retirement <svg class="w-4 h-4 transform transition duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></button>
+                <div class="pl-4 pt-1 space-y-1 hidden">
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('passive_income.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Passive Income</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('retirement_tracker.html')" class="block px-4 py-2 text-tmt-primary font-bold bg-gray-700 rounded-md">Retirement Tracker</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('retirement_calculator.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Retirement Calculator</a>
+                </div>
+            </div>
+            <div>
+                <button onclick="toggleMobileDropdown(this)" class="w-full text-left py-2 px-3 text-gray-300 hover:text-tmt-primary flex items-center justify-between rounded-lg bg-gray-800 hover:bg-gray-700 font-semibold transition duration-200">About <svg class="w-4 h-4 transform transition duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></button>
+                <div class="pl-4 pt-1 space-y-1 hidden">
+                    <a href="about.html" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Our Story & Mission</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('meet_the_team.html')" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Meet the Team</a>
+                    <a href="disclaimer_legal.html" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Disclaimer & Legal</a>
+                    <a href="contact.html" class="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-tmt-secondary rounded-md">Contact Us</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<main class="py-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        
+        <div class="text-center mb-12">
+            <h1 class="text-4xl font-extrabold text-white mb-4">Track Your <span class="text-tmt-secondary">Financial Freedom</span></h1>
+            <p class="text-gray-400 max-w-2xl mx-auto">
+                Monitor your journey to the Crossover Point across all your income streams.
+            </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+            
+            <div class="bg-tmt-card p-6 rounded-xl shadow-lg border-t-4 border-tmt-primary">
+                <div class="flex justify-between items-start mb-2">
+                    <div>
+                        <p class="text-gray-400 text-sm font-medium">Your FI Number</p>
+                        <p class="text-xs text-gray-500">Target Portfolio Value</p>
+                    </div>
+                    <i data-lucide="flag" class="text-tmt-primary w-6 h-6"></i>
+                </div>
+                <p id="display-fi-number" class="text-3xl font-extrabold text-white">Loading...</p>
+            </div>
+
+            <div class="bg-tmt-card p-6 rounded-xl shadow-lg border-t-4 border-tmt-secondary">
+                <div class="flex justify-between items-start mb-2">
+                    <div>
+                        <p class="text-gray-400 text-sm font-medium">Time to Freedom</p>
+                        <p class="text-xs text-gray-500">Based on current savings rate</p>
+                    </div>
+                    <i data-lucide="hourglass" class="text-tmt-secondary w-6 h-6"></i>
+                </div>
+                <p id="display-years-left" class="text-3xl font-extrabold text-white">---</p>
+            </div>
+
+            <div class="bg-tmt-card p-6 rounded-xl shadow-lg border-t-4 border-blue-500">
+                <div class="flex justify-between items-start mb-2">
+                    <div>
+                        <p class="text-gray-400 text-sm font-medium">Current Progress</p>
+                        <p class="text-xs text-gray-500">% of FI Number Reached</p>
+                    </div>
+                    <i data-lucide="pie-chart" class="text-blue-500 w-6 h-6"></i>
+                </div>
+                <p id="display-progress-pct" class="text-3xl font-extrabold text-white">---</p>
+                <p id="display-value-and-income" class="text-sm text-gray-400 mt-1">
+                    <span id="display-total-nw">---</span> | <span id="display-total-income">---</span>
+                </p> 
+                <div class="w-full bg-gray-700 rounded-full h-2.5 mt-2">
+                    <div id="progress-bar" class="bg-blue-500 h-2.5 rounded-full" style="width: 0%"></div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <div class="lg:col-span-1">
+                <div class="bg-gray-900 p-6 rounded-xl shadow-2xl border border-gray-800">
+                    <h3 class="text-xl font-bold text-white mb-6 flex items-center">
+                        <i data-lucide="sliders" class="w-5 h-5 mr-2 text-tmt-secondary"></i> Core Expense & Rate Inputs
+                    </h3>
+                    
+                    <form id="retirement-form" class="space-y-5">
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-400 mb-1">Monthly Contribution ($)</label>
+                            <input type="number" id="monthly-contrib" class="input-field" placeholder="e.g. 1000">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-400 mb-1">Annual Living Expenses ($)</label>
+                            <input type="number" id="annual-expenses" class="input-field" placeholder="e.g. 60000">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-400 mb-1">Annual Travel/Holiday Spending ($)</label>
+                            <input 
+                                type="number" 
+                                name="annualTravelSpending" 
+                                id="annual-travel-spending" 
+                                class="input-field" 
+                                placeholder="e.g. 10000"
+                            >
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-500 mb-1">Exp. Return (%)</label>
+                                <input type="number" id="exp-return" class="input-field p-2 text-sm" value="8">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-500 mb-1">Withdrawal Rate (%)</label>
+                                <input type="number" id="withdrawal-rate" class="input-field p-2 text-sm" value="4">
+                            </div>
+                        </div>
+
+                        <button type="submit" class="w-full bg-tmt-primary hover:bg-[#009287] text-tmt-bg font-bold py-3 px-4 rounded-lg shadow-lg transition duration-300 transform hover:scale-[1.02] mt-2">
+                            Update My Plan
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="lg:col-span-2">
+                <div class="bg-gray-900 p-6 rounded-xl shadow-2xl border border-gray-800 h-full flex flex-col">
+                    <h3 class="text-xl font-bold text-white mb-2">The Crossover Point</h3>
+                    <p class="text-sm text-gray-400 mb-6">Visualizing when your Investment Income exceeds your Expenses.</p>
+                    
+                    <div class="flex justify-end mb-4">
+                        <label for="chart-timeframe" class="text-sm font-medium text-gray-400 mr-2 self-center">View Projection:</label>
+                        <select id="chart-timeframe" class="bg-gray-700 text-white p-2 rounded-lg text-sm input-field w-56">
+                            <option value="yearly">Next 10 Years (Annual)</option>
+                            <option value="monthly">Next 12 Months (Monthly)</option>
+                        </select>
+                    </div>
+
+                    <div class="relative flex-grow w-full h-[400px]">
+                        <canvas id="freedomChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+        
+        <div class="mt-12">
+             <div class="flex flex-col md:flex-row justify-between items-center mb-8 bg-gray-900 p-4 rounded-xl shadow-xl border border-gray-80space-y-4">
+                
+                <div class="flex space-x-4">
+                    <button id="tab-dashboard" class="tab-button active" onclick="switchTab('dashboard')">Dashboard</button>
+                    <button id="tab-assets" class="tab-button" onclick="switchTab('assets')">Asset Inputs</button>
+                    <button id="tab-history" class="tab-button" onclick="switchTab('history')">History</button>
+                </div>
+                
+                <button id="record-snapshot-btn" onclick="recordSnapshot()" class="bg-tmt-primary hover:bg-[#009287] text-tmt-bg font-bold py-2 px-6 rounded-lg shadow-md transition duration-300">
+                    <i data-lucide="camera" class="w-4 h-4 inline mr-2"></i> Record Monthly Snapshot
+                </button>
+            </div>
+            
+            <div id="content-dashboard" class="tab-content">
+                <p class="text-center text-gray-500 py-6">The Dashboard tab is active. Metrics are displayed above and chart is updated.</p>
+            </div>
+
+            
+            <div id="content-assets" class="tab-content hidden space-y-10">
+                <h2 class="text-2xl font-bold text-tmt-primary">Manage Your Investment Pillars</h2>
+
+                <div id="financial-assets-form-container" class="bg-tmt-card p-6 rounded-xl shadow-lg border-l-4 border-tmt-secondary">
+                    <h3 class="text-xl font-bold text-tmt-secondary mb-4">Stocks, ETFs, & Digital Assets (Yield)</h3>
+                    <div id="financial-asset-list" class="space-y-4 mb-4">
+                        <p class="text-center text-gray-500">Loading Financial Assets...</p>
+                    </div>
+                    
+                    <div id="financial-add-options" class="space-y-4 hidden">
+                        <h4 class="text-lg font-semibold text-tmt-secondary border-b border-gray-700 pb-2">New Financial Entry</h4>
+                        <div class="space-y-3">
+                            <label class="block text-sm font-medium text-gray-400">Entry Type:</label>
+                            <select id="asset-entry-type" class="input-field p-2 text-sm" onchange="showAssetForm(this.value)">
+                                <option value="">-- Select Type --</option>
+                                <option value="ticker">Individual Ticker (Stock/ETF)</option>
+                                <option value="broker">Broker/Account Total</option>
+                            </select>
+                        </div>
+
+                        <div id="form-ticker-container" class="hidden p-3 bg-gray-800 rounded-lg space-y-3"></div>
+                        <div id="form-broker-container" class="hidden p-3 bg-gray-800 rounded-lg space-y-3"></div>
+                        
+                        <button onclick="hideAssetOptions()" class="text-sm text-gray-400 hover:text-red-400 transition duration-200 mt-2">
+                            <i data-lucide="x" class="w-4 h-4 inline mr-1"></i> Cancel Entry
+                        </button>
+                    </div>
+                    
+                    <button id="add-asset-button" onclick="showAssetOptions()" class="text-sm text-tmt-primary hover:text-white transition duration-200 mt-2">
+                        <i data-lucide="plus" class="w-4 h-4 inline mr-1"></i> Add New Asset
+                    </button>
+                </div>
+                
+                <div id="property-assets-form-container" class="bg-tmt-card p-6 rounded-xl shadow-lg border-l-4 border-tmt-primary">
+                    <h3 class="text-xl font-bold text-tmt-primary mb-4">Real Estate & Rental Properties (Debt)</h3>
+                    <div id="property-asset-list" class="space-y-4 mb-4">
+                         <p class="text-center text-gray-500">Loading Property Assets...</p>
+                    </div>
+                    <button onclick="addPropertyAssetRow()" class="text-sm text-tmt-primary hover:text-white transition duration-200 mt-2">
+                        <i data-lucide="plus" class="w-4 h-4 inline mr-1"></i> Add New Property
+                    </button>
+                </div>
+                
+                <div id="business-assets-form-container" class="bg-tmt-card p-6 rounded-xl shadow-lg border-l-4 border-blue-500">
+                    <h3 class="text-xl font-bold text-blue-500 mb-4">Business & Other Monthly Income</h3>
+                    <div id="business-asset-list" class="space-y-4 mb-4">
+                         <p class="text-center text-gray-500">Business income tracking form pending final implementation.</p>
+                    </div>
+                    <button onclick="addBusinessAssetRow()" class="text-sm text-tmt-primary hover:text-white transition duration-200 mt-2">
+                        <i data-lucide="plus" class="w-4 h-4 inline mr-1"></i> Add Business Income
+                    </button>
+                </div>
+            </div>
+            
+            <div id="content-history" class="tab-content hidden space-y-4">
+                <h2 class="text-2xl font-bold text-white">Historical Snapshots</h2>
+                <div class="bg-tmt-card p-6 rounded-xl shadow-lg border border-gray-700">
+                    <table class="w-full text-sm text-left text-gray-400">
+                        <thead class="text-xs uppercase bg-gray-800 text-tmt-secondary">
+                            <tr>
+                                <th scope="col" class="py-3 px-6">Date</th>
+                                <th scope="col" class="py-3 px-6">Total Net Worth</th>
+                                <th scope="col" class="py-3 px-6">Total Passive Income</th>
+                                <th scope="col" class="py-3 px-6">FI %</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table-body">
+                            <tr><td colspan="4" class="text-center py-4 text-gray-500">Loading history...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+</main>
+
+<footer class="bg-tmt-bg py-8 border-t border-gray-800 mt-12">
+    <div class="max-w-7xl mx-auto px-4 text-center">
+        <p class="text-xs text-gray-600">&copy; 2024 Think Money Tree. Disclaimer: Projections are hypothetical.</p>
+    </div>
+</footer>
+
+<div id="profile-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[9999] hidden flex items-center justify-center p-4 transition-opacity duration-300">
+    <div class="bg-tmt-card w-full max-w-lg rounded-xl shadow-3xl-dark p-6 md:p-8 border border-gray-700/50">
+        <h2 class="text-2xl font-bold text-tmt-secondary mb-4 border-b border-gray-700 pb-3 flex justify-between items-center">
+            User Profile Settings
+            <button id="close-profile-modal" class="text-gray-400 hover:text-white transition duration-200"><i data-lucide="x" class="w-6 h-6"></i></button>
+        </h2>
+        <div class="mb-6">
+            <p class="text-lg font-semibold text-white mb-2">Account Details</p>
+            <div class="space-y-2 text-sm">
+                <p class="text-gray-400">Username: <span id="modal-username" class="text-white font-medium">Loading...</span></p>
+                <p class="text-gray-400">Email: <span id="modal-email" class="text-white font-medium">Loading...</span></p>
+            </div>
+        </div>
+        <div class="mt-8 border-t border-gray-700 pt-6">
+             <h3 class="text-xl font-semibold text-tmt-primary mb-4">Change Password</h3>
+             <div id="password-message-box" class="p-3 rounded-lg text-white mb-3 hidden"></div>
+             <form id="change-password-form" class="space-y-4">
+                <div>
+                    <label for="current-password" class="block text-sm font-medium text-gray-400 mb-1">Current Password</label>
+                    <input type="password" id="current-password" required class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-tmt-primary transition duration-200">
+                </div>
+                <div>
+                    <label for="new-password" class="block text-sm font-medium text-gray-400 mb-1">New Password</label>
+                    <input type="password" id="new-password" required minlength="8" class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-tmt-primary transition duration-200">
+                </div>
+                <div>
+                    <label for="confirm-new-password" class="block text-sm font-medium text-gray-400 mb-1">Confirm New Password</label>
+                    <input type="password" id="confirm-new-password" required minlength="8" class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-tmt-primary transition duration-200">
+                </div>
+                <button type="submit" id="save-password-button" class="w-full p-3 bg-tmt-primary text-tmt-bg rounded-lg font-bold shadow-lg hover:bg-[#009287] transition duration-300 transform hover:scale-[1.01] disabled:opacity-50">Update Password</button>
+             </form>
+        </div>
+    </div>
+</div>
+
+<div id="cookie-consent-banner" class="fixed bottom-0 left-0 right-0 p-4 bg-gray-900 border-t border-tmt-primary z-[60] text-sm text-white shadow-2xl md:flex items-center justify-center space-x-6 hidden">
+    <p class="text-gray-400 text-center md:text-left">
+        This website uses cookies to enhance your experience. By clicking "Accept" or continuing to use the site, you agree to our 
+        <a href="cookie_policy.html" class="text-tmt-secondary hover:text-tmt-primary transition duration-200 underline font-semibold" target="_blank">Cookie Policy.</a>
+    </p>
+    <button onclick="acceptCookies()" class="flex-shrink-0 bg-tmt-primary hover:bg-[#009287] text-tmt-bg font-bold py-2 px-6 rounded-full shadow-lg transition duration-300 transform hover:scale-[1.01] text-sm">Accept</button>
+</div>
+
+<script src="script.js"></script>
+<script src="retirement_tracker.js"></script>
+
+</body>
+</html>

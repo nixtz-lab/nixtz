@@ -1,0 +1,73 @@
+// routes/currency_rate_be.js
+const express = require('express');
+const axios = require('axios'); 
+const router = express.Router();
+
+// Configuration (MUST match your Coolify environment variables)
+const ALPHA_VANTAGE_HOST = 'alpha-vantage.p.rapidapi.com';
+// **IMPORTANT:** The key is fetched securely from the environment variables by Node.js
+const ALPHA_VANTAGE_KEY = process.env.ALPHA_VANTAGE_API_KEY; 
+const BASE_CURRENCY = 'USD'; // Transactions are stored in USD
+
+/**
+ * @route   GET /api/currency/currency-rate?to_currency=X
+ * @desc    Securely fetches the live currency exchange rate via proxy.
+ * @access  Public (proxied)
+ */
+router.get('/currency-rate', async (req, res) => {
+    const toCurrency = req.query.to_currency; 
+
+    // 1. Validation and Base Currency Check
+    if (!toCurrency) {
+        return res.status(400).json({ message: 'Query parameter to_currency is required.' });
+    }
+    if (toCurrency === BASE_CURRENCY) {
+        return res.json({ rate: 1.00 });
+    }
+    if (!ALPHA_VANTAGE_KEY) {
+         console.error("ALPHA_VANTAGE_API_KEY is missing on the server.");
+         return res.status(500).json({ message: 'Server configuration error: Currency API key missing.' });
+    }
+
+    // 2. Build External API Request
+    try {
+        const response = await axios.get(
+            `https://${ALPHA_VANTAGE_HOST}/query`,
+            {
+                params: {
+                    function: 'CURRENCY_EXCHANGE_RATE',
+                    from_currency: BASE_CURRENCY,
+                    to_currency: toCurrency
+                },
+                headers: {
+                    'x-rapidapi-key': ALPHA_VANTAGE_KEY,
+                    'x-rapidapi-host': ALPHA_VANTAGE_HOST
+                }
+            }
+        );
+
+        const data = response.data;
+        const exchangeRateField = "Realtime Currency Exchange Rate";
+        const rateKey = "5. Exchange Rate";
+        const rateStr = data?.[exchangeRateField]?.[rateKey];
+        const rate = parseFloat(rateStr);
+
+        if (rate && rate > 0) {
+            // Success: Return a clean JSON object with the rate
+            return res.json({ rate: rate });
+        } else if (data["Error Message"]) {
+            // Error from Alpha Vantage API
+            console.error('Alpha Vantage Error:', data["Error Message"]);
+            return res.status(502).json({ message: `Currency API Error: ${data["Error Message"]}` });
+        } else {
+            return res.status(500).json({ message: "Could not parse rate from external API response." });
+        }
+
+    } catch (error) {
+        console.error("Backend Currency Proxy Error:", error.message);
+        // Handle network/timeout errors
+        return res.status(500).json({ message: "Backend network error connecting to Alpha Vantage." });
+    }
+});
+
+module.exports = router;

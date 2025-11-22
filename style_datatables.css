@@ -1,0 +1,72 @@
+/**
+ * style_datatables.css
+ * FINAL FIX (v3): Using the table's wrapper ID (#portfolio-table_wrapper)
+ * to create highly specific selectors that will override the CDN defaults
+ * and correctly color the UI text.
+ */
+
+/* * FIX #1: Use the wrapper ID to force the color
+ * This makes "Search:", "entries per page", etc., light blue-green.
+ */
+#portfolio-table_wrapper .dt-length,
+#portfolio-table_wrapper .dt-search,
+#portfolio-table_wrapper .dt-info,
+#portfolio-table_wrapper .dt-paging {
+    color: #00A99D !important; /* tmt-primary (Teal/Green) */
+}
+/* Also target the labels inside for good measure */
+#portfolio-table_wrapper .dt-length label,
+#portfolio-table_wrapper .dt-search label {
+     color: #00A99D !important; /* tmt-primary (Teal/Green) */
+}
+
+
+/* Target the Search Input field and the entries dropdown */
+#portfolio-table_wrapper .dt-search input,
+#portfolio-table_wrapper .dt-length select {
+     background-color: #1f1f1f; /* tmt-card */
+     border: 1px solid #374151;
+     color: #ffffff; /* White text for input/select content */
+     padding: 0.25rem 0.5rem;
+     border-radius: 0.375rem;
+     appearance: none;
+}
+
+/* Target active/hover pagination buttons (uses .dt-paging) */
+#portfolio-table_wrapper .dt-paging .paginate_button.current,
+#portfolio-table_wrapper .dt-paging .paginate_button:hover {
+    background: #00A99D !important; /* tmt-primary */
+    border-color: #00A99D !important;
+    color: #121212 !important; /* Dark text on primary background */
+}
+/* Target inactive pagination buttons (Next/Previous) */
+#portfolio-table_wrapper .dt-paging .paginate_button {
+    color: #00A99D !important; /* tmt-primary color for arrow icons/text */
+}
+
+/* Wrapper styles (unchanged) */
+#portfolio-table_wrapper {
+    background-color: #1f1f1f; /* tmt-card */
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); /* shadow-2xl */
+    border-top: 4px solid #00A99D; /* tmt-primary */
+    border-radius: 0.75rem; /* 12px, was 0.375rem */
+    padding: 1rem;
+    
+    transform: scale(1);
+    transition-property: transform, box-shadow;
+    transition-duration: 500ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#portfolio-table_wrapper:hover {
+    transform: scale(1.03); /* hover:scale-[1.03] */
+    box-shadow: 0 10px 25px -5px rgba(0, 169, 157, 0.5), 0 8px 10px -6px rgba(0, 169, 157, 0.5);
+}
+
+
+/* * FIX #2: Revert table data color to light gray
+ * This changes the text inside the table (LULU, eToro, etc.) back.
+ */
+#portfolio-table tbody td {
+    color: #E5E7EB !important; /* Reverted to Light Gray (Tailwind gray-200) */
+}
