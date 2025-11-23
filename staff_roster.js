@@ -183,7 +183,6 @@ function updateShiftSummaries() {
     });
 }
 
-// ... (createShiftDropdown, setShiftSelection, hideAllDropdowns, addStaffRow, deleteStaffRow functions remain the same) ...
 function createShiftDropdown(cell) {
     if (cell.querySelector('.shift-dropdown')) return;
     
@@ -308,7 +307,7 @@ function addStaffRow(initialData = {}) {
                 cellClasses = 'bg-red-800 font-bold';
             } else if (shiftId && jobRole && timeRange) {
                 cellContent = `${shiftId} ${jobRole}<span class="text-xs text-gray-500 block leading-none">${timeRange}</span>`;
-                cellClasses = 'bg-gray-700';
+                cellClasses = 'bg-gray-70';
 
                 if (shift.color) {
                     customColor = `style="background-color: ${shift.color}40; border-left: 4px solid ${shift.color};"`;
@@ -345,7 +344,6 @@ function deleteStaffRow(button) {
     updateShiftSummaries();
 }
 window.deleteStaffRow = deleteStaffRow;
-// ... (rest of the core utilities remain the same) ...
 
 
 // --- API CALLS ---
@@ -554,7 +552,7 @@ async function loadStaffProfiles() {
 
         // Render the list as cards or table rows
         container.innerHTML = result.data.map(p => {
-            // 4. Removed display of p.nextWeekHolidayRequest here
+            // Removed display of p.nextWeekHolidayRequest
             return `
             <div class="flex justify-between items-center bg-gray-800 p-4 rounded-lg border-l-4 ${p.position === 'Supervisor' || p.position === 'Manager' ? 'border-red-500' : p.position === 'Delivery' ? 'border-blue-400' : 'border-nixtz-secondary'} shadow-md">
                 <div>
@@ -887,7 +885,7 @@ async function handleStaffRequest(e) {
 }
 
 
-// --- INITIALIZATION ---
+// --- INITIALIZATION (Date Fixes Applied) ---
 document.addEventListener('DOMContentLoaded', () => {
     if (!window.getAuthStatus || !getAuthStatus()) {
         showMessage("You need to log in to access the Roster Management.", true);
@@ -898,18 +896,21 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('staff-request-form')?.addEventListener('submit', handleStaffRequest);
 
     const today = new Date();
-    // FIX: Ensure the calculated start date falls in the correct year
-    const day = today.getDay();
-    // Calculate difference: day - dayOfWeek (0=Sun, 1=Mon, ...) + (if Sun, -6) + 1 (to make it Monday)
-    const diff = today.getDate() - day + (day === 0 ? -6 : 1); 
+    
+    // FIX: Calculate the Monday of the current calendar week correctly
+    const dayOfWeek = today.getDay(); 
+    const diff = today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); 
     const monday = new Date(today.getFullYear(), today.getMonth(), diff);
 
-    const isoString = monday.toISOString().split('T')[0];
+    // Format to YYYY-MM-DD string for the input field
+    const year = monday.getFullYear();
+    const month = (monday.getMonth() + 1).toString().padStart(2, '0');
+    const date = monday.getDate().toString().padStart(2, '0');
+    const isoString = `${year}-${month}-${date}`;
     
-    // Set the input field value using the calculated date, NOT the hardcoded year 2025
+    // Set the input field value using the calculated date
     document.getElementById('week-start-date').value = isoString;
     
-    // Initial load will now call updateDateHeaders
     loadRoster(isoString);
 
     updateShiftSummaries();
