@@ -67,7 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (targetId === 'approvals') loadPendingUsers();
             if (targetId === 'users') loadActiveUsers();
             if (targetId === 'memberships') loadMemberships();
-            if (targetId === 'stock-ratings') loadRatings();
+            if (targetId === 'stock-ratings') loadRatings(); // Assuming loadRatings exists or will be added
             if (targetId === 'admin-management') setupAdminForm();
         });
     });
@@ -192,15 +192,68 @@ document.addEventListener('DOMContentLoaded', () => {
                 const email = document.getElementById('admin-email').value;
                 const password = document.getElementById('admin-password').value;
 
-                const res = await callApi('/api/admin/admins/create', 'POST', { username, email, password });
+                // FIX: URL updated to match the backend route definition
+                const res = await callApi('/api/admin/create', 'POST', { username, email, password });
+                
                 if (res) {
-                    window.showMessage('Admin user created!', false);
+                    window.showMessage('Admin user created successfully!', false);
                     form.reset();
                 }
             };
         } else {
             msg.classList.remove('hidden');
             form.classList.add('hidden');
+        }
+    }
+
+    // --- Module: Stock Ratings (Placeholder for completeness if needed) ---
+    async function loadRatings() {
+        const list = document.getElementById('tmt-ratings-list');
+        if (!list) return;
+        list.innerHTML = '<p class="text-gray-500 text-sm">Loading ratings...</p>';
+        
+        const ratings = await callApi('/api/admin/stock-ratings');
+        if (ratings) {
+            list.innerHTML = ratings.map(r => `
+                <div class="tmt-rating-row">
+                    <div class="tmt-rating-left">
+                        <span class="font-bold text-white">${r.ticker}</span>
+                        <span class="text-xs text-gray-400">R:${r.rating}/5</span>
+                    </div>
+                    <div class="tmt-rating-right">
+                        <button onclick="deleteRating('${r.ticker}')" class="tmt-delete-btn hover:bg-red-900/50 hover:text-red-400 transition">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+            if(window.lucide) window.lucide.createIcons();
+        }
+
+        // Setup form listener for ratings if not already done
+        const ratingForm = document.getElementById('tmt-rating-form');
+        if(ratingForm) {
+            ratingForm.onsubmit = async (e) => {
+                e.preventDefault();
+                const ticker = document.getElementById('tmt-ticker-input').value;
+                const rating = document.getElementById('tmt-rating-select').value;
+                
+                const res = await callApi('/api/admin/stock-rating', 'POST', { ticker, rating, rank: '', targetPrice: 0 });
+                if(res) {
+                    window.showMessage(`Rating for ${ticker} saved.`, false);
+                    loadRatings(); // Refresh list
+                    ratingForm.reset();
+                }
+            }
+        }
+    }
+    
+    window.deleteRating = async (ticker) => {
+        if(!confirm(`Delete rating for ${ticker}?`)) return;
+        const res = await callApi(`/api/admin/stock-rating/${ticker}`, 'DELETE');
+        if(res) {
+            window.showMessage('Rating deleted.', false);
+            loadRatings();
         }
     }
 
