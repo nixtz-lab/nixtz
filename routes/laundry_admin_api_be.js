@@ -1,7 +1,7 @@
 // routes/laundry_admin_api_be.js - Router for Laundry Service Admin Management
 const express = require('express');
 const router = express.Router();
-const { LaundryRequest, User } = require('../server (14).js'); 
+const { LaundryRequest, User } = require('../server.js'); 
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs'); // Need bcrypt for staff creation
 
