@@ -2,7 +2,7 @@
 const express = require('express');
 const router = express.Router();
 // Import models from the main server file
-const { LaundryRequest, User } = require('../server (14).js'); 
+const { LaundryRequest, User } = require('../server.js'); 
 const mongoose = require('mongoose');
 
 // Helper to check if the user is authorized for staff actions (e.g., admin or a specific staff role)
