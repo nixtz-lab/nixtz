@@ -3,15 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Think Money Tree | Admin Panel</title>
+    <title>Nixtz | Admin Panel</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        'tmt-primary': '#00A99D', 'tmt-secondary': '#FFC700',
-                        'tmt-bg': '#121212', 'tmt-danger': '#EF4444',
+                        'nixtz-primary': '#4F46E5', // Indigo/Blue
+                        'nixtz-secondary': '#10B981', // Emerald/Green
+                        'nixtz-bg': '#0F172A', // Very dark background (Slate 900)
+                        'nixtz-card': '#1E293B', // Dark card background (Slate 800)
+                        'tmt-danger': '#EF4444', // Keep for delete buttons
                     },
                     fontFamily: { sans: ['Inter', 'sans-serif'], },
                 }
@@ -26,244 +29,184 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background-color: #1f2937; /* Tailwind bg-gray-800 */
-            padding: 0.75rem; /* p-3 */
-            border-radius: 0.5rem; /* rounded-lg */
-            border-left: 4px solid rgba(0, 169, 157, 0.5); /* border-l-4 border-tmt-primary/50 */
-            margin-bottom: 0.5rem; /* space-y-2 */
+            background-color: #1E293B; /* nixtz-card */
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            border-left: 4px solid rgba(79, 70, 229, 0.5); /* nixtz-primary/50 */
+            margin-bottom: 0.5rem;
         }
         .tmt-rating-left {
             display: flex;
             align-items: center;
-            column-gap: 0.75rem; /* space-x-3 */
-            overflow: hidden; /* For truncate */
-            min-width: 0; /* For truncate in flex */
+            column-gap: 0.75rem;
+            overflow: hidden;
+            min-width: 0;
         }
         .tmt-rating-right {
             display: flex;
             align-items: center;
-            column-gap: 0.5rem; /* space-x-2 */
-            flex-shrink: 0; /* Prevents this side from shrinking */
+            column-gap: 0.5rem;
+            flex-shrink: 0;
         }
         .tmt-delete-btn {
-            color: #6B7280; /* text-gray-500 */
-            padding: 0.25rem; /* p-1 */
-            border-radius: 9999px; /* rounded-full */
+            color: #94A3B8; /* Slate 400 */
+            padding: 0.25rem;
+            border-radius: 9999px;
         }
         .tmt-delete-btn:hover {
-            color: #EF4444; /* hover:text-tmt-danger */
-            background-color: #374151; /* hover:bg-gray-700 */
+            color: #EF4444;
+            background-color: #334155; /* Slate 700 */
         }
-
-        /* NEW STYLE FIX FOR HORIZONTAL TABS */
         .tab-nav-container {
             display: flex;
-            justify-content: flex-start; /* Aligns to the left */
-            flex-wrap: nowrap; /* Prevents wrapping if space allows */
-            overflow-x: auto; /* Allows horizontal scrolling if needed */
+            justify-content: flex-start;
+            flex-wrap: nowrap;
+            overflow-x: auto;
         }
     </style>
 </head>
-<body class="bg-tmt-bg font-sans min-h-screen flex flex-col text-white">
+<body class="bg-nixtz-bg font-sans min-h-screen flex flex-col text-white">
 
-    <header class="bg-gray-900 shadow-2xl sticky top-0 z-50 border-b border-gray-800">
+    <header class="bg-nixtz-bg shadow-2xl sticky top-0 z-50 border-b border-gray-800">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
             <div class="flex items-center space-x-4">
                 <a href="index.html" title="Back to Home">
-                    <span class="text-xl font-bold text-tmt-primary">TMT</span>
-                    <span class="text-xl font-bold text-white"> Admin Panel</span>
+                    <img
+                        src="images/nixtz_logo.png"
+                        alt="Nixtz Logo"
+                        class="h-10 w-auto rounded-md"
+                    >
+                    <span class="text-xl font-bold text-white ml-2">Admin Panel</span>
                 </a>
             </div>
-            <a href="index.html" class="bg-gray-800 hover:bg-gray-700 text-white font-semibold py-1.5 px-4 rounded-full shadow-lg transition duration-300 text-sm">
+            <a href="business_dashboard.html" class="bg-gray-800 hover:bg-gray-700 text-white font-semibold py-1.5 px-4 rounded-full shadow-lg transition duration-300 text-sm border border-gray-700">
                 Back to Dashboard
             </a>
         </div>
     </header>
 
-    <div id="message-box" class="fixed top-4 right-4 text-tmt-bg p-4 rounded-lg shadow-2xl z-[9999] hidden opacity-0 transition-opacity duration-300">
+    <div id="message-box" class="fixed top-4 right-4 bg-nixtz-primary text-white p-4 rounded-lg shadow-2xl z-[9999] hidden opacity-0 transition-opacity duration-300">
         <p id="message-text" class="font-semibold"></p>
     </div>
 
     <main class="flex-grow p-4 md:p-8 max-w-7xl mx-auto w-full">
-        <h1 class="text-4xl font-extrabold mb-8 text-center text-tmt-secondary">Website Administration</h1>
+        <h1 class="text-3xl font-extrabold mb-8 text-center text-nixtz-secondary">System Administration</h1>
 
-        <div class="bg-gray-900 rounded-xl shadow-2xl p-6 md:p-8">
-            <nav class="tab-nav-container space-x-1 sm:space-x-4 border-b border-gray-800 mb-6 overflow-x-auto">
-                <button data-tab="approvals" class="tab-button py-2 px-4 rounded-t-lg font-semibold text-tmt-primary border-b-2 border-tmt-primary whitespace-nowrap">
-                    User Approvals <span id="pending-count" class="text-xs ml-1 bg-red-600 px-2 py-0.5 rounded-full">0</span>
+        <div class="bg-nixtz-card rounded-xl shadow-2xl p-6 md:p-8 border border-gray-700">
+            <nav class="tab-nav-container space-x-1 sm:space-x-4 border-b border-gray-700 mb-6 overflow-x-auto">
+                <button data-tab="approvals" class="tab-button py-2 px-4 rounded-t-lg font-semibold text-nixtz-primary border-b-2 border-nixtz-primary whitespace-nowrap">
+                    User Approvals <span id="pending-count" class="text-xs ml-1 bg-red-600 px-2 py-0.5 rounded-full text-white">0</span>
                 </button>
-                <button data-tab="stock-ratings" class="tab-button py-2 px-4 rounded-t-lg font-semibold text-gray-400 hover:text-tmt-primary border-b-2 border-transparent hover:border-tmt-primary/50 transition whitespace-nowrap">
-                    Stock Ratings
-                </button>
-                <button data-tab="memberships" class="tab-button py-2 px-4 rounded-t-lg font-semibold text-gray-400 hover:text-tmt-primary border-b-2 border-transparent hover:border-tmt-primary/50 transition whitespace-nowrap">
+                <button data-tab="memberships" class="tab-button py-2 px-4 rounded-t-lg font-semibold text-gray-400 hover:text-nixtz-primary border-b-2 border-transparent hover:border-nixtz-primary/50 transition whitespace-nowrap">
                     Membership Config
                 </button>
-                <button data-tab="users" class="tab-button py-2 px-4 rounded-t-lg font-semibold text-gray-400 hover:text-tmt-primary border-b-2 border-transparent hover:border-tmt-primary/50 transition whitespace-nowrap">
+                <button data-tab="users" class="tab-button py-2 px-4 rounded-t-lg font-semibold text-gray-400 hover:text-nixtz-primary border-b-2 border-transparent hover:border-nixtz-primary/50 transition whitespace-nowrap">
                     Active Users
                 </button>
-                <button data-tab="admin-management" class="tab-button py-2 px-4 rounded-t-lg font-semibold text-gray-400 hover:text-tmt-primary border-b-2 border-transparent hover:border-tmt-primary/50 transition whitespace-nowrap">
+                <button data-tab="admin-management" class="tab-button py-2 px-4 rounded-t-lg font-semibold text-gray-400 hover:text-nixtz-primary border-b-2 border-transparent hover:border-nixtz-primary/50 transition whitespace-nowrap">
                     Admin Management
                 </button>
-                <button data-tab="scan-list" class="tab-button py-2 px-4 rounded-t-lg font-semibold text-gray-400 hover:text-tmt-primary border-b-2 border-transparent hover:border-tmt-primary/50 transition whitespace-nowrap">
-                    52-Week Low Scan List
+                <button data-tab="stock-ratings" class="tab-button py-2 px-4 rounded-t-lg font-semibold text-gray-400 hover:text-nixtz-primary border-b-2 border-transparent hover:border-nixtz-primary/50 transition whitespace-nowrap">
+                    Stock Ratings
                 </button>
-                </nav>
+            </nav>
 
             <div id="tab-content" class="space-y-8">
                 
                 <div data-tab-content="approvals" class="tab-content">
-                    <h2 class="text-2xl font-bold text-white mb-4">Pending User Registration Approvals</h2>
+                    <h2 class="text-xl font-bold text-white mb-4">Pending Approvals</h2>
                     <div id="pending-users-list" class="space-y-4">
                         <p class="text-gray-500">Loading pending users...</p>
                     </div>
                 </div>
 
-                <div data-tab-content="stock-ratings" class="tab-content hidden">
-                    <h2 class="text-2xl font-bold text-white mb-4">Set TMT Stock Rating</h2>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        
-                        <div class="md:col-span-1">
-                            <p class="text-gray-400 mb-4">Set the official "Think Money Tree" proprietary rating for a stock. This will be displayed to all users.</p>
-                            <form id="tmt-rating-form" class="space-y-4 max-w-lg">
-                                <div>
-                                    <label for="tmt-ticker-input" class="block text-sm font-medium text-gray-300">Stock Ticker (e.g., AAPL)</label>
-                                    <input type="text" id="tmt-ticker-input" required class="mt-1 block w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 uppercase focus:ring-tmt-primary focus:border-tmt-primary">
-                                </div>
-                                
-                                <div>
-                                    <label for="tmt-rank-input" class="block text-sm font-medium text-gray-300">TMT Rank (e.g., A+, B)</label>
-                                    <input type="text" id="tmt-rank-input" placeholder="A+" class="mt-1 block w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 uppercase focus:ring-tmt-primary focus:border-tmt-primary">
-                                </div>
-                                
-                                <div>
-                                    <label for="tmt-target-price-input" class="block text-sm font-medium text-gray-300">TMT Target Price ($)</label>
-                                    <input type="number" step="0.01" id="tmt-target-price-input" placeholder="150.50" class="mt-1 block w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-tmt-primary focus:border-tmt-primary">
-                                </div>
-
-                                <div>
-                                    <label for="tmt-rating-select" class="block text-sm font-medium text-gray-300">TMT Rating</label>
-                                    <select id="tmt-rating-select" required class="mt-1 block w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-tmt-primary focus:border-tmt-primary">
-                                        <option value="0">0 - N/A (No Rating)</option>
-                                        <option value="1">1 - Strong Sell</option>
-                                        <option value="2">2 - Sell</option>
-                                        <option value="3">3 - Hold</option>
-                                        <option value="4">4 - Buy</option>
-                                        <option value="5">5 - Strong Buy</option>
-                                    </select>
-                                </div>
-                                <button type="submit" class="w-full py-2 px-4 border border-transparent rounded-full shadow-sm text-sm font-bold text-tmt-bg bg-tmt-secondary hover:bg-[#E5B800] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-tmt-secondary transition duration-150">
-                                    Save TMT Rating
-                                </button>
-                            </form>
-                        </div>
-                        
-                        <div class="md:col-span-1">
-                            <h3 class="text-xl font-bold text-tmt-primary mb-3">Existing TMT Ratings</h3>
-                            <div id="tmt-ratings-list" class="max-h-[400px] overflow-y-auto pr-2">
-                                <p class="text-gray-500">Loading rated stocks...</p>
-                            </div>
-                        </div>
-
-                    </div>
-                </div>
-
                 <div data-tab-content="memberships" class="tab-content hidden">
-                    <h2 class="text-2xl font-bold text-white mb-4">Configure Membership Access & Pricing</h2>
-                    <p class="text-gray-400 mb-4">Define which page "slugs" each membership level can access. Separate slugs with a comma. (e.g., `stock_market, crypto_strategies, budget_tracker`) </p>
-                    
+                    <h2 class="text-xl font-bold text-white mb-4">Membership Configuration</h2>
+                    <p class="text-gray-400 mb-4 text-sm">Define page access slugs (e.g., `staff_roster, asset_tracker`).</p>
                     <div id="membership-config-container" class="space-y-6">
                         <div class="text-gray-500">Loading configurations...</div>
                     </div>
                 </div>
 
                 <div data-tab-content="users" class="tab-content hidden">
-                    <h2 class="text-2xl font-bold text-white mb-4">Active Users & Membership Assignment</h2>
-                    <div id="active-users-list" class="overflow-x-auto">
-                         <table class="min-w-full divide-y divide-gray-800 rounded-lg">
+                    <h2 class="text-xl font-bold text-white mb-4">Active User List</h2>
+                    <div id="active-users-list" class="overflow-x-auto rounded-lg border border-gray-700">
+                         <table class="min-w-full divide-y divide-gray-700">
                             <thead class="bg-gray-800">
                                 <tr>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Username / Email</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">User</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden sm:table-cell">Role</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Membership</th>
                                 </tr>
                             </thead>
-                            <tbody id="active-users-body" class="divide-y divide-gray-800">
-                                <tr class="bg-gray-900"><td colspan="3" class="px-4 py-4 text-sm text-gray-500 text-center">Loading user list...</td></tr>
+                            <tbody id="active-users-body" class="divide-y divide-gray-700 bg-gray-900">
+                                <tr><td colspan="3" class="px-4 py-4 text-sm text-gray-500 text-center">Loading...</td></tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
 
                 <div data-tab-content="admin-management" class="tab-content hidden">
-                    <h2 class="text-2xl font-bold text-white mb-4">Create New Standard Admin User</h2>
+                    <h2 class="text-xl font-bold text-white mb-4">Create Admin</h2>
                     <div id="admin-management-content">
-                         <p id="superadmin-message" class="bg-yellow-800/20 text-yellow-400 p-3 rounded-lg border border-yellow-800 mb-4 hidden">
-                            <span class="font-bold">Note:</span> Only Super Admins can create new Admin users.
+                         <p id="superadmin-message" class="bg-yellow-900/30 text-yellow-400 p-3 rounded-lg border border-yellow-700 mb-4 hidden text-sm">
+                            <span class="font-bold">Note:</span> Only Super Admins can create new Admins.
                         </p>
                         
                         <form id="create-admin-form" class="space-y-4 max-w-lg hidden">
                             <div>
-                                <label for="admin-username" class="block text-sm font-medium text-gray-300">Username</label>
-                                <input type="text" id="admin-username" name="username" required class="mt-1 block w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-tmt-primary focus:border-tmt-primary">
+                                <label class="block text-sm font-medium text-gray-400 mb-1">Username</label>
+                                <input type="text" id="admin-username" required class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-nixtz-primary transition">
                             </div>
                             <div>
-                                <label for="admin-email" class="block text-sm font-medium text-gray-300">Email Address</label>
-                                <input type="email" id="admin-email" name="email" required class="mt-1 block w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-tmt-primary focus:border-tmt-primary">
+                                <label class="block text-sm font-medium text-gray-400 mb-1">Email</label>
+                                <input type="email" id="admin-email" required class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-nixtz-primary transition">
                             </div>
                             <div>
-                                <label for="admin-password" class="block text-sm font-medium text-gray-300">Password (min 8 chars)</label>
-                                <input type="password" id="admin-password" name="password" required minlength="8" class="mt-1 block w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-tmt-primary focus:border-tmt-primary">
+                                <label class="block text-sm font-medium text-gray-400 mb-1">Password</label>
+                                <input type="password" id="admin-password" required minlength="8" class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-nixtz-primary transition">
                             </div>
-                            <button type="submit" class="w-full py-2 px-4 border border-transparent rounded-full shadow-sm text-sm font-bold text-tmt-bg bg-tmt-secondary hover:bg-[#E5B800] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-tmt-secondary transition duration-150">
-                                Create Admin User
+                            <button type="submit" class="w-full py-2 px-4 bg-nixtz-secondary hover:bg-[#0da070] text-white font-bold rounded-lg shadow-lg transition">
+                                Create Admin
                             </button>
                         </form>
                     </div>
                 </div>
-                
-                <div data-tab-content="scan-list" class="tab-content hidden">
-                    <h2 class="text-2xl font-bold text-white mb-4">52-Week Low Scan List Management</h2>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
+                <div data-tab-content="stock-ratings" class="tab-content hidden">
+                    <h2 class="text-xl font-bold text-white mb-4">Stock Ratings (TMT)</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <p class="text-gray-400 mb-4">Add a new stock ticker to be scanned for the 52-Week Low list. (Max 30-50 recommended)</p>
-                            <form id="scan-ticker-form" class="space-y-4 max-w-lg">
+                            <form id="tmt-rating-form" class="space-y-4 max-w-lg">
                                 <div>
-                                    <label for="scan-ticker-input" class="block text-sm font-medium text-gray-300">Stock Ticker (e.g., TSLA)</label>
-                                    <input type="text" id="scan-ticker-input" required class="mt-1 block w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 uppercase focus:ring-tmt-primary focus:border-tmt-primary">
+                                    <label class="block text-sm font-medium text-gray-400">Ticker</label>
+                                    <input type="text" id="tmt-ticker-input" required class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white uppercase focus:border-nixtz-primary">
                                 </div>
                                 <div>
-                                    <label for="scan-ticker-notes" class="block text-sm font-medium text-gray-300">Admin Notes (Optional)</label>
-                                    <input type="text" id="scan-ticker-notes" placeholder="Reason for inclusion, e.g., 'Value Play'" class="mt-1 block w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-tmt-primary focus:border-tmt-primary">
+                                    <label class="block text-sm font-medium text-gray-400">Rating (0-5)</label>
+                                    <select id="tmt-rating-select" class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-nixtz-primary">
+                                        <option value="0">0 - N/A</option>
+                                        <option value="5">5 - Strong Buy</option>
+                                    </select>
                                 </div>
-                                <button type="submit" class="w-full py-2 px-4 border border-transparent rounded-full shadow-sm text-sm font-bold text-tmt-bg bg-tmt-secondary hover:bg-[#E5B800] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-tmt-secondary transition duration-150">
-                                    Add Ticker to Scan
-                                </button>
+                                <button type="submit" class="w-full py-2 px-4 bg-nixtz-primary hover:bg-[#3f3bbf] text-white font-bold rounded-lg shadow-lg transition">Save Rating</button>
                             </form>
                         </div>
-
                         <div>
-                            <h3 class="text-xl font-bold text-tmt-primary mb-3">Current Tickers in Scan</h3>
-                            <div id="scan-ticker-list" class="max-h-[400px] overflow-y-auto pr-2 space-y-2">
-                                <p class="text-gray-500">Loading scan list...</p>
-                            </div>
+                            <div id="tmt-ratings-list" class="max-h-[400px] overflow-y-auto pr-2 space-y-2"></div>
                         </div>
-
                     </div>
                 </div>
-                </div>
+
+            </div>
         </div>
     </main>
     
-    <script src="admin_panel.js" defer></script>
     <script src="script.js"></script>
+    <script src="admin_panel.js" defer></script> 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // Renders icons after the page loads
-            if (typeof lucide !== 'undefined') {
-                lucide.createIcons();
-            }
+            if (typeof lucide !== 'undefined') lucide.createIcons();
         });
     </script>
 </body>

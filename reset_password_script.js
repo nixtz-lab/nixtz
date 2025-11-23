@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const resetButton = document.getElementById('reset-button');
     
     // Assumes showMessage is available globally (from script.js)
+    // NOTE: Ensure <script src="script.js"></script> is included in your HTML before this file.
     const showMessage = window.showMessage || console.error;
 
     // --- 2. Utility & Core Functions ---
@@ -33,23 +34,26 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     function setUiState(state) {
         // Hide all major functional blocks initially
-        loadingMessage.classList.add('hidden');
-        resetForm.classList.add('hidden');
-        successMessageContainer.classList.add('hidden');
+        if (loadingMessage) loadingMessage.classList.add('hidden');
+        if (resetForm) resetForm.classList.add('hidden');
+        if (successMessageContainer) successMessageContainer.classList.add('hidden');
 
-        if (state === 'loading') {
+        if (state === 'loading' && loadingMessage) {
             loadingMessage.classList.remove('hidden');
-            loadingMessage.querySelector('p').textContent = "Validating reset token...";
-        } else if (state === 'form') {
+            const p = loadingMessage.querySelector('p');
+            if (p) p.textContent = "Validating reset token...";
+        } else if (state === 'form' && resetForm) {
             resetForm.classList.remove('hidden');
-        } else if (state === 'success') {
+        } else if (state === 'success' && successMessageContainer) {
             successMessageContainer.classList.remove('hidden');
-        } else if (state === 'error') {
+        } else if (state === 'error' && loadingMessage) {
              // Use the loading message container to display a static error
             loadingMessage.classList.remove('hidden');
-            loadingMessage.querySelector('p').textContent = "Error: Invalid or expired reset link.";
+            const p = loadingMessage.querySelector('p');
+            const svg = loadingMessage.querySelector('svg');
+            if (p) p.textContent = "Error: Invalid or expired reset link.";
             // Optionally, hide the spinner
-            loadingMessage.querySelector('svg').classList.add('hidden');
+            if (svg) svg.classList.add('hidden');
         }
     }
 
@@ -63,11 +67,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         setUiState('loading');
-
-        // Note: You must implement a simple GET/POST route on the server
-        // (e.g., /api/auth/verify-token) that checks if the token exists and is not expired.
-        // For now, we simulate success and skip the token verification API call, 
-        // relying on the final reset-password step to validate.
 
         // We jump straight to showing the form, assuming the backend reset route 
         // will handle the actual validation upon submission.
@@ -91,8 +90,10 @@ document.addEventListener('DOMContentLoaded', () => {
             return showMessage("Password must be at least 8 characters.", true);
         }
 
-        resetButton.disabled = true;
-        resetButton.textContent = 'Processing...';
+        if (resetButton) {
+            resetButton.disabled = true;
+            resetButton.textContent = 'Processing...';
+        }
 
         try {
             const response = await fetch('/api/auth/reset-password', {
@@ -111,16 +112,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 setUiState('success');
             } else {
                 showMessage(result.message || 'Reset failed. Link may be expired.', true);
-                resetButton.disabled = false;
-                resetButton.textContent = 'Reset Password';
+                if (resetButton) {
+                    resetButton.disabled = false;
+                    resetButton.textContent = 'Reset Password';
+                }
                 setUiState('form'); // Show form again with error
             }
 
         } catch (error) {
             console.error('Network Error during reset:', error);
             showMessage('Network error. Could not connect to the server.', true);
-            resetButton.disabled = false;
-            resetButton.textContent = 'Reset Password';
+            if (resetButton) {
+                resetButton.disabled = false;
+                resetButton.textContent = 'Reset Password';
+            }
         }
     }
 
@@ -130,5 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
     verifyTokenAndStart();
 
     // 2. Attach submit listener to the form
-    resetForm.addEventListener('submit', handleResetSubmit);
+    if (resetForm) {
+        resetForm.addEventListener('submit', handleResetSubmit);
+    }
 });
