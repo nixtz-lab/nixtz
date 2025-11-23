@@ -1,26 +1,50 @@
 /**
  * script.js
- * Global functions for Think Money Tree landing page interactivity and Access Control.
+ * Global functions for Nixtz landing page interactivity and Access Control.
  */
 
 // --- CORE GLOBAL UTILITIES ---
-const API_BASE_URL = window.location.origin; // ADDED
+// FIX: Expose API_BASE_URL globally via the window object
+window.API_BASE_URL = window.location.origin; 
+
 const getAuthStatus = () => localStorage.getItem('tmt_auth_token') !== null;
 const getUserRole = () => localStorage.getItem('tmt_user_role'); // NEW
-const getPageAccess = () => { // NEW
+
+const getPageAccess = () => { // NEW AND CORRECTED
     try {
         const access = localStorage.getItem('tmt_page_access');
-        // FIX: Ensure we handle null/undefined and return an array
-        return access ? JSON.parse(access) : [];
+        
+        if (!access) return [];
+
+        // FIX: The core issue. Ensure the string is correctly split, trimmed, and converted to lowercase for reliable matching (especially for the 'all' slug).
+        // Note: We use split(',') because localStorage stores the array as a comma-separated string (e.g., "all,staff_roster").
+        const pageSlugs = access.split(',').map(s => s.trim().toLowerCase()).filter(s => s);
+        
+        // Ensure the JSON.parse failsafe is only used if the data truly looks like JSON (less common after the backend was updated to save the string)
+        if (pageSlugs.length === 0 && access.startsWith('[')) {
+             return JSON.parse(access);
+        }
+
+        return pageSlugs;
+
     } catch (e) {
         console.error("Error parsing page access:", e);
-        return [];
+        // If parsing fails, fall back to the raw JSON parse (original method)
+        try {
+             return access ? JSON.parse(access) : [];
+        } catch (e2) {
+             return [];
+        }
     }
 };
+
 const JOIN_PAGE_URL = "auth.html?mode=join";
 const COOKIE_CONSENT_KEY = "tmt_cookie_accepted";
 let currentUserEmail = null; // ADDED
 
+window.getAuthStatus = getAuthStatus;
+window.getUserRole = getUserRole;
+window.getPageAccess = getPageAccess;
 
 // Function to display messages in the custom message box
 function showMessage(text, isError = false) {
@@ -40,7 +64,8 @@ function showMessage(text, isError = false) {
     if (isError) {
         msgBox.classList.add('bg-red-500'); 
     } else {
-        msgBox.classList.add('bg-tmt-primary'); 
+        // MODIFIED: Use Nixtz color class name
+        msgBox.classList.add('bg-nixtz-primary'); 
     }
 
     // Trigger transition by removing opacity-0 and adding opacity-100
@@ -97,7 +122,7 @@ function checkAccessAndRedirect(targetUrl, event) {
     }
 
     // 4. Check Page Access Array
-    const allowedPages = getPageAccess();
+    const allowedPages = getPageAccess(); // Uses the new corrected function
     
     // Check if the current page slug is in the allowed list OR if the special 'all' slug is present
     if (allowedPages.includes(pageSlug) || allowedPages.includes('all')) {
@@ -392,7 +417,8 @@ async function changePassword(e) {
 
         // Success
         passwordMessageBox.textContent = result.message || "Password updated successfully!";
-        passwordMessageBox.className = 'p-3 rounded-lg text-white mb-3 bg-tmt-primary'; 
+        // MODIFIED: Use Nixtz color class name
+        passwordMessageBox.className = 'p-3 rounded-lg text-white mb-3 bg-nixtz-primary'; 
         document.getElementById('change-password-form').reset();
         
         showMessage("Password updated. Please log in again.", false);
@@ -418,33 +444,79 @@ async function changePassword(e) {
 
 // --- END: ADDED PROFILE MODAL FUNCTIONS ---
 
+// --- START: ADDED TICKER SEARCH SUGGESTION FUNCTIONS (from stock_dashboard.js) ---
+
+/**
+ * Fetches ticker suggestions from the backend API.
+ */
+async function fetchRealSuggestions(query) {
+    // MODIFIED: This function is now irrelevant to Nixtz and will be mocked/removed in the future.
+    // For now, let's keep it mocked to prevent errors if UI elements call it.
+    console.warn("Stock search suggestions are mocked/disabled in Nixtz.");
+    return [];
+}
+
+/**
+ * Handles user input in a search box to show suggestions.
+ */
+function handleSearchInput(event, suggestionsId) {
+    // MODIFIED: Disabled for Nixtz
+    // console.log("Search input disabled.");
+}
+
+/**
+ * Handles selecting a suggestion from the dropdown.
+ */
+function selectSuggestion(ticker) {
+    // MODIFIED: Disabled for Nixtz
+    // console.log("Search selection disabled.");
+}
+// Make accessible globally for onclick attributes
+window.selectSuggestion = selectSuggestion;
+window.handleSearchInput = handleSearchInput;
+
+// --- END: ADDED TICKER SEARCH SUGGESTION FUNCTIONS ---
+
 
 // --- Event Listeners Setup ---
 document.addEventListener('DOMContentLoaded', () => {
     
     setupMobileMenuToggle();
 
-    // --- NEW SITE SEARCH LOGIC ---
-    const searchForm = document.getElementById('site-search-form');
+    // --- MODIFIED: SITE SEARCH LOGIC (REMOVED) ---
+    // Since we removed the search form from index.html, this is commented out
+    /*
+    const searchForm = document.getElementById('header-search-form'); 
     if (searchForm) {
         searchForm.addEventListener('submit', (e) => {
-            e.preventDefault(); // Stop the form from submitting normally
-            const searchInput = document.getElementById('site-search-input');
-            const query = searchInput.value.trim();
+            e.preventDefault(); 
+            const searchInput = document.getElementById('stock-search-input'); 
+            const query = searchInput.value.trim().toUpperCase(); 
             
             if (query) {
-                // This will redirect to a new search results page.
-                // You will need to create this 'search_results.html' page.
-                showMessage(`Searching for: ${query}`, false);
-                
-                setTimeout(() => {
-                    // We pass the search term in the URL
-                    window.location.href = `search_results.html?q=${encodeURIComponent(query)}`;
-                }, 500); // Wait half a second after showing the message
+                showMessage(`Search is disabled in Nixtz. Use navigation links.`, true); 
+                // checkAccessAndRedirect(`stock_dashboard.html?ticker=${encodeURIComponent(query)}`); 
             }
         });
     }
-    // --- END NEW SITE SEARCH LOGIC ---
+    */
+    // --- END MODIFIED SITE SEARCH LOGIC ---
+
+    // --- START: ADDED LISTENERS FOR TICKER SUGGESTIONS ---
+
+    // document.getElementById('stock-search-input')?.addEventListener('keyup', (e) => handleSearchInput(e, 'stock-search-suggestions'));
+
+    // Global click listener to hide suggestions when clicking outside
+    document.addEventListener('click', (event) => {
+        // Check if the click was outside any search container
+        const isOutside = !event.target.closest('.search-container');
+        if (isOutside) {
+            document.querySelectorAll('.search-suggestions').forEach(s => s.classList.add('hidden'));
+        }
+    });
+
+    // --- END: ADDED LISTENERS FOR TICKER SUGGESTIONS ---
+
 
     // --- START: ADDED MODAL LISTENERS ---
     
