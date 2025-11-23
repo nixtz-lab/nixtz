@@ -157,6 +157,11 @@ tailwind.config = {
             </div>
 
             <div class="flex items-center space-x-4 w-full md:w-auto">
+                
+                <button onclick="openStaffListModal()" class="bg-nixtz-primary hover:bg-[#3f3bbf] text-white font-bold py-2 px-4 rounded-full shadow-md transition duration-200 flex items-center">
+                    <i data-lucide="list" class="w-5 h-5 mr-1"></i> Staff List
+                </button>
+                
                 <button onclick="showAddStaffModal()" class="bg-nixtz-secondary hover:bg-[#0da070] text-white font-bold py-2 px-4 rounded-full shadow-md transition duration-200 flex items-center">
                     <i data-lucide="plus" class="w-5 h-5 mr-1"></i> Add Staff
                 </button>
@@ -223,7 +228,7 @@ tailwind.config = {
     <div class="bg-nixtz-card w-full max-w-lg rounded-xl shadow-3xl-dark p-6 md:p-8 border border-gray-700/50">
         <h2 class="text-2xl font-bold text-nixtz-secondary mb-4 border-b border-gray-700 pb-3 flex justify-between items-center">
             Add New Staff Profile
-            <button id="close-staff-modal" class="text-gray-400 hover:text-white transition duration-200">
+            <button id="close-staff-modal" onclick="document.getElementById('add-staff-modal').classList.add('hidden')" class="text-gray-400 hover:text-white transition duration-200">
                 <i data-lucide="x" class="w-6 h-6"></i>
             </button>
         </h2>
@@ -286,493 +291,82 @@ tailwind.config = {
     </div>
 </div>
 
-<script>
-// --- ROSTER DATA STRUCTURES & CONFIG ---
-const API_URL = `${window.API_BASE_URL}/api/staff/roster`;
-const SHIFTS = { 
-    1: { name: 'Morning', time: '07:00-16:00', required: 6, roles: ['C1', 'C4', 'C3'] },
-    2: { name: 'Afternoon', time: '13:30-22:30', required: 5, roles: ['C1', 'C5', 'C3'] },
-    3: { name: 'Night', time: '22:00-07:00', required: 'N/A', roles: ['C1', 'C2'] }
-};
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+<div id="staff-list-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[9999] hidden items-center justify-center p-4 transition-opacity duration-300">
+    <div class="bg-nixtz-card w-full max-w-2xl rounded-xl shadow-3xl-dark p-6 md:p-8 border border-gray-700/50 max-h-[90vh] overflow-y-auto">
+        <h2 class="text-2xl font-bold text-nixtz-primary mb-4 border-b border-gray-700 pb-3 flex justify-between items-center">
+            All Staff Profiles
+            <button onclick="document.getElementById('staff-list-modal').classList.add('hidden')" class="text-gray-400 hover:text-white transition duration-200">
+                <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
+        </h2>
 
-let currentRosterData = []; 
-let currentWeekStartDate = null;
+        <div id="staff-list-message" class="text-sm text-center p-3 rounded-lg hidden"></div>
 
-// --- UTILITIES ---
-function getRosterForSave() {
-    const rows = document.querySelectorAll('#roster-body tr');
-    const rosterData = [];
+        <div id="staff-profiles-container" class="space-y-4">
+            <p class="text-gray-500 text-center py-4">Loading staff data...</p>
+        </div>
+    </div>
+</div>
 
-    rows.forEach(row => {
-        const nameInput = row.querySelector('.staff-name-input');
-        const idInput = row.querySelector('.staff-id-input');
-        if (!nameInput || !idInput || !nameInput.value.trim()) return;
+<div id="single-staff-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[9999] hidden items-center justify-center p-4 transition-opacity duration-300">
+    <div class="bg-nixtz-card w-full max-w-md rounded-xl shadow-3xl-dark p-6 md:p-8 border border-gray-700/50">
+        <h2 class="text-xl font-bold text-nixtz-secondary mb-4 border-b border-gray-700 pb-3" id="single-staff-title">Edit Profile:</h2>
 
-        const weeklySchedule = [];
-        DAYS.forEach((day, dayIndex) => {
-            const shiftCell = row.querySelector(`[data-day="${day}"]`);
-            if (shiftCell) {
-                const textContent = shiftCell.textContent.trim();
-                const shifts = [];
-                
-                if (textContent.includes('Leave')) { 
-                    // Use jobRole to capture the specific leave type (e.g., Leave (Mgr))
-                    shifts.push({ shiftId: null, jobRole: textContent, timeRange: 'Full Day' });
-                } else if (textContent) {
-                    const cellDisplay = shiftCell.innerHTML;
-                    const shiftMatch = cellDisplay.match(/^(\d+)\s+([A-Za-z0-9\s()]+)<span/);
-                    const timeMatch = cellDisplay.match(/<span[^>]*>([^<]+)<\/span>/);
-                    
-                    if (shiftMatch) {
-                        const shiftId = parseInt(shiftMatch[1]);
-                        const jobRole = shiftMatch[2].trim();
-                        const timeRange = timeMatch ? timeMatch[1].trim() : SHIFTS[shiftId].time;
-                        
-                        shifts.push({
-                            shiftId: shiftId,
-                            jobRole: jobRole,
-                            timeRange: timeRange
-                        });
-                    }
-                }
-
-                weeklySchedule.push({
-                    dayOfWeek: day,
-                    shifts: shifts
-                });
-            }
-        });
-
-        const employeeId = idInput.value.trim() || nameInput.value.trim().toLowerCase().replace(/[\s\(\)]/g, '-');
-        
-        rosterData.push({
-            employeeName: nameInput.value.trim(),
-            employeeId: employeeId,
-            weeklySchedule: weeklySchedule
-        });
-    });
-
-    return rosterData;
-}
-
-function updateShiftSummaries() {
-    const counts = {};
-    const daysMap = {};
-    
-    DAYS.forEach(day => {
-        daysMap[day] = { 1: { actual: 0, required: SHIFTS[1].required }, 2: { actual: 0, required: SHIFTS[2].required }, 3: { actual: 0, required: 'N/A' } };
-    });
-
-    DAYS.forEach(day => {
-        document.querySelectorAll(`#roster-body [data-day="${day}"]`).forEach(cell => {
-            const cellText = cell.textContent.trim(); 
-            if (!cellText || cellText.includes('Leave')) return;
-
-            const shiftIdMatch = cellText.match(/^(\d+)/);
-            if (shiftIdMatch) {
-                const shiftId = parseInt(shiftIdMatch[1]);
-                if (shiftId && daysMap[day][shiftId]) {
-                    daysMap[day][shiftId].actual++;
-                }
-            }
-        });
-    });
-
-    DAYS.forEach(day => {
-        const summaryCell = document.getElementById(`shift-summary-${day.toLowerCase()}`);
-        if (!summaryCell) return;
-        
-        let content = '';
-        for (const shiftId in daysMap[day]) {
-            const data = daysMap[day][shiftId];
-            const required = data.required === 'N/A' ? '' : data.required;
-            const statusClass = (data.required !== 'N/A' && data.actual < data.required) ? 'text-red-400' : 'text-nixtz-secondary';
-
-            if(data.actual > 0 || required !== '') {
-                content += `<div class="shift-summary">
-                                <span class="text-gray-400 font-normal mr-1">${shiftId} (${required}):</span>
-                                <span class="${statusClass}">${data.actual}</span>
-                            </div>`;
-            }
-        }
-        summaryCell.innerHTML = content;
-    });
-}
-
-// --- DOM RENDERING ---
-function createShiftDropdown(cell) {
-    if (cell.querySelector('.shift-dropdown')) return;
-    
-    const existingText = cell.textContent.trim();
-    const shiftMatch = existingText.match(/^(\d+)\s+([A-Za-z0-9\s()]+)/);
-    const initialShiftId = shiftMatch ? parseInt(shiftMatch[1]) : null;
-    const initialJobRole = shiftMatch ? shiftMatch[2].trim() : null;
-
-    const day = cell.dataset.day;
-    const shiftDropdown = document.createElement('div');
-    shiftDropdown.className = 'shift-dropdown';
-    shiftDropdown.onclick = (e) => e.stopPropagation(); 
-
-    // Leave Option
-    shiftDropdown.innerHTML += `<button class="dropdown-button bg-red-600 hover:bg-red-500" onclick="setShiftSelection(event, '${day}', null, 'Leave', 'Full Day')">LEAVE (휴가)</button>`;
-
-    // Loop through shifts (1, 2, 3)
-    [1, 2, 3].forEach(shiftId => {
-        const shiftConfig = SHIFTS[shiftId];
-        if (!shiftConfig) return;
-
-        shiftDropdown.innerHTML += `<div class="text-xs text-gray-400 mt-2 border-t border-gray-600 pt-1">${shiftConfig.name} (${shiftConfig.time})</div>`;
-
-        shiftConfig.roles.forEach(role => {
-            const fullRole = (role === 'C1' && shiftId !== 3) ? `${role} (Sup/Mgr)` : role;
-            const isSelected = (initialShiftId === shiftId && initialJobRole === fullRole);
+        <form id="edit-staff-form" class="space-y-4">
+            <input type="hidden" id="edit-profile-id">
             
-            shiftDropdown.innerHTML += `
-                <button 
-                    class="dropdown-button ${isSelected ? 'bg-nixtz-secondary' : ''}" 
-                    onclick="setShiftSelection(event, '${day}', ${shiftId}, '${fullRole}', '${shiftConfig.time}')"
-                >
-                    ${shiftId} ${fullRole}
-                </button>
-            `;
-        });
-    });
-
-    cell.appendChild(shiftDropdown);
-    
-    const rect = cell.getBoundingClientRect();
-    if (rect.right > window.innerWidth - 200) {
-        shiftDropdown.style.right = '0';
-        shiftDropdown.style.left = 'auto';
-    } else {
-        shiftDropdown.style.left = '0';
-        shiftDropdown.style.right = 'auto';
-    }
-    
-    shiftDropdown.classList.remove('hidden');
-}
-
-// --- EVENT HANDLERS ---
-
-function setShiftSelection(event, day, shiftId, jobRole, timeRange) {
-    const button = event.target;
-    const cell = button.closest('.roster-cell');
-    
-    cell.removeAttribute('style');
-    if (jobRole === 'Leave') {
-        cell.innerHTML = jobRole; 
-        cell.classList.remove('bg-gray-700', 'bg-nixtz-card');
-        cell.classList.add('bg-red-800', 'font-bold');
-    } else {
-        cell.innerHTML = `${shiftId} ${jobRole}<span class="text-xs text-gray-500 block leading-none">${timeRange}</span>`;
-        cell.classList.remove('bg-red-800', 'bg-nixtz-card', 'font-bold');
-        cell.classList.add('bg-gray-700');
-    }
-    
-    cell.querySelector('.shift-dropdown')?.remove();
-    
-    updateShiftSummaries();
-}
-
-function hideAllDropdowns(event) {
-    const isInsideDropdown = event.target.closest('.shift-dropdown');
-    const isCell = event.target.closest('.roster-cell');
-    
-    if (!isInsideDropdown && !isCell) {
-        document.querySelectorAll('.shift-dropdown').forEach(d => d.remove());
-    } else if (isCell && !isInsideDropdown) {
-        document.querySelectorAll('.shift-dropdown').forEach(d => {
-            if (d.closest('.roster-cell') !== isCell) {
-                d.remove();
-            }
-        });
-    }
-}
-document.addEventListener('click', hideAllDropdowns);
-
-
-function addStaffRow(initialData = {}) {
-    const rosterBody = document.getElementById('roster-body');
-    const newRow = document.createElement('tr');
-    newRow.className = 'hover:bg-gray-800 transition duration-150 border-b border-gray-700';
-
-    const staffName = initialData.employeeName || '';
-    const staffId = initialData.employeeId || '';
-
-    let rowHTML = `
-        <td class="p-2 bg-gray-900 sticky left-0 z-10 border-r border-gray-700">
-            <input type="text" value="${staffName}" placeholder="Staff Name" class="staff-name-input bg-transparent font-semibold w-full" data-key="name">
-            <input type="text" value="${staffId}" placeholder="ID" class="staff-id-input bg-transparent text-xs text-gray-500 w-full mt-1" data-key="id">
-        </td>
-    `;
-
-    DAYS.forEach(day => {
-        const daySchedule = initialData.weeklySchedule?.find(s => s.dayOfWeek === day);
-        let cellContent = '';
-        let cellClasses = 'bg-nixtz-card';
-        let customColor = '';
-        
-        if (daySchedule && daySchedule.shifts.length > 0) {
-            const shift = daySchedule.shifts[0]; 
-            const shiftId = shift.shiftId;
-            const jobRole = shift.jobRole;
-            const timeRange = shift.timeRange;
+            <div>
+                <label for="edit-staff-name" class="block text-sm font-medium text-gray-400 mb-1">Full Name</label>
+                <input type="text" id="edit-staff-name" required class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition duration-200">
+            </div>
             
-            if (jobRole && jobRole.includes('Leave')) {
-                cellContent = jobRole; 
-                cellClasses = 'bg-red-800 font-bold';
-            } else if (shiftId && jobRole && timeRange) {
-                cellContent = `${shiftId} ${jobRole}<span class="text-xs text-gray-500 block leading-none">${timeRange}</span>`;
-                cellClasses = 'bg-gray-700';
+            <div>
+                <label for="edit-staff-id" class="block text-sm font-medium text-gray-400 mb-1">Employee ID</label>
+                <input type="text" id="edit-staff-id" required disabled class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-gray-500 cursor-not-allowed">
+            </div>
 
-                if (shift.color) {
-                    customColor = `style="background-color: ${shift.color}40; border-left: 4px solid ${shift.color};"`;
-                }
-            }
-        }
-        
-        rowHTML += `
-            <td class="roster-cell p-2 border-r border-gray-700 ${cellClasses}" 
-                data-day="${day}" 
-                onclick="createShiftDropdown(this)"
-                ${customColor}>
-                ${cellContent}
-            </td>
-        `;
-    });
-    
-    rowHTML += `<td class="p-2 text-center bg-gray-900 border-l border-gray-700">
-                    <button onclick="deleteStaffRow(this)" class="text-red-500 hover:text-red-400 transition duration-200" title="Delete Row">
-                        <i data-lucide="trash-2" class="w-4 h-4"></i>
-                    </button>
-                </td>`;
-
-    newRow.innerHTML = rowHTML;
-    rosterBody.appendChild(newRow);
-    
-    lucide.createIcons();
-    updateShiftSummaries();
-}
-window.addStaffRow = addStaffRow;
-
-function deleteStaffRow(button) {
-    button.closest('tr').remove();
-    updateShiftSummaries();
-}
-window.deleteStaffRow = deleteStaffRow;
-
-// --- NEW STAFF MANAGEMENT FUNCTIONS ---
-function showAddStaffModal() {
-    const modal = document.getElementById('add-staff-modal');
-    const form = document.getElementById('add-staff-form');
-    const messageBox = document.getElementById('staff-message-box');
-    
-    form.reset();
-    messageBox.classList.add('hidden');
-    modal.classList.remove('hidden');
-    modal.classList.add('flex');
-}
-window.showAddStaffModal = showAddStaffModal;
-
-async function handleAddStaff(e) {
-    e.preventDefault();
-    if (!getAuthStatus()) return showMessage("Please log in to add staff.", true);
-    
-    const form = document.getElementById('add-staff-form');
-    const submitBtn = document.getElementById('submit-staff-btn');
-    const messageBox = document.getElementById('staff-message-box');
-    
-    const staffData = {
-        name: document.getElementById('new-staff-name').value,
-        employeeId: document.getElementById('new-staff-id').value,
-        position: document.getElementById('new-staff-position').value,
-        shiftPreference: document.getElementById('new-staff-shift-preference').value,
-        fixedDayOff: document.getElementById('new-staff-fixed-dayoff').value,
-        isNightRotator: document.getElementById('new-staff-is-rotator').checked
-    };
-    
-    submitBtn.disabled = true;
-    messageBox.classList.remove('hidden', 'bg-red-500', 'bg-nixtz-secondary');
-    messageBox.classList.add('bg-nixtz-primary');
-    messageBox.textContent = "Saving new staff profile...";
-
-    try {
-        const response = await fetch(`${window.API_BASE_URL}/api/staff/profile/add`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('tmt_auth_token')}`,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(staffData)
-        });
-
-        const result = await response.json();
-        
-        if (!response.ok) {
-            throw new Error(result.message || 'Failed to add staff.');
-        }
-
-        messageBox.classList.remove('bg-nixtz-primary');
-        messageBox.classList.add('bg-nixtz-secondary');
-        messageBox.textContent = result.message;
-        
-        setTimeout(() => {
-            document.getElementById('add-staff-modal').classList.add('hidden');
-            document.getElementById('add-staff-modal').classList.remove('flex');
-            showMessage(`Staff member ${staffData.name} added. Please generate a new roster to include them.`, false);
-        }, 1500);
-        
-    } catch (error) {
-        messageBox.classList.remove('bg-nixtz-primary', 'bg-nixtz-secondary');
-        messageBox.classList.add('bg-red-500');
-        messageBox.textContent = `Error: ${error.message}`;
-    } finally {
-        submitBtn.disabled = false;
-    }
-}
-
-
-// --- API CALLS ---
-async function loadRoster(startDateString) {
-    if (!startDateString) return;
-    if (!window.getAuthStatus || !getAuthStatus()) return showMessage("Please log in to load the roster.", true);
-
-    const isoDate = new Date(startDateString).toISOString().split('T')[0];
-    const token = localStorage.getItem('tmt_auth_token');
-    
-    showMessage(`Loading roster for week starting ${isoDate}...`, false);
-    
-    try {
-        // --- STEP 1: Attempt to Load Existing Roster ---
-        let response = await fetch(`${API_URL}/${isoDate}`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            },
-        });
-        
-        let result = await response.json();
-        let rosterData = result.data; 
-        let generated = false;
-
-        // --- STEP 2: If no roster found, attempt to GENERATE it ---
-        if (!rosterData || rosterData.length === 0) {
-            showMessage(`No saved roster found for this week. Attempting automatic generation...`, false);
+            <div>
+                <label for="edit-staff-position" class="block text-sm font-medium text-gray-400 mb-1">Position</label>
+                <select id="edit-staff-position" required class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition">
+                    <option value="Normal Staff">Normal Staff</option>
+                    <option value="Delivery">Delivery</option>
+                    <option value="Supervisor">Supervisor</option>
+                    <option value="Manager">Manager</option>
+                </select>
+            </div>
+            <div>
+                <label for="edit-staff-shift-preference" class="block text-sm font-medium text-gray-400 mb-1">Default Shift Preference</label>
+                <select id="edit-staff-shift-preference" class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition">
+                    <option value="Morning">Morning</option>
+                    <option value="Afternoon">Afternoon</option>
+                    <option value="Night">Night</option>
+                </select>
+            </div>
+            <div>
+                <label for="edit-staff-fixed-dayoff" class="block text-sm font-medium text-gray-400 mb-1">Fixed Day Off (if any)</label>
+                <select id="edit-staff-fixed-dayoff" class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition">
+                    <option value="None">None (Auto-Rotate)</option>
+                    <option value="Mon">Monday</option>
+                    <option value="Tue">Tuesday</option>
+                    <option value="Wed">Wednesday</option>
+                    <option value="Thu">Thursday</option>
+                    <option value="Fri">Friday</option>
+                    <option value="Sat">Saturday</option>
+                    <option value="Sun">Sunday</option>
+                </select>
+            </div>
+             <div class="flex items-center">
+                <input type="checkbox" id="edit-staff-is-rotator" class="w-4 h-4 text-nixtz-primary rounded border-gray-600 focus:ring-nixtz-primary">
+                <label for="edit-staff-is-rotator" class="ml-2 text-sm text-gray-400">Night Shift Rotator (15-day cycle)</label>
+            </div>
             
-            response = await fetch(`${API_URL}/generate/${isoDate}`, { // CALL NEW ROUTE
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-            });
-            
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Failed to generate roster data.');
-            }
-            
-            result = await response.json();
-            rosterData = result.data; 
-            generated = true;
-        }
+            <button type="submit" class="w-full p-3 bg-nixtz-secondary text-white rounded-lg font-bold shadow-lg hover:bg-[#0da070] transition duration-300">
+                Update Profile
+            </button>
+        </form>
+    </div>
+</div>
 
-        // --- STEP 3: Render the Roster ---
-        
-        document.getElementById('roster-body').innerHTML = '';
-        currentRosterData = rosterData;
-        currentWeekStartDate = startDateString;
-
-        if (currentRosterData.length === 0) {
-            showMessage('Could not generate or find a roster. Start adding staff profiles!', true);
-            for(let i = 0; i < 2; i++) addStaffRow({});
-        } else {
-            currentRosterData.forEach(data => addStaffRow(data));
-            const successMsg = generated 
-                ? `Roster automatically generated for ${currentRosterData.length} employees.`
-                : `Roster loaded successfully for ${currentRosterData.length} employees.`;
-            showMessage(successMsg, false);
-        }
-
-    } catch (error) {
-        console.error("Load/Generate Roster Error:", error);
-        showMessage(`Error loading/generating roster: ${error.message}`, true);
-    }
-}
-window.loadRoster = loadRoster;
-
-
-async function saveRoster() {
-    if (!currentWeekStartDate) return showMessage("Please select a Week Start Date before saving.", true);
-    if (!window.getAuthStatus || !getAuthStatus()) return showMessage("Please log in to save the roster.", true);
-    
-    const rosterData = getRosterForSave();
-    if (rosterData.length === 0) return showMessage("Add at least one staff member before saving.", true);
-
-    const saveButton = document.getElementById('save-roster-btn');
-    saveButton.disabled = true;
-    showMessage("Saving roster...", false);
-
-    try {
-        const response = await fetch(API_URL, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('tmt_auth_token')}`,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ 
-                weekStartDate: currentWeekStartDate, 
-                rosterData: rosterData
-            }),
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || 'Failed to save roster.');
-        }
-
-        const result = await response.json();
-        showMessage(`Roster saved successfully! Total entries: ${result.totalEntries}.`, false);
-
-    } catch (error) {
-        console.error("Save Roster Error:", error);
-        showMessage(`Error saving roster: ${error.message}`, true);
-    } finally {
-        saveButton.disabled = false;
-    }
-}
-window.saveRoster = saveRoster;
-
-
-// --- INITIALIZATION ---
-document.addEventListener('DOMContentLoaded', () => {
-    if (!window.getAuthStatus || !getAuthStatus()) {
-        showMessage("You need to log in to access the Roster Management.", true);
-        return; 
-    }
-
-    const today = new Date();
-    const day = today.getDay();
-    const diff = today.getDate() - day + (day === 0 ? -6 : 1);
-    const monday = new Date(today.setDate(diff));
-
-    const isoString = monday.toISOString().split('T')[0];
-    
-    document.getElementById('week-start-date').value = isoString;
-    loadRoster(isoString);
-
-    updateShiftSummaries();
-    lucide.createIcons();
-
-    // Add event listeners for the new modal
-    document.getElementById('add-staff-form')?.addEventListener('submit', handleAddStaff);
-    document.getElementById('close-staff-modal')?.addEventListener('click', () => {
-        document.getElementById('add-staff-modal').classList.add('hidden');
-        document.getElementById('add-staff-modal').classList.remove('flex');
-    });
-});
-</script>
+<script src="staff_roster.js" defer></script>
 </body>
 </html>
