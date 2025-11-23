@@ -16,6 +16,7 @@ const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 let currentRosterData = []; 
 let currentWeekStartDate = null;
 let currentStaffData = {}; // Cache for single profile editing
+const AUTH_TOKEN_KEY = localStorage.getItem('nixtz_auth_token') ? 'nixtz_auth_token' : 'tmt_auth_token'; // Use the correct key
 
 // --- CORE ROSTER UTILITIES ---
 
@@ -284,7 +285,7 @@ async function loadRoster(startDateString) {
     if (!window.getAuthStatus || !getAuthStatus()) return showMessage("Please log in to load the roster.", true);
 
     const isoDate = new Date(startDateString).toISOString().split('T')[0];
-    const token = localStorage.getItem('tmt_auth_token');
+    const token = localStorage.getItem(AUTH_TOKEN_KEY); 
     
     showMessage(`Loading roster for week starting ${isoDate}...`, false);
     
@@ -358,7 +359,7 @@ async function saveRoster() {
         const response = await fetch(API_URL, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${localStorage.getItem('tmt_auth_token')}`,
+                'Authorization': `Bearer ${localStorage.getItem(AUTH_TOKEN_KEY)}`, 
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({ 
@@ -406,6 +407,7 @@ async function handleAddStaff(e) {
         position: document.getElementById('new-staff-position').value,
         shiftPreference: document.getElementById('new-staff-shift-preference').value,
         fixedDayOff: document.getElementById('new-staff-fixed-dayoff').value,
+        nextWeekHolidayRequest: document.getElementById('new-staff-holiday-request').value, // NEW FIELD
         isNightRotator: document.getElementById('new-staff-is-rotator').checked
     };
     
@@ -414,7 +416,7 @@ async function handleAddStaff(e) {
     try {
         const response = await fetch(`${PROFILE_API_URL}/add`, {
             method: 'POST',
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('tmt_auth_token')}`, 'Content-Type': 'application/json' },
+            headers: { 'Authorization': `Bearer ${localStorage.getItem(AUTH_TOKEN_KEY)}`, 'Content-Type': 'application/json' },
             body: JSON.stringify(staffData)
         });
 
@@ -443,7 +445,7 @@ async function loadStaffProfiles() {
     container.innerHTML = '<p class="text-gray-500 text-center py-4">Loading staff data...</p>';
     msgBox.classList.add('hidden');
 
-    const token = localStorage.getItem('tmt_auth_token');
+    const token = localStorage.getItem(AUTH_TOKEN_KEY); 
     
     try {
         const response = await fetch(PROFILE_API_URL, {
@@ -467,7 +469,7 @@ async function loadStaffProfiles() {
                 <div>
                     <p class="font-bold text-white">${p.name} <span class="text-xs text-gray-400">(${p.employeeId})</span></p>
                     <p class="text-sm text-nixtz-primary uppercase">${p.position}</p>
-                    <p class="text-xs text-gray-500">Day Off: ${p.fixedDayOff}, Shift: ${p.shiftPreference}</p>
+                    <p class="text-xs text-gray-500">Fixed Off: ${p.fixedDayOff}, Holiday Req: ${p.nextWeekHolidayRequest || 'None'}</p>
                 </div>
                 <button onclick="openSingleEditModal('${p._id}')" data-id="${p._id}" class="bg-nixtz-secondary hover:bg-[#0da070] text-white px-4 py-2 rounded-full text-sm font-bold transition">
                     Edit
@@ -494,7 +496,7 @@ window.openStaffListModal = openStaffListModal;
 
 
 async function openSingleEditModal(profileId) {
-    const token = localStorage.getItem('tmt_auth_token');
+    const token = localStorage.getItem(AUTH_TOKEN_KEY); 
     
     try {
         const response = await fetch(PROFILE_API_URL, {
@@ -521,6 +523,7 @@ async function openSingleEditModal(profileId) {
         document.getElementById('edit-staff-position').value = staff.position;
         document.getElementById('edit-staff-shift-preference').value = staff.shiftPreference;
         document.getElementById('edit-staff-fixed-dayoff').value = staff.fixedDayOff;
+        document.getElementById('edit-staff-holiday-request').value = staff.nextWeekHolidayRequest || 'None'; // NEW FIELD POPULATED
         document.getElementById('edit-staff-is-rotator').checked = staff.isNightRotator;
 
         // 3. Display the modal and hide the list modal
@@ -546,11 +549,12 @@ document.getElementById('edit-staff-form')?.addEventListener('submit', async (e)
         position: document.getElementById('edit-staff-position').value,
         shiftPreference: document.getElementById('edit-staff-shift-preference').value,
         fixedDayOff: document.getElementById('edit-staff-fixed-dayoff').value,
+        nextWeekHolidayRequest: document.getElementById('edit-staff-holiday-request').value, // NEW FIELD SENT
         isNightRotator: document.getElementById('edit-staff-is-rotator').checked,
         currentRotationDay: currentStaffData.currentRotationDay 
     };
 
-    const token = localStorage.getItem('tmt_auth_token');
+    const token = localStorage.getItem(AUTH_TOKEN_KEY); 
     
     try {
         const response = await fetch(`${PROFILE_API_URL}/${profileId}`, {
@@ -588,10 +592,8 @@ document.addEventListener('DOMContentLoaded', () => {
         return; 
     }
 
-    // Initialize the profile submission form listener
     document.getElementById('add-staff-form')?.addEventListener('submit', handleAddStaff);
 
-    // Default date logic (same as previous)
     const today = new Date();
     const day = today.getDay();
     const diff = today.getDate() - day + (day === 0 ? -6 : 1);
