@@ -63,7 +63,7 @@ function sortRosterData(rosterData) {
     };
 
     return rosterData.sort((a, b) => {
-        const posA = a.position || 'Normal Staff'; // Assuming position is carried or can be looked up
+        const posA = a.position || 'Normal Staff';
         const posB = b.position || 'Normal Staff';
         
         const orderA = positionOrder[posA] || 99;
@@ -97,7 +97,7 @@ function getRosterForSave() {
                 const textContent = shiftCell.textContent.trim();
                 const shifts = [];
                 
-                if (textContent.includes('Leave')) { 
+                if (textContent.includes('Leave')) {
                     shifts.push({ shiftId: null, jobRole: textContent, timeRange: 'Full Day' });
                 } else if (textContent) {
                     const cellDisplay = shiftCell.innerHTML;
@@ -131,7 +131,7 @@ function getRosterForSave() {
             employeeId: employeeId,
             weeklySchedule: weeklySchedule,
             // Include profile data for sorting consistency on reload
-            position: cachedStaff ? cachedStaff.position : 'Normal Staff', 
+            position: cachedStaff ? cachedStaff.position : 'Normal Staff',
             nextWeekHolidayRequest: cachedStaff ? cachedStaff.nextWeekHolidayRequest : 'None'
         });
     });
@@ -149,7 +149,7 @@ function updateShiftSummaries() {
 
     DAYS.forEach(day => {
         document.querySelectorAll(`#roster-body [data-day="${day}"]`).forEach(cell => {
-            const cellText = cell.textContent.trim(); 
+            const cellText = cell.textContent.trim();
             if (!cellText || cellText.includes('Leave')) return;
 
             const shiftIdMatch = cellText.match(/^(\d+)/);
@@ -194,7 +194,7 @@ function createShiftDropdown(cell) {
     const day = cell.dataset.day;
     const shiftDropdown = document.createElement('div');
     shiftDropdown.className = 'shift-dropdown';
-    shiftDropdown.onclick = (e) => e.stopPropagation(); 
+    shiftDropdown.onclick = (e) => e.stopPropagation();
 
     shiftDropdown.innerHTML += `<button class="dropdown-button bg-red-600 hover:bg-red-500" onclick="setShiftSelection(event, '${day}', null, 'Leave', 'Full Day')">LEAVE (휴가)</button>`;
 
@@ -240,7 +240,7 @@ function setShiftSelection(event, day, shiftId, jobRole, timeRange) {
     
     cell.removeAttribute('style');
     if (jobRole === 'Leave') {
-        cell.innerHTML = jobRole; 
+        cell.innerHTML = jobRole;
         cell.classList.remove('bg-gray-700', 'bg-nixtz-card');
         cell.classList.add('bg-red-800', 'font-bold');
     } else {
@@ -298,13 +298,13 @@ function addStaffRow(initialData = {}) {
         let customColor = '';
         
         if (daySchedule && daySchedule.shifts.length > 0) {
-            const shift = daySchedule.shifts[0]; 
+            const shift = daySchedule.shifts[0];
             const shiftId = shift.shiftId;
             const jobRole = shift.jobRole;
             const timeRange = shift.timeRange;
             
             if (jobRole && jobRole.includes('Leave')) {
-                cellContent = jobRole; 
+                cellContent = jobRole;
                 cellClasses = 'bg-red-800 font-bold';
             } else if (shiftId && jobRole && timeRange) {
                 cellContent = `${shiftId} ${jobRole}<span class="text-xs text-gray-500 block leading-none">${timeRange}</span>`;
@@ -354,7 +354,7 @@ async function loadRoster(startDateString) {
     updateDateHeaders(startDateString); // 1. Update dates in header
 
     const isoDate = new Date(startDateString).toISOString().split('T')[0];
-    const token = localStorage.getItem(AUTH_TOKEN_KEY); 
+    const token = localStorage.getItem(AUTH_TOKEN_KEY);
     
     showMessage(`Loading roster for week starting ${isoDate}...`, false);
     
@@ -366,14 +366,14 @@ async function loadRoster(startDateString) {
         });
         
         let result = await response.json();
-        let rosterData = result.data; 
+        let rosterData = result.data;
         let generated = false;
 
         // --- STEP 2: If no roster found, attempt to GENERATE it ---
         if (!rosterData || rosterData.length === 0) {
             showMessage(`No saved roster found for this week. Attempting automatic generation...`, false);
             
-            response = await fetch(`${API_URL}/generate/${isoDate}`, { 
+            response = await fetch(`${API_URL}/generate/${isoDate}`, {
                 method: 'GET',
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
             });
@@ -384,7 +384,7 @@ async function loadRoster(startDateString) {
             }
             
             result = await response.json();
-            rosterData = result.data; 
+            rosterData = result.data;
             generated = true;
         }
 
@@ -432,7 +432,7 @@ async function saveRoster() {
     if (!window.getAuthStatus || !getAuthStatus()) return showMessage("Please log in to save the roster.", true);
     
     // Pass roster data including position and nextWeekHolidayRequest for backend consistency
-    const rosterData = getRosterForSave(); 
+    const rosterData = getRosterForSave();
     if (rosterData.length === 0) return showMessage("Add at least one staff member before saving.", true);
 
     const saveButton = document.getElementById('save-roster-btn');
@@ -443,11 +443,11 @@ async function saveRoster() {
         const response = await fetch(API_URL, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${localStorage.getItem(AUTH_TOKEN_KEY)}`, 
+                'Authorization': `Bearer ${localStorage.getItem(AUTH_TOKEN_KEY)}`,
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({ 
-                weekStartDate: currentWeekStartDate, 
+                weekStartDate: currentWeekStartDate,
                 rosterData: rosterData
             }),
         });
@@ -469,7 +469,7 @@ async function saveRoster() {
 }
 window.saveRoster = saveRoster;
 
-// --- STAFF PROFILE ADD/EDIT LOGIC (NO CHANGES) ---
+// --- STAFF PROFILE ADD/EDIT LOGIC ---
 
 function showAddStaffModal() {
     document.getElementById('add-staff-modal').classList.remove('hidden');
@@ -521,7 +521,7 @@ async function handleAddStaff(e) {
     }
 }
 
-// --- STAFF LIST MANAGEMENT LOGIC ---
+// --- STAFF LIST MANAGEMENT LOGIC (MINOR UPDATES) ---
 
 async function loadStaffProfiles() {
     const container = document.getElementById('staff-profiles-container');
@@ -529,7 +529,7 @@ async function loadStaffProfiles() {
     container.innerHTML = '<p class="text-gray-500 text-center py-4">Loading staff data...</p>';
     msgBox.classList.add('hidden');
 
-    const token = localStorage.getItem(AUTH_TOKEN_KEY); 
+    const token = localStorage.getItem(AUTH_TOKEN_KEY);
     
     try {
         const response = await fetch(PROFILE_API_URL, {
@@ -548,7 +548,7 @@ async function loadStaffProfiles() {
         }
         
         // Cache profiles for use in roster logic
-        staffProfilesCache = result.data; 
+        staffProfilesCache = result.data;
 
         // Render the list as cards or table rows
         container.innerHTML = result.data.map(p => {
@@ -583,13 +583,13 @@ window.loadStaffProfiles = loadStaffProfiles;
 function openStaffListModal() {
     document.getElementById('staff-list-modal').classList.remove('hidden');
     document.getElementById('staff-list-modal').classList.add('flex');
-    loadStaffProfiles(); 
+    loadStaffProfiles();
 }
 window.openStaffListModal = openStaffListModal;
 
 
 async function openSingleEditModal(profileId) {
-    const token = localStorage.getItem(AUTH_TOKEN_KEY); 
+    const token = localStorage.getItem(AUTH_TOKEN_KEY);
     
     try {
         const response = await fetch(PROFILE_API_URL, {
@@ -605,13 +605,13 @@ async function openSingleEditModal(profileId) {
         const staff = result.data.find(p => p._id === profileId);
         if (!staff) return showMessage("Profile not found.", true);
 
-        currentStaffData = staff; 
+        currentStaffData = staff;
 
         // 2. Populate the edit form
         document.getElementById('edit-profile-id').value = staff._id;
         document.getElementById('single-staff-title').textContent = `Edit Profile: ${staff.name}`;
         document.getElementById('edit-staff-name').value = staff.name;
-        document.getElementById('edit-staff-id').value = staff.employeeId; 
+        document.getElementById('edit-staff-id').value = staff.employeeId;
 
         document.getElementById('edit-staff-position').value = staff.position;
         document.getElementById('edit-staff-shift-preference').value = staff.shiftPreference;
@@ -623,8 +623,8 @@ async function openSingleEditModal(profileId) {
             holidayReqValue = `${parts[1]} for ${parts[0]}`;
         }
         
-        // FIX: Populate the new input element
-        document.getElementById('edit-staff-holiday-request').value = holidayReqValue; 
+        // Populate the new input element
+        document.getElementById('edit-staff-holiday-request').value = holidayReqValue;
         
         document.getElementById('edit-staff-is-rotator').checked = staff.isNightRotator;
 
@@ -653,10 +653,10 @@ document.getElementById('edit-staff-form')?.addEventListener('submit', async (e)
         fixedDayOff: document.getElementById('edit-staff-fixed-dayoff').value,
         nextWeekHolidayRequest: currentStaffData.nextWeekHolidayRequest || 'None', // Retain existing request data
         isNightRotator: document.getElementById('edit-staff-is-rotator').checked,
-        currentRotationDay: currentStaffData.currentRotationDay 
+        currentRotationDay: currentStaffData.currentRotationDay
     };
 
-    const token = localStorage.getItem(AUTH_TOKEN_KEY); 
+    const token = localStorage.getItem(AUTH_TOKEN_KEY);
     
     try {
         const response = await fetch(`${PROFILE_API_URL}/${profileId}`, {
@@ -677,7 +677,7 @@ document.getElementById('edit-staff-form')?.addEventListener('submit', async (e)
         showMessage(`Profile for ${updatedData.name} updated.`, false);
         
         document.getElementById('single-staff-modal').classList.add('hidden');
-        openStaffListModal(); 
+        openStaffListModal();
         
     } catch (error) {
         showMessage(`Error updating profile: ${error.message}`, true);
@@ -686,29 +686,38 @@ document.getElementById('edit-staff-form')?.addEventListener('submit', async (e)
     }
 });
 
-// --- NEW STAFF REQUEST LOGIC (Updated to support shift preference change) ---
+// --- NEW STAFF REQUEST LOGIC (UPDATED) ---
 let staffProfilesCache = [];
 
 window.toggleRequestFields = function(type) {
     const holidayFields = document.getElementById('holiday-fields');
     const shiftChangeFields = document.getElementById('shift-change-fields');
+    const noneClearMessage = document.getElementById('none-clear-message');
     
+    // Hide all
+    holidayFields.classList.add('hidden');
+    shiftChangeFields.classList.add('hidden');
+    noneClearMessage.classList.add('hidden');
+
+    // Reset required attributes
+    document.getElementById('request-week-start').required = false;
+    document.getElementById('shift-change-week-start').required = false;
+
+    // Show selected section
     if (type === 'holiday') {
         holidayFields.classList.remove('hidden');
-        shiftChangeFields.classList.add('hidden');
         document.getElementById('request-week-start').required = true;
-        document.getElementById('shift-change-week-start').required = false;
-    } else {
-        holidayFields.classList.add('hidden');
+    } else if (type === 'shift_change') {
         shiftChangeFields.classList.remove('hidden');
-        document.getElementById('request-week-start').required = false;
         document.getElementById('shift-change-week-start').required = true;
+    } else if (type === 'none_clear') { // NEW LOGIC
+        noneClearMessage.classList.remove('hidden');
     }
 };
 
 
 async function fetchStaffProfilesForDropdown() {
-    const token = localStorage.getItem(AUTH_TOKEN_KEY); 
+    const token = localStorage.getItem(AUTH_TOKEN_KEY);
     if (!token) return;
 
     try {
@@ -729,7 +738,7 @@ async function fetchStaffProfilesForDropdown() {
         // Sort staff alphabetically for the dropdown
         staffProfilesCache.sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
             const option = document.createElement('option');
-            option.value = p._id; 
+            option.value = p._id;
             option.textContent = `${p.name} (${p.employeeId})`;
             select.appendChild(option);
         });
@@ -754,7 +763,7 @@ function openStaffRequestModal() {
     
     // Reset and show modal
     document.getElementById('staff-request-form').reset();
-    toggleRequestFields('holiday'); 
+    toggleRequestFields('holiday');
     fetchStaffProfilesForDropdown();
     document.getElementById('staff-request-modal').classList.remove('hidden');
     document.getElementById('staff-request-modal').classList.add('flex');
@@ -789,9 +798,13 @@ async function handleStaffRequest(e) {
         const newShift = document.getElementById('request-new-shift').value;
         requestValue = `${weekStart}:${newShift}`;
         messageText = `Temporary shift preference change to ${newShift} for week starting ${weekStart} submitted for ${staff.name}.`;
+    } else if (requestType === 'none_clear') { // NEW CLEAR LOGIC
+        // We set the field to the permanent value 'None' (without a date prefix)
+        requestValue = 'None';
+        messageText = `All temporary requests for ${staff.name} have been cleared.`;
     }
     
-    // Prepare the PUT body, using nextWeekHolidayRequest to store the temporary weekly instruction
+    // Prepare the PUT body
     const apiUpdateBody = {
         name: staff.name,
         employeeId: staff.employeeId,
@@ -800,11 +813,11 @@ async function handleStaffRequest(e) {
         fixedDayOff: staff.fixedDayOff,
         isNightRotator: staff.isNightRotator,
         currentRotationDay: staff.currentRotationDay,
-        nextWeekHolidayRequest: requestValue
+        nextWeekHolidayRequest: requestValue // Use the determined requestValue
     };
 
 
-    const token = localStorage.getItem(AUTH_TOKEN_KEY); 
+    const token = localStorage.getItem(AUTH_TOKEN_KEY);
     
     try {
         const response = await fetch(`${PROFILE_API_URL}/${profileId}`, {
@@ -822,7 +835,11 @@ async function handleStaffRequest(e) {
             throw new Error(result.message || 'Update failed.');
         }
 
-        showMessage(`${messageText} **Please reload the roster to see changes for the week starting ${weekStart}.**`, false);
+        const reloadMessage = requestType === 'none_clear' 
+            ? `${messageText} **Please reload the roster to see their standard default schedule.**`
+            : `${messageText} **Please reload the roster to see changes for the week starting ${weekStart}.**`;
+        
+        showMessage(reloadMessage, false);
         
         // Update the staff cache after successful request
         const updatedStaffIndex = staffProfilesCache.findIndex(s => s._id === profileId);
@@ -844,7 +861,7 @@ async function handleStaffRequest(e) {
 document.addEventListener('DOMContentLoaded', () => {
     if (!window.getAuthStatus || !getAuthStatus()) {
         showMessage("You need to log in to access the Roster Management.", true);
-        return; 
+        return;
     }
 
     document.getElementById('add-staff-form')?.addEventListener('submit', handleAddStaff);
@@ -861,7 +878,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('week-start-date').value = isoString;
     
     // Initial load will now call updateDateHeaders
-    loadRoster(isoString); 
+    loadRoster(isoString);
 
     updateShiftSummaries();
     lucide.createIcons();
