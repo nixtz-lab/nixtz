@@ -1,12 +1,18 @@
 // staff_roster_generator_be.js
 
 /**
- * Configuration for Shifts
+ * CRITICAL CHANGE: Removed hardcoded shift times.
+ * This structure now only defines fixed ID, Name, Roles, and Required Counts.
+ * The time strings used within the generation logic (e.g., '08:00-17:00') 
+ * MUST match the dynamic times saved on the frontend for consistency.
  */
 const SHIFTS = { 
-    1: { name: 'Morning', time: '07:00-16:00', roles: ['C1', 'C4', 'C3'] },
-    2: { name: 'Afternoon', time: '13:30-22:30', roles: ['C1', 'C5', 'C3'] },
-    3: { name: 'Night', time: '22:00-07:00', roles: ['C1', 'C2'] }
+    // ID 1: Morning Shift
+    1: { name: 'Morning', time: 'DYNAMIC_TIME_1', roles: ['C1', 'C4', 'C3'], required: 6 }, 
+    // ID 2: Afternoon Shift
+    2: { name: 'Afternoon', time: 'DYNAMIC_TIME_2', roles: ['C1', 'C5', 'C3'], required: 5 }, 
+    // ID 3: Night Shift
+    3: { name: 'Night', time: 'DYNAMIC_TIME_3', roles: ['C1', 'C2'], required: 'N/A' }
 };
 
 // Colors for easy identification on the frontend
@@ -20,16 +26,24 @@ const ROLE_COLORS = {
 const DAYS_FULL = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 /**
- * Generates a weekly roster based on the current staff profiles and complex rotation rules.
+ * Generates a weekly roster based on the current staff profiles and fixed day off rules.
  * @param {Array} staffProfiles - List of staff fetched from the database.
  * @param {Date} weekStartDate - The Monday start date of the week to generate.
  */
 function generateWeeklyRoster(staffProfiles, weekStartDate) {
     
+    // NOTE: SHIFT times for output must match the user's config saved on the frontend (staff_roster.js).
+    // The generator will now use the DYNAMIC_TIME placeholders.
+    const MORNING_TIME = SHIFTS[1].time || '07:00-16:00';
+    const AFTERNOON_TIME = SHIFTS[2].time || '13:30-22:30';
+    const NIGHT_TIME = SHIFTS[3].time || '22:00-07:00';
+    
     const weekStartString = weekStartDate.toISOString().split('T')[0]; 
 
     // --- Utility function to check and extract request ---
     function getWeeklyRequest(profile) {
+        
+        // 1. Check for PERMANENT CLEAR (set by frontend Update modal)
         if (profile.nextWeekHolidayRequest === 'None') { 
             return { type: 'None' };
         }
@@ -46,10 +60,12 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
         
         const [requestWeek, requestValue] = parts;
 
+        // 2. Check if the request date has already passed. 
         if (requestWeek < weekStartString) {
              return { type: 'None' };
         }
         
+        // 3. Check if the request applies to the CURRENT week being generated
         if (requestWeek === weekStartString) {
             if (DAYS_FULL.includes(requestValue) || requestValue === 'Full Week') {
                  return { type: 'Leave', day: requestValue };
@@ -72,18 +88,12 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
     // 1. Initial Assignments and Roster Map: Use employeeId as the map key
     const weeklyRosterMap = new Map(staffProfiles.map(s => [s.employeeId, { ...s, weeklySchedule: new Array(7).fill({ shifts: [] }) }]));
     
-    // --- Day Off Assignments: THIS BLOCK IS NOW REMOVED OR NEUTRALIZED ---
-    // We are relying ONLY on staff.fixedDayOff, NOT hardcoded positional rotation indexes.
-    
-    // The previous logic for supervisorDayOffs and nightStaffDaysOff is removed 
-    // to stop the hardcoded leave inheritance bug.
-    
     // --- Main Daily Scheduling Loop ---
     DAYS_FULL.forEach((day, dayIndex) => {
         
-        // 0. CHECK WEEKLY REQUEST OVERRIDE
+        // 0. CHECK WEEKLY REQUEST OVERRIDE (Temporary Leave/Shift Change)
         staffProfiles.forEach(staff => {
-            const staffEntry = weeklyRosterMap.get(staff.employeeId); // Lookup by ID
+            const staffEntry = weeklyRosterMap.get(staff.employeeId);
             const request = getWeeklyRequest(staff);
             
             if (request.type === 'Leave') {
@@ -102,7 +112,8 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
             else if (pae.fixedDayOff === day) { // Use ONLY fixedDayOff
                 pae.weeklySchedule[dayIndex].shifts.push({ shiftId: null, jobRole: 'Leave (Mgr)', timeRange: 'Full Day', color: ROLE_COLORS['Manager'] });
             } else {
-                pae.weeklySchedule[dayIndex].shifts.push({ shiftId: 1, jobRole: 'C1 (Mgr)', timeRange: '08:00-17:00', color: ROLE_COLORS['Manager'] });
+                // Use MORNING_TIME from dynamic SHIFTS structure
+                pae.weeklySchedule[dayIndex].shifts.push({ shiftId: 1, jobRole: 'C1 (Mgr)', timeRange: MORNING_TIME, color: ROLE_COLORS['Manager'] });
             }
         }
 
@@ -114,24 +125,31 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
 
             if (driverEntry.weeklySchedule[dayIndex].shifts.length > 0) { return; }
 
-            if (driver.fixedDayOff === day) { // Use ONLY fixedDayOff
+            // Apply Fixed Day Off for Driver
+            if (driver.fixedDayOff === day) { 
                 driverEntry.weeklySchedule[dayIndex].shifts.push({ shiftId: null, jobRole: 'Leave (Del)', timeRange: 'Full Day', color: ROLE_COLORS['Delivery'] });
             } else {
+                // Use dynamic times for shift assignments
+                const tempShiftPref = (request.type === 'ShiftChange') ? request.shift : driver.shiftPreference; 
+                
+                let shiftDetails;
+                if (tempShiftPref.includes('Morning')) {
+                    // Note: This specific cover time ('07:00-21:00') is a hybrid shift, but for core shifts:
+                    shiftDetails = { id: 1, time: MORNING_TIME };
+                } else {
+                    shiftDetails = { id: 2, time: AFTERNOON_TIME };
+                }
+
                 if (otherDriver && otherDriver.fixedDayOff === day) {
+                    // If covering a fellow driver, use an extended shift time (can be hardcoded here for complexity)
                     driverEntry.weeklySchedule[dayIndex].shifts.push({ shiftId: 1, jobRole: 'C3 (Del Cov)', timeRange: '07:00-21:00', color: ROLE_COLORS['Delivery'] });
                 } else {
-                    const tempShiftPref = (request.type === 'ShiftChange') ? request.shift : driver.shiftPreference; 
-                    
-                    const shiftDetails = (tempShiftPref.includes('Morning')) 
-                        ? (dayIndex < 4 ? { id: 1, time: '07:00-16:00' } : { id: 2, time: '10:00-21:00' })
-                        : (dayIndex < 4 ? { id: 2, time: '10:00-21:00' } : { id: 1, time: '07:00-16:00' });
-                    
                     driverEntry.weeklySchedule[dayIndex].shifts.push({ shiftId: shiftDetails.id, jobRole: 'C3 (Del)', timeRange: shiftDetails.time, color: ROLE_COLORS['Delivery'] });
                 }
             }
         });
 
-        // 3. Supervisors (FIXED LOGIC: ONLY USE fixedDayOff)
+        // 3. Supervisors (REMOVED COMPLEX ROTATION, RELY ON FIXED DAY OFF)
         supervisors.forEach(sup => {
             const supEntry = weeklyRosterMap.get(sup.employeeId);
             const request = getWeeklyRequest(sup);
@@ -140,14 +158,20 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
             
             const tempShiftPref = (request.type === 'ShiftChange') ? request.shift : sup.shiftPreference;
             
-            if (sup.fixedDayOff === day) { // Use ONLY fixedDayOff
+            // Apply Fixed Day Off for Supervisor
+            if (sup.fixedDayOff === day) { 
                 supEntry.weeklySchedule[dayIndex].shifts.push({ shiftId: null, jobRole: 'Leave (Sup)', timeRange: 'Full Day', color: ROLE_COLORS['Supervisor'] });
             } 
-            // Removed all complex shift coverage logic that was causing the error. 
             // Fallback to simple shift assignment based on preference.
             else {
-                const shiftId = tempShiftPref === 'Morning' ? 1 : tempShiftPref === 'Afternoon' ? 2 : 3;
-                supEntry.weeklySchedule[dayIndex].shifts.push({ shiftId: shiftId, jobRole: 'C1 (Sup)', timeRange: SHIFTS[shiftId].time, color: ROLE_COLORS['Supervisor'] });
+                let shiftId;
+                let timeRange;
+                
+                if (tempShiftPref === 'Morning') { shiftId = 1; timeRange = MORNING_TIME; }
+                else if (tempShiftPref === 'Afternoon') { shiftId = 2; timeRange = AFTERNOON_TIME; }
+                else { shiftId = 3; timeRange = NIGHT_TIME; }
+
+                supEntry.weeklySchedule[dayIndex].shifts.push({ shiftId: shiftId, jobRole: 'C1 (Sup)', timeRange: timeRange, color: ROLE_COLORS['Supervisor'] });
             }
         });
 
@@ -162,7 +186,8 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
             if (staff.fixedDayOff === day) {
                 staffEntry.weeklySchedule[dayIndex].shifts.push({ shiftId: null, jobRole: 'Leave (Night)', timeRange: 'Full Day' });
             } else {
-                staffEntry.weeklySchedule[dayIndex].shifts.push({ shiftId: 3, jobRole: 'C2', timeRange: SHIFTS[3].time });
+                // Use NIGHT_TIME from dynamic SHIFTS structure
+                staffEntry.weeklySchedule[dayIndex].shifts.push({ shiftId: 3, jobRole: 'C2', timeRange: NIGHT_TIME });
             }
         });
         
@@ -174,7 +199,8 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
             
             for(let i=0; i < neededNightCoverage && i < availableCover.length; i++) {
                 const coverStaff = availableCover[i];
-                weeklyRosterMap.get(coverStaff.employeeId).weeklySchedule[dayIndex].shifts.push({ shiftId: 3, jobRole: 'C4 (Night Cov)', timeRange: SHIFTS[3].time });
+                // Use NIGHT_TIME from dynamic SHIFTS structure
+                weeklyRosterMap.get(coverStaff.employeeId).weeklySchedule[dayIndex].shifts.push({ shiftId: 3, jobRole: 'C4 (Night Cov)', timeRange: NIGHT_TIME });
             }
         }
         
@@ -188,15 +214,21 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
 
             if (alreadyScheduled) return;
             
-            const assignedDayOff = (staffCounter % 5) + 2;
+            // Standard Normal Staff fixed day off logic
+            const assignedDayOff = (staffCounter % 5) + 2; 
             if (assignedDayOff === dayIndex) {
                  staffEntry.weeklySchedule[dayIndex].shifts.push({ shiftId: null, jobRole: 'Leave', timeRange: 'Full Day' });
             } else {
                 const tempShiftPref = (request.type === 'ShiftChange') ? request.shift : staff.shiftPreference;
                 
-                const shiftId = tempShiftPref === 'Morning' ? 1 : 2;
+                let shiftId;
+                let timeRange;
+
+                if (tempShiftPref === 'Morning') { shiftId = 1; timeRange = MORNING_TIME; }
+                else { shiftId = 2; timeRange = AFTERNOON_TIME; }
+                
                 const jobRole = tempShiftPref === 'Morning' ? 'C4' : 'C5';
-                staffEntry.weeklySchedule[dayIndex].shifts.push({ shiftId: shiftId, jobRole: jobRole, timeRange: SHIFTS[shiftId].time });
+                staffEntry.weeklySchedule[dayIndex].shifts.push({ shiftId: shiftId, jobRole: jobRole, timeRange: timeRange });
             }
             staffCounter++;
         });

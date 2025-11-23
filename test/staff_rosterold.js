@@ -74,8 +74,8 @@ function sortRosterData(rosterData) {
         if (orderA !== orderB) {
             return orderA - orderB;
         }
-        // Secondary sort by name if positions are the same
-        return a.employeeName.localeCompare(b.employeeName);
+        // Secondary sort by Employee ID for stable sorting if positions are the same
+        return a.employeeId.localeCompare(b.employeeId);
     });
 }
 
@@ -89,7 +89,9 @@ function getRosterForSave() {
         const idInput = row.querySelector('.staff-id-input');
         if (!nameInput || !idInput || !nameInput.value.trim()) return;
         
-        const cachedStaff = staffProfilesCache.find(s => s.employeeId === idInput.value.trim());
+        // ***CRITICAL: Look up by employeeId***
+        const employeeId = idInput.value.trim();
+        const cachedStaff = staffProfilesCache.find(s => s.employeeId === employeeId);
         
         const weeklySchedule = [];
         DAYS.forEach((day, dayIndex) => {
@@ -125,8 +127,6 @@ function getRosterForSave() {
             }
         });
 
-        const employeeId = idInput.value.trim() || nameInput.value.trim().toLowerCase().replace(/[\s\(\)]/g, '-');
-        
         rosterData.push({
             employeeName: nameInput.value.trim(),
             employeeId: employeeId,
@@ -365,6 +365,7 @@ async function forceRosterRegeneration() {
     try {
         await fetchStaffProfilesForDropdown(); // Ensure profile cache is fresh
         
+        // Call the generate route which also saves the generated roster to the DB
         const response = await fetch(`${API_URL}/generate/${isoDate}`, {
             method: 'GET',
             headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -382,6 +383,7 @@ async function forceRosterRegeneration() {
         currentRosterData = rosterData;
         
         const rosterWithPositions = rosterData.map(r => {
+            // ***CRITICAL: Look up profile by employeeId***
             const profile = staffProfilesCache.find(s => s.employeeId === r.employeeId);
             return {
                 ...r,
@@ -460,6 +462,7 @@ async function loadRoster(startDateString) {
         
         // Augment roster data with position from cache for sorting
         const rosterWithPositions = rosterData.map(r => {
+            // ***CRITICAL: Look up profile by employeeId***
             const profile = staffProfilesCache.find(s => s.employeeId === r.employeeId);
             return {
                 ...r,
@@ -700,7 +703,7 @@ async function openSingleEditModal(profileId) {
              throw new Error("Error fetching profile data.");
         }
 
-        const staff = result.data.find(p => p._id === profileId);
+        const staff = staffProfilesCache.find(p => p._id === profileId);
         if (!staff) return showMessage("Profile not found.", true);
 
         currentStaffData = staff;
@@ -715,14 +718,9 @@ async function openSingleEditModal(profileId) {
         document.getElementById('edit-staff-shift-preference').value = staff.shiftPreference;
         document.getElementById('edit-staff-fixed-dayoff').value = staff.fixedDayOff;
         
-        let holidayReqValue = staff.nextWeekHolidayRequest || 'None';
-        // Display user-friendly version of the request
-        if(holidayReqValue.includes(':')) {
-            const parts = holidayReqValue.split(':');
-            holidayReqValue = `${parts[1]} for ${parts[0]}`;
-        }
-        
-        document.getElementById('edit-staff-holiday-request').value = holidayReqValue;
+        // **********************************************
+        // CRITICAL: REMOVED POPULATION LOGIC FOR THE DELETED FIELD
+        // **********************************************
         
         document.getElementById('edit-staff-is-rotator').checked = staff.isNightRotator;
 

@@ -165,6 +165,10 @@ tailwind.config = {
                 <input type="date" id="week-start-date" 
                        class="p-2 rounded-lg bg-gray-800 border border-gray-600 text-white focus:border-nixtz-secondary transition duration-200"
                        onchange="handleDateChange(this)">
+                
+                <button onclick="openShiftConfigModal()" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-full shadow-md transition duration-200 flex items-center">
+                    <i data-lucide="settings" class="w-5 h-5 mr-1"></i> Shift Config
+                </button>
             </div>
 
             <div class="flex items-center space-x-4 w-full md:w-auto">
@@ -224,20 +228,8 @@ tailwind.config = {
 
         <div class="mt-8 p-4 bg-nixtz-card rounded-xl border border-gray-700/50 text-gray-400">
             <h3 class="text-lg font-bold text-nixtz-secondary mb-3">Shift & Job Definitions</h3>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                <div>
-                    <span class="font-semibold text-white">Morning (1):</span> 07:00 - 16:00
-                    <div class="text-xs text-gray-500">Required: 6 Staff (C1-C5)</div>
+            <div id="shift-definitions-display" class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                 </div>
-                <div>
-                    <span class="font-semibold text-white">Afternoon (2):</span> 13:30 - 22:30
-                    <div class="text-xs text-gray-500">Required: 5 Staff (C1-C5)</div>
-                </div>
-                <div>
-                    <span class="font-semibold text-white">Night (3):</span> 22:00 - 07:00
-                    <div class="text-xs text-gray-500">Required: *Determined by Night Staff* (C1, C2 Only)</div>
-                </div>
-            </div>
             <p class="mt-3 text-xs italic">Job Roles: C1 (Mgr/Sup), C2 (Night Staff), C3 (Delivery), C4/C5 (General Staff).</p>
         </div>
 
@@ -330,7 +322,12 @@ tailwind.config = {
 
 <div id="single-staff-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[9999] hidden items-center justify-center p-4 transition-opacity duration-300">
     <div class="bg-nixtz-card w-full max-w-md rounded-xl shadow-3xl-dark p-6 md:p-8 border border-gray-700/50">
-        <h2 class="text-xl font-bold text-nixtz-secondary mb-4 border-b border-gray-700 pb-3" id="single-staff-title">Edit Profile:</h2>
+        <h2 class="text-xl font-bold text-nixtz-secondary mb-4 border-b border-gray-700 pb-3 flex justify-between items-center" id="single-staff-title">
+            Edit Profile:
+            <button onclick="closeEditProfileModal(event)" class="text-gray-400 hover:text-white transition duration-200">
+                <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
+        </h2>
 
         <form id="edit-staff-form" class="space-y-4">
             <input type="hidden" id="edit-profile-id">
@@ -375,6 +372,7 @@ tailwind.config = {
                     <option value="Sun">Sunday</option>
                 </select>
             </div>
+
              <div class="flex items-center">
                 <input type="checkbox" id="edit-staff-is-rotator" class="w-4 h-4 text-nixtz-primary rounded border-gray-600 focus:ring-nixtz-primary">
                 <label for="edit-staff-is-rotator" class="ml-2 text-sm text-gray-400">Night Shift Rotator (15-day cycle)</label>
@@ -458,6 +456,32 @@ tailwind.config = {
         </form>
     </div>
 </div>
+
+<div id="shift-config-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[9999] hidden items-center justify-center p-4 transition-opacity duration-300">
+    <div class="bg-nixtz-card w-full max-w-lg rounded-xl shadow-3xl-dark p-6 md:p-8 border border-gray-700/50">
+        <h2 class="text-2xl font-bold text-nixtz-secondary mb-4 border-b border-gray-700 pb-3 flex justify-between items-center">
+            Shift Time Configuration
+            <button onclick="document.getElementById('shift-config-modal').classList.add('hidden')" class="text-gray-400 hover:text-white transition duration-200">
+                <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
+        </h2>
+
+        <div id="shift-config-message" class="p-3 rounded-lg text-white mb-3 hidden"></div>
+
+        <form id="shift-config-form" class="space-y-6">
+            <p class="text-sm text-gray-400">Update the time ranges and internal names for the three defined shifts. Changes apply to future roster generation.</p>
+
+            <div class="space-y-4" id="shift-inputs-container">
+                </div>
+            
+            <button type="submit" id="submit-shift-config-btn"
+                    class="w-full p-3 bg-nixtz-secondary text-white rounded-lg font-bold shadow-lg hover:bg-[#0da070] transition duration-300 disabled:opacity-50">
+                Save Shift Times
+            </button>
+        </form>
+    </div>
+</div>
+
 
 <script src="staff_roster.js" defer></script>
 </body>
