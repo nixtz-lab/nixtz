@@ -158,6 +158,10 @@ tailwind.config = {
 
             <div class="flex items-center space-x-4 w-full md:w-auto">
                 
+                <button onclick="openStaffRequestModal()" class="bg-nixtz-primary hover:bg-[#3f3bbf] text-white font-bold py-2 px-4 rounded-full shadow-md transition duration-200 flex items-center">
+                    <i data-lucide="edit" class="w-5 h-5 mr-1"></i> Staff Requests
+                </button>
+
                 <button onclick="openStaffListModal()" class="bg-nixtz-primary hover:bg-[#3f3bbf] text-white font-bold py-2 px-4 rounded-full shadow-md transition duration-200 flex items-center">
                     <i data-lucide="list" class="w-5 h-5 mr-1"></i> Staff List
                 </button>
@@ -362,6 +366,84 @@ tailwind.config = {
             
             <button type="submit" class="w-full p-3 bg-nixtz-secondary text-white rounded-lg font-bold shadow-lg hover:bg-[#0da070] transition duration-300">
                 Update Profile
+            </button>
+        </form>
+    </div>
+</div>
+
+<div id="staff-request-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[9999] hidden items-center justify-center p-4 transition-opacity duration-300">
+    <div class="bg-nixtz-card w-full max-w-lg rounded-xl shadow-3xl-dark p-6 md:p-8 border border-gray-700/50">
+        <h2 class="text-2xl font-bold text-nixtz-primary mb-4 border-b border-gray-700 pb-3 flex justify-between items-center">
+            Staff Weekly Requests
+            <button onclick="document.getElementById('staff-request-modal').classList.add('hidden')" class="text-gray-400 hover:text-white transition duration-200">
+                <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
+        </h2>
+
+        <div id="request-message-box" class="p-3 rounded-lg text-white mb-3 hidden"></div>
+
+        <form id="staff-request-form" class="space-y-4">
+            
+            <div>
+                <label for="request-staff-select" class="block text-sm font-medium text-gray-400 mb-1">Select Staff Member</label>
+                <select id="request-staff-select" required
+                        class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition duration-200">
+                    <option value="">-- Select Staff --</option>
+                </select>
+            </div>
+            
+            <div>
+                <label for="request-type" class="block text-sm font-medium text-gray-400 mb-1">Request Type</label>
+                <select id="request-type" onchange="toggleRequestFields(this.value)"
+                        class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition duration-200">
+                    <option value="holiday">Holiday/Sick Leave</option>
+                    <option value="shift_change">Temporary Shift Preference</option>
+                </select>
+            </div>
+
+            <div id="holiday-fields" class="space-y-4">
+                <div>
+                    <label for="request-week-start" class="block text-sm font-medium text-gray-400 mb-1">Week Start Date</label>
+                    <input type="date" id="request-week-start" required
+                           class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition duration-200">
+                </div>
+                <div>
+                    <label for="request-holiday-day" class="block text-sm font-medium text-gray-400 mb-1">Day Off Requested (e.g., Mon)</label>
+                    <select id="request-holiday-day"
+                            class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition duration-200">
+                        <option value="None">None</option>
+                        <option value="Mon">Monday</option>
+                        <option value="Tue">Tuesday</option>
+                        <option value="Wed">Wednesday</option>
+                        <option value="Thu">Thursday</option>
+                        <option value="Fri">Friday</option>
+                        <option value="Sat">Saturday</option>
+                        <option value="Sun">Sunday</option>
+                        <option value="Full Week">Full Week</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="shift-change-fields" class="space-y-4 hidden">
+                <div>
+                    <label for="shift-change-week-start" class="block text-sm font-medium text-gray-400 mb-1">Week Start Date</label>
+                    <input type="date" id="shift-change-week-start" required
+                           class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition duration-200">
+                </div>
+                <div>
+                    <label for="request-new-shift" class="block text-sm font-medium text-gray-400 mb-1">New Shift Preference for the Week</label>
+                    <select id="request-new-shift" required
+                            class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition duration-200">
+                        <option value="Morning">Morning</option>
+                        <option value="Afternoon">Afternoon</option>
+                        <option value="Night">Night</option>
+                    </select>
+                </div>
+            </div>
+            
+            <button type="submit" id="submit-request-btn"
+                    class="w-full p-3 bg-nixtz-secondary text-white rounded-lg font-bold shadow-lg hover:bg-[#0da070] transition duration-300 transform hover:scale-[1.01] disabled:opacity-50">
+                Submit Request
             </button>
         </form>
     </div>

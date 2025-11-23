@@ -407,7 +407,7 @@ async function handleAddStaff(e) {
         position: document.getElementById('new-staff-position').value,
         shiftPreference: document.getElementById('new-staff-shift-preference').value,
         fixedDayOff: document.getElementById('new-staff-fixed-dayoff').value,
-        nextWeekHolidayRequest: document.getElementById('new-staff-holiday-request').value, // NEW FIELD
+        nextWeekHolidayRequest: 'None', // Initialized to None
         isNightRotator: document.getElementById('new-staff-is-rotator').checked
     };
     
@@ -469,7 +469,7 @@ async function loadStaffProfiles() {
                 <div>
                     <p class="font-bold text-white">${p.name} <span class="text-xs text-gray-400">(${p.employeeId})</span></p>
                     <p class="text-sm text-nixtz-primary uppercase">${p.position}</p>
-                    <p class="text-xs text-gray-500">Fixed Off: ${p.fixedDayOff}, Holiday Req: ${p.nextWeekHolidayRequest || 'None'}</p>
+                    <p class="text-xs text-gray-500">Fixed Off: ${p.fixedDayOff}, Next Week Req: ${p.nextWeekHolidayRequest || 'None'}</p>
                 </div>
                 <button onclick="openSingleEditModal('${p._id}')" data-id="${p._id}" class="bg-nixtz-secondary hover:bg-[#0da070] text-white px-4 py-2 rounded-full text-sm font-bold transition">
                     Edit
@@ -523,7 +523,8 @@ async function openSingleEditModal(profileId) {
         document.getElementById('edit-staff-position').value = staff.position;
         document.getElementById('edit-staff-shift-preference').value = staff.shiftPreference;
         document.getElementById('edit-staff-fixed-dayoff').value = staff.fixedDayOff;
-        document.getElementById('edit-staff-holiday-request').value = staff.nextWeekHolidayRequest || 'None'; // NEW FIELD POPULATED
+        // nextWeekHolidayRequest is not editable in the main edit modal but kept for context/schema consistency
+        // document.getElementById('edit-staff-holiday-request').value = staff.nextWeekHolidayRequest || 'None'; 
         document.getElementById('edit-staff-is-rotator').checked = staff.isNightRotator;
 
         // 3. Display the modal and hide the list modal
@@ -549,7 +550,7 @@ document.getElementById('edit-staff-form')?.addEventListener('submit', async (e)
         position: document.getElementById('edit-staff-position').value,
         shiftPreference: document.getElementById('edit-staff-shift-preference').value,
         fixedDayOff: document.getElementById('edit-staff-fixed-dayoff').value,
-        nextWeekHolidayRequest: document.getElementById('edit-staff-holiday-request').value, // NEW FIELD SENT
+        nextWeekHolidayRequest: currentStaffData.nextWeekHolidayRequest || 'None', // Retain existing request data
         isNightRotator: document.getElementById('edit-staff-is-rotator').checked,
         currentRotationDay: currentStaffData.currentRotationDay 
     };
@@ -584,6 +585,152 @@ document.getElementById('edit-staff-form')?.addEventListener('submit', async (e)
     }
 });
 
+// --- NEW STAFF REQUEST LOGIC ---
+let staffProfilesCache = [];
+
+window.toggleRequestFields = function(type) {
+    const holidayFields = document.getElementById('holiday-fields');
+    const shiftChangeFields = document.getElementById('shift-change-fields');
+    
+    if (type === 'holiday') {
+        holidayFields.classList.remove('hidden');
+        shiftChangeFields.classList.add('hidden');
+        document.getElementById('request-week-start').required = true;
+        document.getElementById('shift-change-week-start').required = false;
+    } else {
+        holidayFields.classList.add('hidden');
+        shiftChangeFields.classList.remove('hidden');
+        document.getElementById('request-week-start').required = false;
+        document.getElementById('shift-change-week-start').required = true;
+    }
+};
+
+
+async function fetchStaffProfilesForDropdown() {
+    const token = localStorage.getItem(AUTH_TOKEN_KEY); 
+    if (!token) return;
+
+    try {
+        const response = await fetch(PROFILE_API_URL, {
+            method: 'GET',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+            throw new Error(result.message || 'Failed to fetch profiles for dropdown.');
+        }
+
+        staffProfilesCache = result.data;
+        const select = document.getElementById('request-staff-select');
+        select.innerHTML = '<option value="">-- Select Staff --</option>';
+        
+        staffProfilesCache.forEach(p => {
+            const option = document.createElement('option');
+            option.value = p._id; 
+            option.textContent = `${p.name} (${p.employeeId})`;
+            select.appendChild(option);
+        });
+
+    } catch (error) {
+        console.error("Fetch Staff for Dropdown Error:", error);
+    }
+}
+window.fetchStaffProfilesForDropdown = fetchStaffProfilesForDropdown;
+
+
+function openStaffRequestModal() {
+    if (!window.getAuthStatus || !getAuthStatus()) {
+        showMessage("Please log in to manage staff requests.", true);
+        return;
+    }
+    
+    // Set default week date
+    const currentWeek = document.getElementById('week-start-date').value;
+    document.getElementById('request-week-start').value = currentWeek;
+    document.getElementById('shift-change-week-start').value = currentWeek;
+    
+    // Reset and show modal
+    document.getElementById('staff-request-form').reset();
+    toggleRequestFields('holiday'); 
+    fetchStaffProfilesForDropdown();
+    document.getElementById('staff-request-modal').classList.remove('hidden');
+    document.getElementById('staff-request-modal').classList.add('flex');
+}
+window.openStaffRequestModal = openStaffRequestModal;
+
+
+async function handleStaffRequest(e) {
+    e.preventDefault();
+    const profileId = document.getElementById('request-staff-select').value;
+    if (!profileId) return showMessage("Please select a staff member.", true, 'request-message-box');
+    
+    const submitBtn = document.getElementById('submit-request-btn');
+    submitBtn.disabled = true;
+
+    const requestType = document.getElementById('request-type').value;
+    const staff = staffProfilesCache.find(p => p._id === profileId);
+    
+    if (!staff) return showMessage("Staff profile not found in cache.", true, 'request-message-box');
+    
+    let messageText = '';
+    let requestValue = 'None';
+    let weekStart = '';
+    
+    if (requestType === 'holiday') {
+        weekStart = document.getElementById('request-week-start').value;
+        const dayOff = document.getElementById('request-holiday-day').value;
+        requestValue = `${weekStart}:${dayOff}`;
+        messageText = `Holiday/Leave request (${dayOff}) for week starting ${weekStart} submitted for ${staff.name}.`;
+    } else if (requestType === 'shift_change') {
+        weekStart = document.getElementById('shift-change-week-start').value;
+        const newShift = document.getElementById('request-new-shift').value;
+        requestValue = `${weekStart}:${newShift}`;
+        messageText = `Temporary shift preference of ${newShift} for week starting ${weekStart} submitted for ${staff.name}.`;
+    }
+    
+    // Prepare the PUT body, using nextWeekHolidayRequest to store the temporary weekly instruction
+    const apiUpdateBody = {
+        name: staff.name,
+        employeeId: staff.employeeId,
+        position: staff.position,
+        shiftPreference: staff.shiftPreference,
+        fixedDayOff: staff.fixedDayOff,
+        isNightRotator: staff.isNightRotator,
+        currentRotationDay: staff.currentRotationDay,
+        nextWeekHolidayRequest: requestValue
+    };
+
+
+    const token = localStorage.getItem(AUTH_TOKEN_KEY); 
+    
+    try {
+        const response = await fetch(`${PROFILE_API_URL}/${profileId}`, {
+            method: 'PUT',
+            headers: { 
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(apiUpdateBody)
+        });
+
+        const result = await response.json();
+        
+        if (!response.ok || !result.success) {
+            throw new Error(result.message || 'Update failed.');
+        }
+
+        showMessage(`${messageText} **Please reload the roster to see changes for the week starting ${weekStart}.**`, false);
+        
+        document.getElementById('staff-request-modal').classList.add('hidden');
+        
+    } catch (error) {
+        showMessage(`Error submitting request: ${error.message}`, true, 'request-message-box');
+    } finally {
+        submitBtn.disabled = false;
+    }
+}
+
 
 // --- INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -593,6 +740,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     document.getElementById('add-staff-form')?.addEventListener('submit', handleAddStaff);
+    
+    // NEW: Listener for the staff request form
+    document.getElementById('staff-request-form')?.addEventListener('submit', handleStaffRequest);
 
     const today = new Date();
     const day = today.getDay();
