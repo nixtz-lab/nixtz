@@ -108,4 +108,34 @@ router.put('/:id', async (req, res) => {
     }
 });
 
+
+/**
+ * @route   DELETE /api/staff/profile/:id
+ * @desc    Delete a staff member's profile
+ * @access  Private
+ * // --- NEW DELETE ROUTE ADDED HERE ---
+ */
+router.delete('/:id', async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const profileId = req.params.id;
+
+        const deletedProfile = await StaffProfile.findOneAndDelete({ 
+            _id: profileId, 
+            user: userId 
+        });
+
+        if (!deletedProfile) {
+            return res.status(404).json({ success: false, message: 'Staff profile not found or unauthorized.' });
+        }
+
+        res.json({ success: true, message: `${deletedProfile.name}'s profile deleted successfully.` });
+
+    } catch (err) {
+        console.error('Delete Staff Profile Error:', err.message);
+        res.status(500).json({ success: false, message: 'Server error deleting staff profile.' });
+    }
+});
+
+
 module.exports = router;

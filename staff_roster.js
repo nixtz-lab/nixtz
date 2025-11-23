@@ -307,7 +307,7 @@ function addStaffRow(initialData = {}) {
                 cellClasses = 'bg-red-800 font-bold';
             } else if (shiftId && jobRole && timeRange) {
                 cellContent = `${shiftId} ${jobRole}<span class="text-xs text-gray-500 block leading-none">${timeRange}</span>`;
-                cellClasses = 'bg-gray-70';
+                cellClasses = 'bg-gray-700';
 
                 if (shift.color) {
                     customColor = `style="background-color: ${shift.color}40; border-left: 4px solid ${shift.color};"`;
@@ -597,8 +597,14 @@ async function deleteStaffProfile(profileId, name) {
         });
 
         if (!response.ok) {
-            const result = await response.json();
-            throw new Error(result.message || `Failed to delete profile for ${name}.`);
+            // Attempt to read JSON error message if provided
+            try {
+                const result = await response.json();
+                throw new Error(result.message || `Failed to delete profile for ${name}.`);
+            } catch (jsonError) {
+                // Handle case where response is not JSON (e.g., HTML error page from middleware)
+                throw new Error(`Failed to delete profile due to server or authorization error. Status: ${response.status}`);
+            }
         }
 
         showMessage(`Profile for ${name} deleted successfully.`, false);
@@ -897,7 +903,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const today = new Date();
     
-    // FIX: Calculate the Monday of the current calendar week correctly
+    // Calculate the Monday of the current perceived week correctly, handling the system's current year/month
     const dayOfWeek = today.getDay(); 
     const diff = today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); 
     const monday = new Date(today.getFullYear(), today.getMonth(), diff);
@@ -909,7 +915,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const isoString = `${year}-${month}-${date}`;
     
     // Set the input field value using the calculated date
-    document.getElementById('week-start-date').value = isoString;
+    const dateInput = document.getElementById('week-start-date');
+    if (dateInput) {
+        dateInput.value = isoString;
+    }
     
     loadRoster(isoString);
 
