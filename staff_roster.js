@@ -345,6 +345,66 @@ function deleteStaffRow(button) {
 }
 window.deleteStaffRow = deleteStaffRow;
 
+/**
+ * @function forceRosterRegeneration
+ * Forces the generation of a new roster for the current week, ignoring any existing saved snapshot.
+ */
+async function forceRosterRegeneration() {
+    if (!currentWeekStartDate) return showMessage("Please select a Week Start Date.", true);
+    if (!window.getAuthStatus || !getAuthStatus()) return showMessage("Please log in to generate the roster.", true);
+
+    const isoDate = new Date(currentWeekStartDate).toISOString().split('T')[0];
+    const token = localStorage.getItem(AUTH_TOKEN_KEY);
+    
+    const confirmRegen = confirm(`Are you sure you want to regenerate the roster for ${isoDate}?\n\nThis will overwrite the currently saved schedule with a newly calculated one based on current staff profiles.`);
+    
+    if (!confirmRegen) return;
+
+    showMessage(`Forcing regeneration for week starting ${isoDate}...`, false);
+    
+    try {
+        await fetchStaffProfilesForDropdown(); // Ensure profile cache is fresh
+        
+        const response = await fetch(`${API_URL}/generate/${isoDate}`, {
+            method: 'GET',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Failed to generate roster data.');
+        }
+        
+        const result = await response.json();
+        const rosterData = result.data;
+        
+        document.getElementById('roster-body').innerHTML = '';
+        currentRosterData = rosterData;
+        
+        const rosterWithPositions = rosterData.map(r => {
+            const profile = staffProfilesCache.find(s => s.employeeId === r.employeeId);
+            return {
+                ...r,
+                position: profile ? profile.position : 'Normal Staff'
+            };
+        });
+
+        const sortedRoster = sortRosterData(rosterWithPositions);
+        
+        if (sortedRoster.length === 0) {
+            showMessage('Roster regenerated, but no active staff profiles were found.', true);
+        } else {
+            sortedRoster.forEach(data => addStaffRow(data));
+            showMessage(`Roster successfully regenerated for ${sortedRoster.length} employees. Click 'Save Roster' to make this permanent!`, false);
+        }
+
+    } catch (error) {
+        console.error("Force Regeneration Error:", error);
+        showMessage(`Error regenerating roster: ${error.message}`, true);
+    }
+}
+window.forceRosterRegeneration = forceRosterRegeneration;
+
 
 // --- API CALLS ---
 async function loadRoster(startDateString) {
@@ -582,6 +642,7 @@ window.loadStaffProfiles = loadStaffProfiles;
 
 // --- NEW FUNCTION: DELETE STAFF PROFILE ---
 function confirmDeleteStaff(profileId, name) {
+    // Note: window.confirm is used here as per guidelines
     if (confirm(`WARNING: Are you sure you want to permanently delete the profile for ${name}?\n\nThis cannot be undone.`)) {
         deleteStaffProfile(profileId, name);
     }
@@ -736,16 +797,19 @@ window.toggleRequestFields = function(type) {
     noneClearMessage.classList.add('hidden');
 
     // Reset required attributes
-    document.getElementById('request-week-start').required = false;
+    document.getElementById('request-single-date').required = false;
     document.getElementById('shift-change-week-start').required = false;
+    document.getElementById('request-new-shift').required = false;
+
 
     // Show selected section
     if (type === 'holiday') {
         holidayFields.classList.remove('hidden');
-        document.getElementById('request-week-start').required = true;
+        document.getElementById('request-single-date').required = true;
     } else if (type === 'shift_change') {
         shiftChangeFields.classList.remove('hidden');
         document.getElementById('shift-change-week-start').required = true;
+        document.getElementById('request-new-shift').required = true;
     } else if (type === 'none_clear') {
         noneClearMessage.classList.remove('hidden');
     }
@@ -791,15 +855,55 @@ function openStaffRequestModal() {
         return;
     }
     
-    // Set default week date
-    const currentWeek = document.getElementById('week-start-date').value;
-    document.getElementById('request-week-start').value = currentWeek;
-    document.getElementById('shift-change-week-start').value = currentWeek;
+    // Get the currently loaded roster date for pre-filling
+    const currentRosterWeek = document.getElementById('week-start-date').value;
     
     // Reset and show modal
     document.getElementById('staff-request-form').reset();
+    
+    // Pre-fill date fields with the CURRENTLY VIEWED WEEK's start date
+    document.getElementById('request-single-date').value = currentRosterWeek; 
+    document.getElementById('shift-change-week-start').value = currentRosterWeek; 
+    
     toggleRequestFields('holiday');
     fetchStaffProfilesForDropdown();
+    
+    const staffSelect = document.getElementById('request-staff-select');
+    
+    // CRITICAL FIX: Add listener to update modal fields based on selected staff's existing request
+    staffSelect.onchange = function() {
+        const profileId = this.value;
+        if (!profileId) return;
+
+        const staff = staffProfilesCache.find(p => p._id === profileId);
+        if (!staff || staff.nextWeekHolidayRequest === 'None') {
+            // Reset to current roster week if no existing request
+            document.getElementById('request-single-date').value = currentRosterWeek; 
+            document.getElementById('shift-change-week-start').value = currentRosterWeek;
+            document.getElementById('request-type').value = 'holiday'; 
+            toggleRequestFields('holiday');
+            return;
+        }
+
+        const [requestWeek, requestValue] = staff.nextWeekHolidayRequest.split(':');
+        
+        // If an existing request is found, pre-fill the date with the saved week
+        document.getElementById('request-single-date').value = requestWeek;
+        document.getElementById('shift-change-week-start').value = requestWeek;
+
+        // Try to determine request type from saved value
+        const requestTypeInput = document.getElementById('request-type');
+        if (['Morning', 'Afternoon', 'Night'].includes(requestValue)) {
+            requestTypeInput.value = 'shift_change';
+            document.getElementById('request-new-shift').value = requestValue;
+        } else if (['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun', 'Full Week', 'None'].includes(requestValue)) {
+             requestTypeInput.value = 'holiday';
+        }
+
+        toggleRequestFields(requestTypeInput.value);
+        showMessage(`Existing request (${requestValue}) for week ${requestWeek} loaded.`, false);
+    };
+
     document.getElementById('staff-request-modal').classList.remove('hidden');
     document.getElementById('staff-request-modal').classList.add('flex');
 }
@@ -821,18 +925,41 @@ async function handleStaffRequest(e) {
     
     let messageText = '';
     let requestValue = 'None';
-    let weekStart = '';
+    let weekStartIso = '';
     
     if (requestType === 'holiday') {
-        weekStart = document.getElementById('request-week-start').value;
-        const dayOff = document.getElementById('request-holiday-day').value;
-        requestValue = `${weekStart}:${dayOff}`;
-        messageText = `Holiday/Leave request (${dayOff}) for week starting ${weekStart} submitted for ${staff.name}.`;
+        const requestedDate = document.getElementById('request-single-date').value;
+        if (!requestedDate) {
+            submitBtn.disabled = false;
+            return showMessage("Please select a date for the holiday request.", true, 'request-message-box');
+        }
+        
+        // 1. Calculate the Mon start date from the user's requested date
+        weekStartIso = snapToMonday(requestedDate);
+        
+        // 2. Determine the day of the week requested
+        const dateObj = new Date(requestedDate);
+        const dayIndex = dateObj.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+        const requestedDayOff = DAYS[dayIndex === 0 ? 6 : dayIndex - 1]; // Convert 0 to Sun, 1 to Mon, etc.
+        
+        // 3. Format the request value: [MONDAY_ISO]:[DAY_OF_WEEK_NAME]
+        requestValue = `${weekStartIso}:${requestedDayOff}`;
+        messageText = `Holiday/Leave request (${requestedDayOff}) for week starting ${weekStartIso} submitted for ${staff.name}.`;
+
     } else if (requestType === 'shift_change') {
-        weekStart = document.getElementById('shift-change-week-start').value;
+        const requestedDate = document.getElementById('shift-change-week-start').value;
         const newShift = document.getElementById('request-new-shift').value;
-        requestValue = `${weekStart}:${newShift}`;
-        messageText = `Temporary shift preference change to ${newShift} for week starting ${weekStart} submitted for ${staff.name}.`;
+        if (!requestedDate) {
+            submitBtn.disabled = false;
+            return showMessage("Please select a date for the shift change.", true, 'request-message-box');
+        }
+
+        // Calculate the Mon start date from the user's requested date
+        weekStartIso = snapToMonday(requestedDate);
+        
+        // Format the request value: [MONDAY_ISO]:[SHIFT_NAME]
+        requestValue = `${weekStartIso}:${newShift}`;
+        messageText = `Temporary shift preference change to ${newShift} for week starting ${weekStartIso} submitted for ${staff.name}.`;
     } else if (requestType === 'none_clear') {
         requestValue = 'None';
         messageText = `All temporary requests for ${staff.name} have been cleared.`;
@@ -871,7 +998,7 @@ async function handleStaffRequest(e) {
 
         const reloadMessage = requestType === 'none_clear' 
             ? `${messageText} **Please reload the roster to see their standard default schedule.**`
-            : `${messageText} **Please reload the roster to see changes for the week starting ${weekStart}.**`;
+            : `${messageText} **Please reload the roster to see changes for the week starting ${weekStartIso}.**`;
         
         showMessage(reloadMessage, false);
         
@@ -893,16 +1020,17 @@ async function handleStaffRequest(e) {
 
 /**
  * @function snapToMonday
- * Corrects the selected date to the Monday of that week.
+ * Converts any given date string (YYYY-MM-DD) to the ISO string of the Monday of that week.
  */
-function snapToMonday(selectedDateString) {
-    const date = new Date(selectedDateString);
+function snapToMonday(dateString) {
+    const date = new Date(dateString);
     const dayOfWeek = date.getDay(); // 0 = Sunday, 1 = Monday
     
-    // Calculate the difference needed to reach Monday
+    // Calculate the difference in days to reach Monday
     // If it's Mon (1), diff = 0. If Tue (2), diff = -1. If Sun (0), diff = -6.
     const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; 
     
+    // Use setDate to automatically handle month/year rollovers
     date.setDate(date.getDate() + diff);
     
     // Format back to YYYY-MM-DD string
