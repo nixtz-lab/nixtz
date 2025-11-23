@@ -360,7 +360,10 @@ async function loadRoster(startDateString) {
     showMessage(`Loading roster for week starting ${isoDate}...`, false);
     
     try {
-        // --- STEP 1: Attempt to Load Existing Roster ---
+        // --- STEP 1: Fetch profiles for sorting and caching (always fetch first) ---
+        await fetchStaffProfilesForDropdown();
+        
+        // --- STEP 2: Attempt to Load Existing Roster ---
         let response = await fetch(`${API_URL}/${isoDate}`, {
             method: 'GET',
             headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -370,7 +373,7 @@ async function loadRoster(startDateString) {
         let rosterData = result.data;
         let generated = false;
 
-        // --- STEP 2: If no roster found, attempt to GENERATE it ---
+        // --- STEP 3: If no roster found, attempt to GENERATE it ---
         if (!rosterData || rosterData.length === 0) {
             showMessage(`No saved roster found for this week. Attempting automatic generation...`, false);
             
@@ -388,10 +391,7 @@ async function loadRoster(startDateString) {
             rosterData = result.data;
             generated = true;
         }
-
-        // --- STEP 3: Fetch profiles for sorting and caching ---
-        await fetchStaffProfilesForDropdown(); // Update cache before sorting
-
+        
         // --- STEP 4: Render the Roster with new sorting ---
         
         document.getElementById('roster-body').innerHTML = '';
@@ -891,6 +891,48 @@ async function handleStaffRequest(e) {
 }
 
 
+/**
+ * @function snapToMonday
+ * Corrects the selected date to the Monday of that week.
+ */
+function snapToMonday(selectedDateString) {
+    const date = new Date(selectedDateString);
+    const dayOfWeek = date.getDay(); // 0 = Sunday, 1 = Monday
+    
+    // Calculate the difference needed to reach Monday
+    // If it's Mon (1), diff = 0. If Tue (2), diff = -1. If Sun (0), diff = -6.
+    const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; 
+    
+    date.setDate(date.getDate() + diff);
+    
+    // Format back to YYYY-MM-DD string
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    
+    return `${year}-${month}-${day}`;
+}
+
+
+/**
+ * @function handleDateChange
+ * Intercepts the date input change, snaps to Monday, updates the input field, and loads the roster.
+ */
+window.handleDateChange = function(inputElement) {
+    if (!inputElement.value) return;
+    
+    const snappedDate = snapToMonday(inputElement.value);
+    
+    // Update the input field with the corrected Monday date
+    if (inputElement.value !== snappedDate) {
+        inputElement.value = snappedDate;
+        showMessage(`Date corrected to Monday, starting week ${snappedDate}.`, false);
+    }
+    
+    loadRoster(snappedDate);
+};
+
+
 // --- INITIALIZATION (Date Fixes Applied) ---
 document.addEventListener('DOMContentLoaded', () => {
     if (!window.getAuthStatus || !getAuthStatus()) {
@@ -903,7 +945,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const today = new Date();
     
-    // Calculate the Monday of the current perceived week correctly, handling the system's current year/month
+    // Calculate the Monday of the current perceived week correctly
     const dayOfWeek = today.getDay(); 
     const diff = today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); 
     const monday = new Date(today.getFullYear(), today.getMonth(), diff);
@@ -918,6 +960,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const dateInput = document.getElementById('week-start-date');
     if (dateInput) {
         dateInput.value = isoString;
+        // Attach the new handleDateChange function to the onchange event
+        dateInput.onchange = function() {
+            handleDateChange(this);
+        };
     }
     
     loadRoster(isoString);
