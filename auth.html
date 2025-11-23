@@ -132,88 +132,15 @@
         </div>
     </footer>
 
+    <!-- Scripts are loaded here -->
     <script src="auth_script.js" defer></script>
+    <script src="service_auth_script.js" defer></script> 
     <script src="script.js"></script>
 
     <script>
-        // Note: This logic assumes your main login/register handlers are in auth_script.js
-        // and that they make a successful POST call to /api/auth/login, 
-        // receiving a JSON object containing { token, username, role, membership, pageAccess, ... }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            const loginForm = document.getElementById('login-form');
-            if (loginForm) {
-                
-                loginForm.addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    
-                    const email = document.getElementById('login-email').value;
-                    const password = document.getElementById('login-password').value;
-
-                    try {
-                        const response = await fetch(`${window.API_BASE_URL}/api/auth/login`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ email, password })
-                        });
-                        
-                        const data = await response.json();
-
-                        if (response.ok && data.success) {
-                            // --- CRITICAL FIX: Save Data Using Correct Keys ---
-                            // 1. Auth Token (UPDATED KEY)
-                            localStorage.setItem('nixtz_auth_token', data.token); 
-                            
-                            // 2. User/Role/Membership (Using existing TMT keys for consistency across UI components)
-                            localStorage.setItem('tmt_username', data.username);
-                            localStorage.setItem('tmt_user_role', data.role);
-                            localStorage.setItem('tmt_user_membership', data.membership);
-                            
-                            // 3. Page Access (UPDATED KEY)
-                            localStorage.setItem('nixtz_page_access', data.pageAccess); 
-                            
-                            showMessage("Login successful!", false);
-                            setTimeout(() => {
-                                // Redirect to dashboard after successful login
-                                window.location.href = 'business_dashboard.html'; 
-                            }, 500);
-                        } else {
-                            showMessage(data.message || 'Login failed.', true);
-                        }
-                    } catch (error) {
-                        showMessage('Network error during login.', true);
-                    }
-                });
-            }
-        });
-
-        // --- Original form switching logic (Runs after the login handler is defined) ---
-        const urlParams = new URLSearchParams(window.location.search);
-        const mode = urlParams.get('mode') || 'login';
-
-        const formTitle = document.getElementById('form-title');
-        const formSubtitle = document.getElementById('form-subtitle');
-        const switchText = document.getElementById('switch-text');
-        const registerForm = document.getElementById('register-form');
-        const loginForm = document.getElementById('login-form');
-        const pageTitle = document.getElementById('page-title');
-
-        if (mode === 'join') {
-            formTitle.textContent = 'Create Account';
-            formSubtitle.textContent = 'Start managing your business operations now.';
-            registerForm.classList.remove('hidden');
-            loginForm.classList.add('hidden');
-            pageTitle.textContent = 'Nixtz | Join';
-            switchText.innerHTML = 'Already have an account? <a href="auth.html?mode=login" class="text-nixtz-primary hover:text-nixtz-secondary font-semibold transition">Sign In</a>';
-        } else {
-            formTitle.textContent = 'Sign In';
-            formSubtitle.textContent = 'Log in to your operations platform.';
-            loginForm.classList.remove('hidden');
-            registerForm.classList.add('hidden');
-            pageTitle.textContent = 'Nixtz | Login';
-            switchText.innerHTML = "Don't have an account? <a href=\"auth.html?mode=join\" class=\"text-nixtz-secondary hover:text-nixtz-primary font-semibold transition\">Join Now</a>";
-        }
-        
+        // Removed original redundant inline script block. 
+        // Mode switching is now handled by auth_script.js (default logic) 
+        // and service_auth_script.js (override logic).
     </script>
 </body>
 </html>

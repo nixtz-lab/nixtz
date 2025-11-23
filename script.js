@@ -90,22 +90,32 @@ function checkAccessAndRedirect(targetUrl, event) {
         return; 
     }
     
+    // 1. Extract the "slug" from the target URL 
+    const urlParts = targetUrl.split('/');
+    const fileName = urlParts.pop(); // e.g., 'stock_market.html?mode=search'
+    const pageSlug = fileName.split('.')[0].split('?')[0]; 
+    
+    // Check if the page is one of the new service pages
+    const isServicePage = ['laundry_request', 'laundry_staff', 'service_admin'].includes(pageSlug);
+
     if (!getAuthStatus()) {
-        showMessage("Please join our community to unlock this content and tools.", true);
+        showMessage("Please sign in to access this content.", true);
+        
+        let redirectUrl = JOIN_PAGE_URL;
+        
+        // --- UPDATED LOGIC: Redirect Service Pages to the dedicated service_auth.html ---
+        if (isServicePage) {
+            redirectUrl = "service_auth.html"; // Target the dedicated service login page
+        }
+
         setTimeout(() => {
-            window.location.href = JOIN_PAGE_URL;
+            window.location.href = redirectUrl;
         }, 800); 
         return;
     }
     
-    // 1. Extract the "slug" from the target URL 
-    const urlParts = targetUrl.split('/');
-    const fileName = urlParts.pop(); // e.g., 'stock_market.html?mode=search'
-    // FIX: Ensure we only get the base slug, stripping .html and query strings
-    const pageSlug = fileName.split('.')[0].split('?')[0]; 
-
     // 2. Define Public Pages
-    const publicPages = ['index', 'auth', 'about', 'contact', 'cookie_policy', 'search_results']; // Added search_results
+    const publicPages = ['index', 'auth', 'about', 'contact', 'cookie_policy', 'search_results', 'service_auth']; 
     if (publicPages.includes(pageSlug)) {
         window.location.href = targetUrl;
         return;
@@ -113,7 +123,14 @@ function checkAccessAndRedirect(targetUrl, event) {
     
     // 3. Check Admin Panel Access (superadmin/admin are the only ones allowed)
     const userRole = getUserRole();
-    if (pageSlug === 'admin_panel' && (userRole === 'admin' || userRole === 'superadmin')) {
+    if ((pageSlug === 'admin_panel' || pageSlug === 'service_admin') && (userRole === 'admin' || userRole === 'superadmin')) {
+        window.location.href = targetUrl;
+        return;
+    }
+
+    // --- NEW: LAUNDRY STAFF PAGE ACCESS CHECK ---
+    // Only allow users with standard/admin/superadmin role to access the staff page.
+    if (pageSlug === 'laundry_staff' && (userRole === 'admin' || userRole === 'superadmin' || userRole === 'standard')) {
         window.location.href = targetUrl;
         return;
     }
@@ -122,6 +139,7 @@ function checkAccessAndRedirect(targetUrl, event) {
     const allowedPages = getPageAccess();
     
     // Check if the current page slug is in the allowed list OR if the special 'all' slug is present
+    // The new laundry_request page will also rely on this check.
     if (allowedPages.includes(pageSlug) || allowedPages.includes('all')) {
         showMessage("Access Granted! Loading " + pageSlug, false);
         setTimeout(() => {

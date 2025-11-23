@@ -123,6 +123,36 @@ const RosterEntrySchema = new mongoose.Schema({
 RosterEntrySchema.index({ user: 1, weekStartDate: 1 }, { unique: true }); 
 const StaffRoster = mongoose.model('StaffRoster', RosterEntrySchema);
 
+// --- LAUNDRY SERVICE SCHEMA (Only Schema Definition Here) ---
+const LaundryRequestSchema = new mongoose.Schema({
+    // Request details
+    requesterId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    requesterUsername: { type: String, required: true },
+    department: { type: String, required: true, trim: true },
+    contactExt: { type: String, trim: true }, // Contact extension or phone number
+    notes: { type: String, trim: true, default: '' },
+
+    // Items to be cleaned
+    items: [{
+        type: { type: String, required: true, enum: ['Uniform', 'Towels', 'Linens', 'Staff Clothing', 'Other'] },
+        count: { type: Number, required: true, min: 1 },
+        details: { type: String, default: '' }
+    }],
+    
+    // Status tracking
+    status: { 
+        type: String, 
+        default: 'Pending Pickup', 
+        enum: ['Pending Pickup', 'Picked Up', 'In Progress', 'Ready for Delivery', 'Completed', 'Cancelled'] 
+    },
+    requestedAt: { type: Date, default: Date.now },
+    pickedUpAt: { type: Date },
+    completedAt: { type: Date },
+    staffAssigned: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+});
+const LaundryRequest = mongoose.model('LaundryRequest', LaundryRequestSchema);
+
+
 // 3. MIDDLEWARE & CONFIG
 const transporter = nodemailer.createTransport({
     host: 'smtpout.secureserver.net',
@@ -141,6 +171,7 @@ const { authMiddleware, adminAuthMiddleware } = require('./middleware/auth');
 const staffRosterRoutes = require('./routes/staff_roster_api.js'); 
 const staffProfileRoutes = require('./routes/staff_profile_api_be.js'); 
 const adminPanelRoutes = require('./routes/admin_panel_be.js'); // Admin Router
+const laundryRoutes = require('./routes/laundry_api_be.js'); // NEW LAUNDRY ROUTER (.js suffix)
 
 app.use(cors()); 
 app.use(express.json());
@@ -235,6 +266,9 @@ app.use('/api/admin', authMiddleware, adminAuthMiddleware, adminPanelRoutes);
 // Operations Routes
 app.use('/api/staff/profile', authMiddleware, staffProfileRoutes); 
 app.use('/api/staff/roster', authMiddleware, staffRosterRoutes); 
+// NEW: LAUNDRY SERVICE ROUTES
+app.use('/api/laundry', authMiddleware, laundryRoutes);
+
 
 // 6. STOCK WATCHLIST
 app.post('/api/user/watchlist/add', authMiddleware, async (req, res) => {
@@ -267,4 +301,4 @@ app.listen(PORT, () => {
     console.log(`Local access: http://localhost:${PORT}`);
 });
 
-module.exports = { app, User, StaffRoster, StaffProfile };
+module.exports = { app, User, StaffRoster, StaffProfile, LaundryRequest }; // Export LaundryRequest

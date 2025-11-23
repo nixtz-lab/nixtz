@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nixtz | Laundry Staff Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'nixtz-primary': '#4F46E5', // Indigo/Blue
+                        'nixtz-secondary': '#10B981', // Emerald/Green
+                        'nixtz-bg': '#0F172A', // Very dark background (Slate 900)
+                        'nixtz-card': '#1E293B', // Dark card background (Slate 800)
+                        // Status Colors
+                        'status-pending': '#FBBF24', // Amber 500
+                        'status-pickedup': '#3B82F6', // Blue 500
+                        'status-progress': '#8B5CF6', // Violet 500
+                        'status-ready': '#10B981', // Emerald 500
+                        'status-complete': '#22C55E', // Green 500
+                        'status-cancelled': '#EF4444', // Red 500
+                    },
+                    fontFamily: { sans: ['Inter', 'sans-serif'], },
+                }
+            }
+        }
+    </script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-nixtz-bg font-sans min-h-screen flex flex-col text-white">
+
+    <!-- Header -->
+    <header class="bg-nixtz-bg shadow-2xl sticky top-0 z-50 border-b border-gray-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+            <div class="flex items-center space-x-4">
+                <a href="business_dashboard.html" title="Back to Dashboard">
+                    <img
+                        src="images/nixtz_logo.png"
+                        alt="Nixtz Logo"
+                        class="h-10 w-auto rounded-md"
+                        onerror="this.src='https://placehold.co/40x40/10B981/ffffff?text=N'"
+                    >
+                    <span class="text-xl font-bold text-white ml-2">Laundry Staff Panel</span>
+                </a>
+            </div>
+            <a href="laundry_request.html" class="bg-nixtz-primary hover:bg-[#3f3bbf] text-white font-semibold py-1.5 px-4 rounded-full shadow-lg transition duration-300 text-sm border border-gray-700">
+                User Request Form
+            </a>
+        </div>
+    </header>
+
+    <div id="message-box" class="fixed top-4 right-4 bg-nixtz-secondary text-white p-4 rounded-lg shadow-2xl z-[9999] hidden opacity-0 transition-opacity duration-300">
+        <p id="message-text" class="font-semibold"></p>
+    </div>
+
+    <main class="flex-grow p-4 md:p-8 max-w-7xl mx-auto w-full">
+        <h1 class="text-3xl font-extrabold mb-8 text-center text-nixtz-primary">Outstanding Laundry Jobs</h1>
+
+        <div class="bg-nixtz-card rounded-xl shadow-2xl p-6 border border-gray-700">
+            <div class="flex justify-between items-center mb-6 border-b border-gray-700 pb-4">
+                 <h2 class="text-xl font-bold text-white">Requests Awaiting Processing</h2>
+                 <button onclick="loadOutstandingRequests()" class="flex items-center text-nixtz-secondary hover:text-white transition font-semibold">
+                    <i data-lucide="refresh-cw" class="w-4 h-4 mr-2"></i> Refresh List
+                 </button>
+            </div>
+            
+            <div id="requests-list" class="space-y-4">
+                <p class="text-gray-500 text-center py-8">Loading outstanding requests...</p>
+            </div>
+        </div>
+    </main>
+    
+    <!-- Scripts -->
+    <script src="script.js"></script>
+    <script src="auth_script.js"></script> 
+    <script src="laundry_staff.js"></script>
+</body>
+</html>

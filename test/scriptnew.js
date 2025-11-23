@@ -7,20 +7,18 @@
 // FIX: Expose API_BASE_URL globally via the window object
 window.API_BASE_URL = window.location.origin; 
 
-const getAuthStatus = () => localStorage.getItem('tmt_auth_token') !== null;
-const getUserRole = () => localStorage.getItem('tmt_user_role'); // NEW
+// --- UPDATED KEY: nixtz_auth_token ---
+const getAuthStatus = () => localStorage.getItem('nixtz_auth_token') !== null;
+const getUserRole = () => localStorage.getItem('tmt_user_role'); 
 
-const getPageAccess = () => { // UPDATED TO USE nixtz_page_access
+const getPageAccess = () => {
     try {
-        // --- CHANGED KEY NAME HERE ---
-        const access = localStorage.getItem('nixtz_page_access');
+        const access = localStorage.getItem('nixtz_page_access'); // UPDATED KEY
         
         if (!access) return [];
 
-        // Ensure the string is correctly split, trimmed, and converted to lowercase
         const pageSlugs = access.split(',').map(s => s.trim().toLowerCase()).filter(s => s);
         
-        // Handle potential older JSON array format
         if (pageSlugs.length === 0 && access.startsWith('[')) {
              return JSON.parse(access);
         }
@@ -29,7 +27,6 @@ const getPageAccess = () => { // UPDATED TO USE nixtz_page_access
 
     } catch (e) {
         console.error("Error parsing page access:", e);
-        // Fallback if parsing completely fails
         try {
              return access ? JSON.parse(access) : [];
         } catch (e2) {
@@ -40,7 +37,7 @@ const getPageAccess = () => { // UPDATED TO USE nixtz_page_access
 
 const JOIN_PAGE_URL = "auth.html?mode=join";
 const COOKIE_CONSENT_KEY = "tmt_cookie_accepted";
-let currentUserEmail = null; // ADDED
+let currentUserEmail = null; 
 
 window.getAuthStatus = getAuthStatus;
 window.getUserRole = getUserRole;
@@ -121,10 +118,18 @@ function checkAccessAndRedirect(targetUrl, event) {
         return;
     }
 
+    // --- NEW: LAUNDRY STAFF PAGE ACCESS CHECK ---
+    // Only allow users with standard/admin/superadmin role to access the staff page.
+    if (pageSlug === 'laundry_staff' && (userRole === 'admin' || userRole === 'superadmin' || userRole === 'standard')) {
+        window.location.href = targetUrl;
+        return;
+    }
+
     // 4. Check Page Access Array
     const allowedPages = getPageAccess();
     
     // Check if the current page slug is in the allowed list OR if the special 'all' slug is present
+    // The new laundry_request page will also rely on this check.
     if (allowedPages.includes(pageSlug) || allowedPages.includes('all')) {
         showMessage("Access Granted! Loading " + pageSlug, false);
         setTimeout(() => {
@@ -250,12 +255,11 @@ function updateAuthUI() {
 
 
 function handleLogout() {
-    localStorage.removeItem('tmt_auth_token'); 
+    localStorage.removeItem('nixtz_auth_token'); // UPDATED KEY
     localStorage.removeItem('tmt_username'); 
     localStorage.removeItem('tmt_user_role'); // NEW
     localStorage.removeItem('tmt_user_membership'); // NEW
-    // --- CHANGED KEY NAME HERE ---
-    localStorage.removeItem('nixtz_page_access'); // UPDATED
+    localStorage.removeItem('nixtz_page_access'); // UPDATED KEY
     localStorage.removeItem('tmt_email'); // ADDED: Clear email on logout
 
     // Reset global state
@@ -283,7 +287,7 @@ async function fetchUserData() {
         const response = await fetch(`${API_BASE_URL}/api/user/profile`, {
             method: 'GET',
             headers: {
-                'Authorization': `Bearer ${localStorage.getItem('tmt_auth_token')}`,
+                'Authorization': `Bearer ${localStorage.getItem('nixtz_auth_token')}`, // UPDATED KEY
                 'Content-Type': 'application/json',
             },
         });
@@ -403,7 +407,7 @@ async function changePassword(e) {
         const response = await fetch(`${API_BASE_URL}/api/user/change-password`, {
             method: 'PUT',
             headers: {
-                'Authorization': `Bearer ${localStorage.getItem('tmt_auth_token')}`,
+                'Authorization': `Bearer ${localStorage.getItem('nixtz_auth_token')}`, // UPDATED KEY
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({ currentPassword, newPassword }),
@@ -516,7 +520,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- END: ADDED LISTENERS FOR TICKER SUGGESTIONS ---
+    // --- END: ADDED LISTENERS FOR TICKER SUGGESTION FUNCTIONS ---
 
 
     // --- START: ADDED MODAL LISTENERS ---
