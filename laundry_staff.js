@@ -37,7 +37,11 @@ function getNextStatus(currentStatus) {
 // ------------------------------------
 async function updateRequestStatus(requestId, newStatus) {
     const token = localStorage.getItem('nixtz_auth_token');
-    if (!token) return window.showMessage("Authentication failed.", true);
+    if (!token) {
+         window.showMessage("Authentication failed. Redirecting to login.", true);
+         setTimeout(() => window.location.href = 'service_auth.html', 100);
+         return;
+    }
 
     const confirmationMessage = `Are you sure you want to change the status of request ${requestId.substring(0, 8)}... to "${newStatus}"?`;
     
@@ -61,6 +65,13 @@ async function updateRequestStatus(requestId, newStatus) {
             window.showMessage(result.message, false);
             loadOutstandingRequests(); // Refresh the list
         } else {
+            if (response.status === 401 || response.status === 403) {
+                 window.showMessage("Session expired or access denied. Redirecting to login.", true);
+                 // CRITICAL: Clear potentially stale token and redirect
+                 if (typeof window.handleLogout === 'function') window.handleLogout(); 
+                 setTimeout(() => window.location.href = 'service_auth.html', 500); 
+                 return;
+            }
             window.showMessage(result.message || 'Failed to update request status.', true);
         }
 
@@ -143,7 +154,13 @@ async function loadOutstandingRequests() {
     const listContainer = document.getElementById('requests-list');
     const token = localStorage.getItem('nixtz_auth_token');
     
-    if (!listContainer || !token) return;
+    if (!listContainer) return;
+
+    if (!token) {
+        listContainer.innerHTML = '<p class="text-red-400 text-center py-8">Authentication token missing. Redirecting...</p>';
+        setTimeout(() => window.location.href = 'service_auth.html', 100); 
+        return;
+    }
 
     listContainer.innerHTML = '<p class="text-gray-500 text-center py-8">Fetching latest requests...</p>';
 
@@ -159,6 +176,12 @@ async function loadOutstandingRequests() {
         } else if (result.data && result.data.length === 0) {
             listContainer.innerHTML = '<p class="text-nixtz-secondary text-center py-8 font-bold">🎉 All caught up! No outstanding requests.</p>';
         } else {
+             if (response.status === 401 || response.status === 403) {
+                 window.showMessage("Session expired or access denied. Redirecting to login.", true);
+                 if (typeof window.handleLogout === 'function') window.handleLogout(); 
+                 setTimeout(() => window.location.href = 'service_auth.html', 500); 
+                 return;
+            }
             window.showMessage(result.message || 'Failed to load requests.', true);
             listContainer.innerHTML = `<p class="text-red-400 text-center py-8">${result.message || 'Error loading requests. Check staff role access.'}</p>`;
         }
@@ -167,6 +190,7 @@ async function loadOutstandingRequests() {
 
     } catch (error) {
         console.error('Requests Load Error:', error);
+        window.showMessage('A network error occurred while contacting the server.', true);
         listContainer.innerHTML = '<p class="text-red-400 text-center py-8">Network error loading requests.</p>';
     }
 }
@@ -219,10 +243,18 @@ function showCustomConfirm(message) {
 // 5. INITIALIZATION
 // ------------------------------------
 function initLaundryStaffPage() {
-    // Check auth status and role access
+    // We rely 100% on script (6).js for the initial unauthorized redirect.
+    // Safety check: if global auth fails, redirect immediately.
+    if (!window.getAuthStatus()) {
+        window.checkAccessAndRedirect('laundry_staff.html');
+        return; 
+    }
+    
+    // Check auth status and role access (redundant due to global script, but safe)
     const isAuthorized = window.getUserRole() === 'admin' || window.getUserRole() === 'superadmin' || window.getUserRole() === 'standard';
-    if (!window.getAuthStatus() || !isAuthorized) {
-         window.checkAccessAndRedirect('laundry_staff.html'); 
+    if (!isAuthorized) {
+         window.showMessage("Access Denied: Your role does not permit staff panel access.", true);
+         setTimeout(() => window.location.href = 'business_dashboard.html', 1000);
          return;
     }
 

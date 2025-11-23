@@ -5,9 +5,17 @@
 
 document.addEventListener('DOMContentLoaded', () => {
     // Ensure Lucide icons are initialized
-    if (typeof lucide !== 'undefined') lucide.createIcons();
+    createLucideIcons(); 
     initLaundryRequestPage();
 });
+
+// Helper function to create Lucide icons if they exist globally
+function createLucideIcons() {
+    if (typeof lucide !== 'undefined' && typeof lucide.createIcons === 'function') {
+        lucide.createIcons();
+    }
+}
+
 
 // --- Core Application Logic ---
 
@@ -111,6 +119,8 @@ async function handleFormSubmit(e) {
     
     if (!token) {
         window.showMessage("Authentication failed. Please log in.", true);
+        // Force redirect in case global script was bypassed
+        setTimeout(() => window.location.href = 'service_auth.html', 100);
         return;
     }
 
@@ -134,11 +144,19 @@ async function handleFormSubmit(e) {
             itemCounter = 0;
             itemsContainer.appendChild(createItemInput());
             itemsContainer.querySelector('.flex-shrink-0').disabled = true;
-            if(window.lucide) window.lucide.createIcons();
+            createLucideIcons(); // Recreate icons for new elements
 
             // Refresh history list
             loadRequestHistory();
         } else {
+            // Check for specific unauthorized status
+            if (response.status === 401 || response.status === 403) {
+                 window.showMessage("Session expired or access denied. Please log in again.", true);
+                 // CRITICAL: Clear potentially stale token and redirect
+                 if (typeof window.handleLogout === 'function') window.handleLogout(); 
+                 setTimeout(() => window.location.href = 'service_auth.html', 500); 
+                 return;
+            }
             window.showMessage(result.message || 'Failed to submit request.', true);
         }
 
@@ -189,7 +207,13 @@ async function loadRequestHistory() {
     const historyList = document.getElementById('request-history-list');
     const token = localStorage.getItem('nixtz_auth_token');
     
-    if (!historyList || !token) return;
+    if (!historyList) return; // Exit if history container is missing
+
+    if (!token) {
+        // If token is explicitly missing, relies on the global script redirecting before we reach here.
+        historyList.innerHTML = '<p class="text-gray-400 text-center py-8">Awaiting authentication check...</p>';
+        return; 
+    }
 
     historyList.innerHTML = '<p class="text-gray-500 text-center py-8">Loading request history...</p>';
 
@@ -199,19 +223,33 @@ async function loadRequestHistory() {
         });
 
         const result = await response.json();
+        
+        if (response.status === 401 || response.status === 403) {
+            // Token is invalid/expired or user lacks permission
+            historyList.innerHTML = '<p class="text-red-400 text-center py-8">Session expired. Please sign in again.</p>';
+            window.showMessage("Session expired. Redirecting to login.", true);
+            // CRITICAL: Clear potentially stale token and redirect
+            if (typeof window.handleLogout === 'function') window.handleLogout(); 
+            setTimeout(() => window.location.href = 'service_auth.html', 500); 
+            return;
+        }
 
-        if (response.ok && result.success && result.data.length > 0) {
-            historyList.innerHTML = result.data.map(renderRequestCard).join('');
-        } else if (result.data && result.data.length === 0) {
-            historyList.innerHTML = '<p class="text-gray-400 text-center py-8">You have no previous laundry requests.</p>';
+        if (response.ok && result.success) {
+            if (result.data.length > 0) {
+                historyList.innerHTML = result.data.map(renderRequestCard).join('');
+            } else {
+                historyList.innerHTML = '<p class="text-gray-400 text-center py-8">You have no previous laundry requests.</p>';
+            }
         } else {
-            window.showMessage(result.message || 'Failed to load history.', true);
-            historyList.innerHTML = '<p class="text-red-400 text-center py-8">Error loading history.</p>';
+            // General server error
+            historyList.innerHTML = `<p class="text-red-400 text-center py-8">Error loading history: ${result.message || 'Unknown server issue.'}</p>`;
+            window.showMessage(`Server Error: ${result.message || 'Unknown issue'}`, true);
         }
 
     } catch (error) {
-        console.error('History Load Error:', error);
-        historyList.innerHTML = '<p class="text-red-400 text-center py-8">Network error loading history.</p>';
+        console.error('History Load Network Error:', error);
+        historyList.innerHTML = '<p class="text-red-400 text-center py-8">Network error loading history. Check server status.</p>';
+        window.showMessage('A network error occurred while contacting the server.', true);
     }
 }
 
@@ -220,10 +258,13 @@ async function loadRequestHistory() {
 // 4. INITIALIZATION
 // ------------------------------------
 function initLaundryRequestPage() {
-    // Check auth status first
+    // We rely 100% on script (6).js for the initial unauthorized redirect.
+    // We only execute functionality if the user is presumed authenticated.
+    
+    // Safety check: if global auth fails, redirect immediately.
     if (!window.getAuthStatus()) {
-         window.checkAccessAndRedirect('laundry_request.html');
-         return;
+        window.checkAccessAndRedirect('laundry_request.html');
+        return; 
     }
 
     document.getElementById('laundry-request-form').addEventListener('submit', handleFormSubmit);
@@ -237,7 +278,7 @@ function initLaundryRequestPage() {
         itemsContainer.appendChild(createItemInput());
         // Ensure remove button is enabled if more than one item exists
         itemsContainer.querySelectorAll('.flex-shrink-0').forEach(btn => btn.disabled = false);
-        if(window.lucide) window.lucide.createIcons();
+        createLucideIcons(); // Recreate icons for new elements
     });
 
     loadRequestHistory();
