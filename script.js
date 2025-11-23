@@ -9,16 +9,35 @@ window.API_BASE_URL = window.location.origin;
 
 const getAuthStatus = () => localStorage.getItem('tmt_auth_token') !== null;
 const getUserRole = () => localStorage.getItem('tmt_user_role'); // NEW
-const getPageAccess = () => { // NEW
+
+const getPageAccess = () => { // NEW AND CORRECTED
     try {
         const access = localStorage.getItem('tmt_page_access');
-        // FIX: Ensure we handle null/undefined and return an array
-        return access ? JSON.parse(access) : [];
+        
+        if (!access) return [];
+
+        // FIX: The core issue. Ensure the string is correctly split, trimmed, and converted to lowercase for reliable matching (especially for the 'all' slug).
+        // Note: We use split(',') because localStorage stores the array as a comma-separated string (e.g., "all,staff_roster").
+        const pageSlugs = access.split(',').map(s => s.trim().toLowerCase()).filter(s => s);
+        
+        // Ensure the JSON.parse failsafe is only used if the data truly looks like JSON (less common after the backend was updated to save the string)
+        if (pageSlugs.length === 0 && access.startsWith('[')) {
+             return JSON.parse(access);
+        }
+
+        return pageSlugs;
+
     } catch (e) {
         console.error("Error parsing page access:", e);
-        return [];
+        // If parsing fails, fall back to the raw JSON parse (original method)
+        try {
+             return access ? JSON.parse(access) : [];
+        } catch (e2) {
+             return [];
+        }
     }
 };
+
 const JOIN_PAGE_URL = "auth.html?mode=join";
 const COOKIE_CONSENT_KEY = "tmt_cookie_accepted";
 let currentUserEmail = null; // ADDED
@@ -103,7 +122,7 @@ function checkAccessAndRedirect(targetUrl, event) {
     }
 
     // 4. Check Page Access Array
-    const allowedPages = getPageAccess();
+    const allowedPages = getPageAccess(); // Uses the new corrected function
     
     // Check if the current page slug is in the allowed list OR if the special 'all' slug is present
     if (allowedPages.includes(pageSlug) || allowedPages.includes('all')) {
