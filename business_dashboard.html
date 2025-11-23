@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nixtz | Business Dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                colors: {
+                    'nixtz-primary': '#4F46E5',
+                    'nixtz-secondary': '#10B981',
+                    'nixtz-bg': '#0F172A',
+                    'nixtz-card': '#1E293B',
+                }
+            }
+        }
+    }
+</script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="script.js"></script>
+</head>
+<body class="bg-nixtz-bg font-sans text-gray-300 antialiased">
+
+    <header class="bg-nixtz-bg shadow-2xl sticky top-0 z-50 border-b border-gray-800">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center space-x-4">
+                <a href="index.html">
+                    <img src="images/nixtz_logo.png" alt="Nixtz" class="h-10 w-auto"> 
+                </a>
+                <span class="text-xl font-bold text-white tracking-wide">Business<span class="text-nixtz-primary">Dashboard</span></span>
+            </div>
+            <div class="flex items-center space-x-4">
+                <span id="user-display" class="text-sm font-medium text-gray-400 hidden md:inline">Welcome, User</span>
+                <button onclick="handleLogout()" class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm transition">Logout</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-10">
+        <div class="mb-10">
+            <h1 class="text-3xl font-bold text-white mb-2">Overview</h1>
+            <p class="text-gray-400">Welcome to your operational command center.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+            <div class="bg-nixtz-card p-6 rounded-xl border border-gray-700/50 shadow-lg">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-gray-400 text-sm font-medium">Total Staff</h3>
+                    <i data-lucide="users" class="text-nixtz-primary w-5 h-5"></i>
+                </div>
+                <div class="text-3xl font-bold text-white">24</div>
+                <div class="text-xs text-green-400 mt-1 flex items-center"><i data-lucide="arrow-up" class="w-3 h-3 mr-1"></i> 2 new this week</div>
+            </div>
+
+            <div class="bg-nixtz-card p-6 rounded-xl border border-gray-700/50 shadow-lg">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-gray-400 text-sm font-medium">Active Assets</h3>
+                    <i data-lucide="package" class="text-nixtz-secondary w-5 h-5"></i>
+                </div>
+                <div class="text-3xl font-bold text-white">142</div>
+                <div class="text-xs text-gray-500 mt-1">All systems normal</div>
+            </div>
+
+            <div class="bg-nixtz-card p-6 rounded-xl border border-gray-700/50 shadow-lg">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-gray-400 text-sm font-medium">Pending Repairs</h3>
+                    <i data-lucide="wrench" class="text-yellow-500 w-5 h-5"></i>
+                </div>
+                <div class="text-3xl font-bold text-white">3</div>
+                <div class="text-xs text-yellow-500 mt-1">Requires attention</div>
+            </div>
+
+            <div class="bg-nixtz-card p-6 rounded-xl border border-gray-700/50 shadow-lg">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-gray-400 text-sm font-medium">Monthly Budget</h3>
+                    <i data-lucide="pie-chart" class="text-blue-400 w-5 h-5"></i>
+                </div>
+                <div class="text-3xl font-bold text-white">82%</div>
+                <div class="text-xs text-gray-500 mt-1">Utilized to date</div>
+            </div>
+        </div>
+
+        <h2 class="text-xl font-bold text-white mb-6">Quick Actions</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <a href="staff_roster.html" class="bg-nixtz-card p-6 rounded-xl border border-gray-700/50 hover:border-nixtz-primary transition group">
+                <div class="bg-gray-800 w-12 h-12 rounded-lg flex items-center justify-center mb-4 group-hover:bg-nixtz-primary transition">
+                    <i data-lucide="calendar" class="text-white w-6 h-6"></i>
+                </div>
+                <h3 class="text-lg font-bold text-white mb-2">Manage Roster</h3>
+                <p class="text-sm text-gray-400">View and edit weekly staff schedules.</p>
+            </a>
+
+            <a href="asset_tracker.html" class="bg-nixtz-card p-6 rounded-xl border border-gray-700/50 hover:border-nixtz-secondary transition group">
+                <div class="bg-gray-800 w-12 h-12 rounded-lg flex items-center justify-center mb-4 group-hover:bg-nixtz-secondary transition">
+                    <i data-lucide="monitor" class="text-white w-6 h-6"></i>
+                </div>
+                <h3 class="text-lg font-bold text-white mb-2">Asset Tracker</h3>
+                <p class="text-sm text-gray-400">Update inventory and check equipment status.</p>
+            </a>
+
+            <a href="stock_order_request.html" class="bg-nixtz-card p-6 rounded-xl border border-gray-700/50 hover:border-blue-400 transition group">
+                <div class="bg-gray-800 w-12 h-12 rounded-lg flex items-center justify-center mb-4 group-hover:bg-blue-400 transition">
+                    <i data-lucide="shopping-cart" class="text-white w-6 h-6"></i>
+                </div>
+                <h3 class="text-lg font-bold text-white mb-2">Stock Request</h3>
+                <p class="text-sm text-gray-400">Create new purchase orders for supplies.</p>
+            </a>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            
+            // Basic Access Check
+            if (!getAuthStatus()) {
+                window.location.href = 'auth.html';
+            } else {
+                const user = localStorage.getItem('tmt_username');
+                if(user) document.getElementById('user-display').innerText = `Welcome, ${user}`;
+            }
+        });
+    </script>
+</body>
+</html>
