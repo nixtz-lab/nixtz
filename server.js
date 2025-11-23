@@ -171,7 +171,8 @@ const { authMiddleware, adminAuthMiddleware } = require('./middleware/auth');
 const staffRosterRoutes = require('./routes/staff_roster_api.js'); 
 const staffProfileRoutes = require('./routes/staff_profile_api_be.js'); 
 const adminPanelRoutes = require('./routes/admin_panel_be.js'); // Admin Router
-const laundryRoutes = require('./routes/laundry_api_be.js'); // NEW LAUNDRY ROUTER (.js suffix)
+const laundryRoutes = require('./routes/laundry_api_be.js'); // Standard Laundry API
+const laundryAdminRoutes = require('./routes/laundry_admin_api_be.js'); // Laundry Admin API
 
 app.use(cors()); 
 app.use(express.json());
@@ -263,10 +264,13 @@ app.post('/api/auth/reset-password', async (req, res) => res.json({success:false
 // Admin Routes - Prefixed with /api/admin
 app.use('/api/admin', authMiddleware, adminAuthMiddleware, adminPanelRoutes);
 
+// NEW: LAUNDRY SERVICE ADMIN ROUTES - Requires full admin access
+app.use('/api/laundry/admin', authMiddleware, adminAuthMiddleware, laundryAdminRoutes);
+
 // Operations Routes
 app.use('/api/staff/profile', authMiddleware, staffProfileRoutes); 
 app.use('/api/staff/roster', authMiddleware, staffRosterRoutes); 
-// NEW: LAUNDRY SERVICE ROUTES
+// Standard Laundry API
 app.use('/api/laundry', authMiddleware, laundryRoutes);
 
 
