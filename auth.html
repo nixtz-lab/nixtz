@@ -143,10 +143,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             const loginForm = document.getElementById('login-form');
             if (loginForm) {
-                // We wrap the original submission handler (assumed to be loaded from auth_script.js) 
-                // or define a new one here if auth_script.js is just a placeholder.
                 
-                // --- Assuming auth_script.js is loaded AFTER this block ---
                 loginForm.addEventListener('submit', async (e) => {
                     e.preventDefault();
                     
@@ -164,12 +161,15 @@
 
                         if (response.ok && data.success) {
                             // --- CRITICAL FIX: Save Data Using Correct Keys ---
-                            localStorage.setItem('tmt_auth_token', data.token);
+                            // 1. Auth Token (UPDATED KEY)
+                            localStorage.setItem('nixtz_auth_token', data.token); 
+                            
+                            // 2. User/Role/Membership (Using existing TMT keys for consistency across UI components)
                             localStorage.setItem('tmt_username', data.username);
                             localStorage.setItem('tmt_user_role', data.role);
                             localStorage.setItem('tmt_user_membership', data.membership);
-                            // --- BRANDED KEY UPDATE ---
-                            // This ensures the access list is saved using the newly defined key
+                            
+                            // 3. Page Access (UPDATED KEY)
                             localStorage.setItem('nixtz_page_access', data.pageAccess); 
                             
                             showMessage("Login successful!", false);
@@ -187,7 +187,7 @@
             }
         });
 
-        // --- Original form switching logic goes here (from your assumed auth_script.js) ---
+        // --- Original form switching logic (Runs after the login handler is defined) ---
         const urlParams = new URLSearchParams(window.location.search);
         const mode = urlParams.get('mode') || 'login';
 

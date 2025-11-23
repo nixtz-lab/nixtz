@@ -10,17 +10,17 @@ window.API_BASE_URL = window.location.origin;
 const getAuthStatus = () => localStorage.getItem('tmt_auth_token') !== null;
 const getUserRole = () => localStorage.getItem('tmt_user_role'); // NEW
 
-const getPageAccess = () => { // NEW AND CORRECTED
+const getPageAccess = () => { // UPDATED TO USE nixtz_page_access
     try {
-        const access = localStorage.getItem('tmt_page_access');
+        // --- CHANGED KEY NAME HERE ---
+        const access = localStorage.getItem('nixtz_page_access');
         
         if (!access) return [];
 
-        // FIX: The core issue. Ensure the string is correctly split, trimmed, and converted to lowercase for reliable matching (especially for the 'all' slug).
-        // Note: We use split(',') because localStorage stores the array as a comma-separated string (e.g., "all,staff_roster").
+        // Ensure the string is correctly split, trimmed, and converted to lowercase
         const pageSlugs = access.split(',').map(s => s.trim().toLowerCase()).filter(s => s);
         
-        // Ensure the JSON.parse failsafe is only used if the data truly looks like JSON (less common after the backend was updated to save the string)
+        // Handle potential older JSON array format
         if (pageSlugs.length === 0 && access.startsWith('[')) {
              return JSON.parse(access);
         }
@@ -29,7 +29,7 @@ const getPageAccess = () => { // NEW AND CORRECTED
 
     } catch (e) {
         console.error("Error parsing page access:", e);
-        // If parsing fails, fall back to the raw JSON parse (original method)
+        // Fallback if parsing completely fails
         try {
              return access ? JSON.parse(access) : [];
         } catch (e2) {
@@ -122,7 +122,7 @@ function checkAccessAndRedirect(targetUrl, event) {
     }
 
     // 4. Check Page Access Array
-    const allowedPages = getPageAccess(); // Uses the new corrected function
+    const allowedPages = getPageAccess();
     
     // Check if the current page slug is in the allowed list OR if the special 'all' slug is present
     if (allowedPages.includes(pageSlug) || allowedPages.includes('all')) {
@@ -254,7 +254,8 @@ function handleLogout() {
     localStorage.removeItem('tmt_username'); 
     localStorage.removeItem('tmt_user_role'); // NEW
     localStorage.removeItem('tmt_user_membership'); // NEW
-    localStorage.removeItem('tmt_page_access'); // NEW
+    // --- CHANGED KEY NAME HERE ---
+    localStorage.removeItem('nixtz_page_access'); // UPDATED
     localStorage.removeItem('tmt_email'); // ADDED: Clear email on logout
 
     // Reset global state
