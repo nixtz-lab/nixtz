@@ -20,64 +20,6 @@ const AUTH_TOKEN_KEY = localStorage.getItem('nixtz_auth_token') ? 'nixtz_auth_to
 
 // --- CORE ROSTER UTILITIES ---
 
-/**
- * Helper function to calculate and format dates for the table headers.
- * @param {string} startDateString - The ISO date string of Monday (week start).
- */
-function updateDateHeaders(startDateString) {
-    if (!startDateString) return;
-
-    const startDate = new Date(startDateString);
-    const dayHeaders = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-
-    for (let i = 0; i < 7; i++) {
-        const currentDate = new Date(startDate);
-        currentDate.setDate(startDate.getDate() + i);
-        
-        // Format: DD/MM (Example: 24/11)
-        const dayOfMonth = currentDate.getDate().toString().padStart(2, '0');
-        const month = (currentDate.getMonth() + 1).toString().padStart(2, '0');
-        const dateString = `${dayOfMonth}/${month}`;
-
-        const headerCell = document.getElementById(`header-${dayHeaders[i].toLowerCase()}`);
-        if (headerCell) {
-            headerCell.innerHTML = `
-                <span class="day-header">${dayHeaders[i]}</span>
-                <span class="date-header">${dateString}</span>
-            `;
-        }
-    }
-}
-
-/**
- * Custom sorting logic: Manager -> Supervisors -> Normal Staff -> Delivery.
- * @param {Array} rosterData - The roster array to be sorted.
- * @returns {Array} Sorted roster data.
- */
-function sortRosterData(rosterData) {
-    const positionOrder = {
-        'Manager': 1,
-        'Supervisor': 2,
-        'Normal Staff': 3,
-        'Delivery': 4
-    };
-
-    return rosterData.sort((a, b) => {
-        const posA = a.position || 'Normal Staff'; // Assuming position is carried or can be looked up
-        const posB = b.position || 'Normal Staff';
-        
-        const orderA = positionOrder[posA] || 99;
-        const orderB = positionOrder[posB] || 99;
-
-        if (orderA !== orderB) {
-            return orderA - orderB;
-        }
-        // Secondary sort by name if positions are the same
-        return a.employeeName.localeCompare(b.employeeName);
-    });
-}
-
-
 function getRosterForSave() {
     const rows = document.querySelectorAll('#roster-body tr');
     const rosterData = [];
@@ -86,10 +28,7 @@ function getRosterForSave() {
         const nameInput = row.querySelector('.staff-name-input');
         const idInput = row.querySelector('.staff-id-input');
         if (!nameInput || !idInput || !nameInput.value.trim()) return;
-        
-        // Retrieve position and existing temp request from cache/data (required for backend sorting to work correctly on reload)
-        const cachedStaff = staffProfilesCache.find(s => s.employeeId === idInput.value.trim());
-        
+
         const weeklySchedule = [];
         DAYS.forEach((day, dayIndex) => {
             const shiftCell = row.querySelector(`[data-day="${day}"]`);
@@ -129,10 +68,7 @@ function getRosterForSave() {
         rosterData.push({
             employeeName: nameInput.value.trim(),
             employeeId: employeeId,
-            weeklySchedule: weeklySchedule,
-            // Include profile data for sorting consistency on reload
-            position: cachedStaff ? cachedStaff.position : 'Normal Staff', 
-            nextWeekHolidayRequest: cachedStaff ? cachedStaff.nextWeekHolidayRequest : 'None'
+            weeklySchedule: weeklySchedule
         });
     });
 
@@ -280,9 +216,6 @@ function addStaffRow(initialData = {}) {
 
     const staffName = initialData.employeeName || '';
     const staffId = initialData.employeeId || '';
-    
-    // Ensure we retrieve position for sorting when saving later
-    const position = initialData.position || 'Normal Staff';
 
     let rowHTML = `
         <td class="p-2 bg-gray-900 sticky left-0 z-10 border-r border-gray-700">
@@ -350,8 +283,6 @@ window.deleteStaffRow = deleteStaffRow;
 async function loadRoster(startDateString) {
     if (!startDateString) return;
     if (!window.getAuthStatus || !getAuthStatus()) return showMessage("Please log in to load the roster.", true);
-    
-    updateDateHeaders(startDateString); // 1. Update dates in header
 
     const isoDate = new Date(startDateString).toISOString().split('T')[0];
     const token = localStorage.getItem(AUTH_TOKEN_KEY); 
@@ -388,34 +319,20 @@ async function loadRoster(startDateString) {
             generated = true;
         }
 
-        // --- STEP 3: Fetch profiles for sorting and caching ---
-        await fetchStaffProfilesForDropdown(); // Update cache before sorting
-
-        // --- STEP 4: Render the Roster with new sorting ---
+        // --- STEP 3: Render the Roster ---
         
         document.getElementById('roster-body').innerHTML = '';
         currentRosterData = rosterData;
         currentWeekStartDate = startDateString;
-        
-        // Augment roster data with position from cache for sorting
-        const rosterWithPositions = rosterData.map(r => {
-            const profile = staffProfilesCache.find(s => s.employeeId === r.employeeId);
-            return {
-                ...r,
-                position: profile ? profile.position : 'Normal Staff'
-            };
-        });
 
-        const sortedRoster = sortRosterData(rosterWithPositions); // 3. Apply new sorting
-
-        if (sortedRoster.length === 0) {
+        if (currentRosterData.length === 0) {
             showMessage('Could not generate or find a roster. Start adding staff profiles!', true);
             for(let i = 0; i < 2; i++) addStaffRow({});
         } else {
-            sortedRoster.forEach(data => addStaffRow(data));
+            currentRosterData.forEach(data => addStaffRow(data));
             const successMsg = generated 
-                ? `Roster automatically generated for ${sortedRoster.length} employees.`
-                : `Roster loaded successfully for ${sortedRoster.length} employees.`;
+                ? `Roster automatically generated for ${currentRosterData.length} employees.`
+                : `Roster loaded successfully for ${currentRosterData.length} employees.`;
             showMessage(successMsg, false);
         }
 
@@ -431,8 +348,7 @@ async function saveRoster() {
     if (!currentWeekStartDate) return showMessage("Please select a Week Start Date before saving.", true);
     if (!window.getAuthStatus || !getAuthStatus()) return showMessage("Please log in to save the roster.", true);
     
-    // Pass roster data including position and nextWeekHolidayRequest for backend consistency
-    const rosterData = getRosterForSave(); 
+    const rosterData = getRosterForSave();
     if (rosterData.length === 0) return showMessage("Add at least one staff member before saving.", true);
 
     const saveButton = document.getElementById('save-roster-btn');
@@ -469,7 +385,7 @@ async function saveRoster() {
 }
 window.saveRoster = saveRoster;
 
-// --- STAFF PROFILE ADD/EDIT LOGIC (NO CHANGES) ---
+// --- STAFF PROFILE ADD/EDIT LOGIC ---
 
 function showAddStaffModal() {
     document.getElementById('add-staff-modal').classList.remove('hidden');
@@ -546,29 +462,20 @@ async function loadStaffProfiles() {
             container.innerHTML = '<p class="text-yellow-500 text-center py-4">No staff profiles found. Use the "+ Add Staff" button to begin.</p>';
             return;
         }
-        
-        // Cache profiles for use in roster logic
-        staffProfilesCache = result.data; 
 
         // Render the list as cards or table rows
-        container.innerHTML = result.data.map(p => {
-            let requestDisplay = p.nextWeekHolidayRequest || 'None';
-            if(requestDisplay.includes(':')) {
-                const [date, value] = requestDisplay.split(':');
-                requestDisplay = `${value} (${date})`;
-            }
-            return `
+        container.innerHTML = result.data.map(p => `
             <div class="flex justify-between items-center bg-gray-800 p-4 rounded-lg border-l-4 ${p.position === 'Supervisor' || p.position === 'Manager' ? 'border-red-500' : p.position === 'Delivery' ? 'border-blue-400' : 'border-nixtz-secondary'} shadow-md">
                 <div>
                     <p class="font-bold text-white">${p.name} <span class="text-xs text-gray-400">(${p.employeeId})</span></p>
                     <p class="text-sm text-nixtz-primary uppercase">${p.position}</p>
-                    <p class="text-xs text-gray-500">Fixed Off: ${p.fixedDayOff}, Next Week Req: ${requestDisplay}</p>
+                    <p class="text-xs text-gray-500">Fixed Off: ${p.fixedDayOff}, Next Week Req: ${p.nextWeekHolidayRequest || 'None'}</p>
                 </div>
                 <button onclick="openSingleEditModal('${p._id}')" data-id="${p._id}" class="bg-nixtz-secondary hover:bg-[#0da070] text-white px-4 py-2 rounded-full text-sm font-bold transition">
                     Edit
                 </button>
             </div>
-        `}).join('');
+        `).join('');
         if(window.lucide) window.lucide.createIcons();
 
 
@@ -616,16 +523,8 @@ async function openSingleEditModal(profileId) {
         document.getElementById('edit-staff-position').value = staff.position;
         document.getElementById('edit-staff-shift-preference').value = staff.shiftPreference;
         document.getElementById('edit-staff-fixed-dayoff').value = staff.fixedDayOff;
-        
-        let holidayReqValue = staff.nextWeekHolidayRequest || 'None';
-        if(holidayReqValue.includes(':')) {
-            const parts = holidayReqValue.split(':');
-            holidayReqValue = `${parts[1]} for ${parts[0]}`;
-        }
-        
-        // FIX: Populate the new input element
-        document.getElementById('edit-staff-holiday-request').value = holidayReqValue; 
-        
+        // nextWeekHolidayRequest is not editable in the main edit modal but kept for context/schema consistency
+        // document.getElementById('edit-staff-holiday-request').value = staff.nextWeekHolidayRequest || 'None'; 
         document.getElementById('edit-staff-is-rotator').checked = staff.isNightRotator;
 
         // 3. Display the modal and hide the list modal
@@ -686,7 +585,7 @@ document.getElementById('edit-staff-form')?.addEventListener('submit', async (e)
     }
 });
 
-// --- NEW STAFF REQUEST LOGIC (Updated to support shift preference change) ---
+// --- NEW STAFF REQUEST LOGIC ---
 let staffProfilesCache = [];
 
 window.toggleRequestFields = function(type) {
@@ -726,8 +625,7 @@ async function fetchStaffProfilesForDropdown() {
         const select = document.getElementById('request-staff-select');
         select.innerHTML = '<option value="">-- Select Staff --</option>';
         
-        // Sort staff alphabetically for the dropdown
-        staffProfilesCache.sort((a, b) => a.name.localeCompare(b.name)).forEach(p => {
+        staffProfilesCache.forEach(p => {
             const option = document.createElement('option');
             option.value = p._id; 
             option.textContent = `${p.name} (${p.employeeId})`;
@@ -788,7 +686,7 @@ async function handleStaffRequest(e) {
         weekStart = document.getElementById('shift-change-week-start').value;
         const newShift = document.getElementById('request-new-shift').value;
         requestValue = `${weekStart}:${newShift}`;
-        messageText = `Temporary shift preference change to ${newShift} for week starting ${weekStart} submitted for ${staff.name}.`;
+        messageText = `Temporary shift preference of ${newShift} for week starting ${weekStart} submitted for ${staff.name}.`;
     }
     
     // Prepare the PUT body, using nextWeekHolidayRequest to store the temporary weekly instruction
@@ -824,12 +722,6 @@ async function handleStaffRequest(e) {
 
         showMessage(`${messageText} **Please reload the roster to see changes for the week starting ${weekStart}.**`, false);
         
-        // Update the staff cache after successful request
-        const updatedStaffIndex = staffProfilesCache.findIndex(s => s._id === profileId);
-        if (updatedStaffIndex !== -1) {
-            staffProfilesCache[updatedStaffIndex].nextWeekHolidayRequest = requestValue;
-        }
-
         document.getElementById('staff-request-modal').classList.add('hidden');
         
     } catch (error) {
@@ -849,6 +741,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('add-staff-form')?.addEventListener('submit', handleAddStaff);
     
+    // NEW: Listener for the staff request form
     document.getElementById('staff-request-form')?.addEventListener('submit', handleStaffRequest);
 
     const today = new Date();
@@ -859,9 +752,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const isoString = monday.toISOString().split('T')[0];
     
     document.getElementById('week-start-date').value = isoString;
-    
-    // Initial load will now call updateDateHeaders
-    loadRoster(isoString); 
+    loadRoster(isoString);
 
     updateShiftSummaries();
     lucide.createIcons();
