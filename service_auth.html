@@ -54,7 +54,6 @@
         </div>
     </header>
     
-    <!-- Message Box relies on script.js's showMessage() function -->
     <div id="message-box" class="fixed top-4 right-4 bg-nixtz-primary p-4 rounded-lg shadow-2xl z-[9999] hidden opacity-0 transition-opacity duration-300 text-white">
         <p id="message-text" class="font-semibold"></p>
     </div>
@@ -64,10 +63,10 @@
             <h1 class="text-3xl font-extrabold text-white text-center">Service Access Required</h1>
             <p class="text-center text-gray-400">Please sign in with your authorized staff credentials.</p>
 
-            <form id="service-login-form" class="form-container space-y-4">
+            <form id="login-form" class="form-container space-y-4"> 
                 <div>
-                    <label for="login-email" class="block text-sm font-medium text-gray-300">Email Address</label>
-                    <input type="email" id="login-email" name="email" required class="mt-1 block w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-nixtz-primary focus:border-nixtz-primary transition">
+                    <label for="login-email" class="block text-sm font-medium text-gray-300">Employee ID or Username</label>
+                    <input type="text" id="login-email" name="employeeId" required class="mt-1 block w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-nixtz-primary focus:border-nixtz-primary transition" placeholder="Employee ID or Username">
                 </div>
                 <div>
                     <label for="login-password" class="block text-sm font-medium text-gray-300">Password</label>
@@ -98,6 +97,6 @@
     </footer>
 
     <script src="script.js"></script>
-    <script src="service_login.js" defer></script>
+    <script src="service_auth_script.js" defer></script> 
 </body>
 </html>

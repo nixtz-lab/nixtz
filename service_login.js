@@ -4,9 +4,12 @@
  */
 
 document.addEventListener('DOMContentLoaded', () => {
-    const loginForm = document.getElementById('service-login-form');
+    const loginForm = document.getElementById('login-form'); // Assumes HTML ID changed to 'login-form'
     
+    // Check if the form is present before attaching listeners
     if (loginForm) {
+        // We attach the handleServiceLogin handler to the form element itself
+        // to prevent conflicts with other auth scripts if they were loaded.
         loginForm.addEventListener('submit', handleServiceLogin);
     }
     
@@ -23,44 +26,48 @@ document.addEventListener('DOMContentLoaded', () => {
 async function handleServiceLogin(e) {
     e.preventDefault();
     
-    const email = document.getElementById('login-email').value.trim();
+    // Renamed 'email' to 'loginValue' for clarity (it handles Employee ID or Email)
+    const loginValue = document.getElementById('login-email').value.trim(); 
     const password = document.getElementById('login-password').value.trim();
 
-    if (!email || !password) {
-        return window.showMessage("Enter email and password.", true);
+    if (!loginValue || !password) {
+        return window.showMessage("Enter your ID/Username and password.", true);
     }
 
     try {
+        // We must send the value as 'email' because the backend /api/auth/login 
+        // expects that key, and the backend is assumed to check (email OR username).
         const response = await fetch(`${window.API_BASE_URL}/api/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
+            body: JSON.stringify({ email: loginValue, password })
         });
         
         const data = await response.json();
 
         if (response.ok && data.success) {
-            // Save Data (using nixtz_ and tmt_ keys for compatibility)
+            
+            // --- UPDATED LOCAL STORAGE KEYS FOR CONSISTENCY ---
             localStorage.setItem('nixtz_auth_token', data.token); 
-            localStorage.setItem('tmt_username', data.username);
-            localStorage.setItem('tmt_user_role', data.role);
-            localStorage.setItem('tmt_user_membership', data.membership || 'none');
+            localStorage.setItem('nixtz_username', data.username); // Changed tmt_ to nixtz_
+            localStorage.setItem('nixtz_user_role', data.role);    // Changed tmt_ to nixtz_
+            localStorage.setItem('nixtz_user_membership', data.membership || 'none'); // Changed tmt_ to nixtz_
             localStorage.setItem('nixtz_page_access', data.pageAccess);
             
             // Check if the user has access to the service pages (standard, admin, superadmin)
             const serviceRoles = ['standard', 'admin', 'superadmin'];
             if (serviceRoles.includes(data.role)) {
-                window.showMessage("Service login successful!", false);
+                window.showMessage("Service login successful! Redirecting to Staff Panel.", false);
                 setTimeout(() => {
-                    // Redirect to the general business dashboard after successful login
-                    window.location.href = 'business_dashboard.html'; 
+                    // Redirect to the specific Staff Panel
+                    window.location.href = 'laundry_staff.html'; // Changed redirect target
                 }, 500);
             } else {
                 // Deny access if the user is only 'pending' or a restricted role
                 if (typeof window.handleLogout === 'function') {
                     window.handleLogout(); // Clear token immediately
                 } else {
-                    localStorage.removeItem('nixtz_auth_token'); // Manual clear if handleLogout isn't available yet
+                    localStorage.removeItem('nixtz_auth_token'); // Manual clear
                 }
                 window.showMessage("Access Denied: Your account role does not permit service access.", true);
             }

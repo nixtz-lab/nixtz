@@ -1,15 +1,10 @@
-// routes/laundry_admin_api_be.js - Router for Laundry Service Admin Management
+// routes/laundry_admin_api_be.js - Router for Laundry Service Request Management
 const express = require('express');
 const router = express.Router();
+// IMPORT FIX: Use mongoose.model() to prevent circular dependency warnings.
 const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs'); 
-
-// --- NEW MODEL IMPORT METHOD (Breaks Circular Dependency) ---
-const LaundryRequest = mongoose.model('LaundryRequest'); 
-const User = mongoose.model('User'); 
-const ServiceStaffAccess = mongoose.model('ServiceStaffAccess'); 
-// --- END NEW MODEL IMPORT METHOD ---
-
+const User = mongoose.model('User');
+const LaundryRequest = mongoose.model('LaundryRequest');
 
 // GET /api/laundry/admin/analytics - Get aggregated counts of requests by status
 router.get('/analytics', async (req, res) => {
@@ -53,64 +48,6 @@ router.get('/all-requests', async (req, res) => {
     } catch (err) {
         console.error('Laundry Admin All Requests Error:', err);
         res.status(500).json({ success: false, message: 'Server error fetching all requests.' });
-    }
-});
-
-/**
- * POST /api/laundry/admin/create-staff-v2 - Create a new service staff user 
- * This route uses Name, Employee ID, Password, and Role, and creates a linked 
- * ServiceStaffAccess document, decoupling it from StaffRoster.
- */
-router.post('/create-staff-v2', async (req, res) => {
-    const { name, semployeeId, password, department, role } = req.body;
-    
-    // Validate required fields and role
-    if (!name || !semployeeId || !password || !department || !['standard', 'admin'].includes(role)) {
-        return res.status(400).json({ success: false, message: 'Invalid or missing user data (Name, ID, Password, Role).' });
-    }
-    
-    try {
-        // 1. Prepare unique identifiers for the core User account
-        const username = semployeeId; // Using Employee ID as unique username for login
-        const email = `${semployeeId.toLowerCase()}@nixtz.service.temp`; // Placeholder email
-        
-        // Check for existing User (by ID/username or placeholder email)
-        let userExists = await User.findOne({ $or: [{ email: email }, { username }] });
-        if (userExists) return res.status(400).json({ success: false, message: 'Employee ID is already registered as a core user.' });
-        
-        // Check for existing ServiceStaffAccess (by Employee ID)
-        let serviceStaffExists = await ServiceStaffAccess.findOne({ semployeeId });
-        if (serviceStaffExists) return res.status(400).json({ success: false, message: 'Employee ID already exists in service staff records.' });
-
-        // 2. Hash Password
-        const salt = await bcrypt.genSalt(10);
-        const passwordHash = await bcrypt.hash(password, salt);
-
-        // 3. Create the core User account
-        const newUser = new User({
-            username,
-            email: email.toLowerCase(),
-            passwordHash,
-            role, 
-            membership: 'none',
-            pageAccess: ['laundry_request', 'laundry_staff'] // Grant access to service pages
-        });
-        await newUser.save();
-        
-        // 4. Create the linked ServiceStaffAccess document
-        const newStaffAccess = new ServiceStaffAccess({
-             user: newUser._id,
-             name: name, 
-             semployeeId: semployeeId,
-             department: department,
-             serviceScope: 'laundry'
-        });
-        await newStaffAccess.save();
-        
-        res.status(201).json({ success: true, message: `Staff account created for ${name} (${semployeeId}).` });
-    } catch (err) {
-        console.error('Create Staff Account Error:', err);
-        res.status(500).json({ success: false, message: 'Server error during staff creation.' });
     }
 });
 

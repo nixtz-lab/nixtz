@@ -204,7 +204,7 @@ async function handleCreateStaffFormSubmit(e) {
 
     try {
         // Calling the new backend route
-        const response = await fetch(`${window.API_BASE_URL}/api/laundry/admin/create-staff-v2`, { 
+        const response = await fetch(`${window.API_BASE_URL}/api/service/admin/create-staff-v2`, {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
