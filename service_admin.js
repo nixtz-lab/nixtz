@@ -141,7 +141,7 @@ function renderRequestRow(request) {
 }
 
 // ------------------------------------
-// 3. ACTION HANDLERS
+// 3. ADMIN ACTION HANDLERS
 // ------------------------------------
 
 async function deleteRequest(id, department) {
@@ -175,6 +175,59 @@ async function deleteRequest(id, department) {
     }
 }
 window.deleteRequest = deleteRequest; // Expose globally for HTML onclick
+
+/**
+ * NEW: Handles the submission of the form to create a new staff user.
+ * Sends POST request to /api/laundry/admin/create-staff-v2 (Name, ID, Password, Role).
+ */
+async function handleCreateStaffFormSubmit(e) {
+    e.preventDefault();
+    
+    // 1. Get form data (Using Name and Employee ID)
+    const name = document.getElementById('staff-name').value.trim();
+    const employeeId = document.getElementById('staff-employee-id').value.trim();
+    const password = document.getElementById('staff-password').value.trim();
+    const role = document.getElementById('staff-role').value;
+
+    if (!name || !employeeId || !password || !role) {
+        window.showMessage("All fields (Name, ID, Password, Role) are required.", true);
+        return;
+    }
+    if (password.length < 8) {
+         window.showMessage("Password must be at least 8 characters long.", true);
+         return;
+    }
+
+    const payload = { name, employeeId, password, role }; 
+    const token = localStorage.getItem('nixtz_auth_token');
+
+    try {
+        // Calling the new backend route
+        const response = await fetch(`${window.API_BASE_URL}/api/laundry/admin/create-staff-v2`, { 
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(payload)
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+            window.showMessage(result.message, false);
+            e.target.reset(); // Clear form on success
+            // Optional: Refresh any list showing staff users
+        } else {
+            window.showMessage(result.message || 'Failed to create staff account.', true);
+        }
+
+    } catch (error) {
+        console.error('Staff Creation Error:', error);
+        window.showMessage('Network error during staff account creation.', true);
+    }
+}
+
 
 // ------------------------------------
 // 4. UTILITY (Custom Confirm Modal - Copied from laundry_staff.js)
@@ -236,4 +289,10 @@ function initServiceAdminPage() {
     // Load initial data
     fetchAnalytics();
     fetchAllRequests();
+    
+    // NEW: Attach listener to the staff creation form (ID: create-staff-form)
+    const createStaffForm = document.getElementById('create-staff-form');
+    if (createStaffForm) {
+        createStaffForm.addEventListener('submit', handleCreateStaffFormSubmit);
+    }
 }

@@ -31,7 +31,6 @@
 </head>
 <body class="bg-nixtz-bg font-sans min-h-screen flex flex-col text-white">
 
-    <!-- Header -->
     <header class="bg-nixtz-bg shadow-2xl sticky top-0 z-50 border-b border-gray-800">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
             <div class="flex items-center space-x-4">
@@ -63,52 +62,86 @@
     <main class="flex-grow p-4 md:p-8 max-w-7xl mx-auto w-full">
         <h1 class="text-3xl font-extrabold mb-8 text-center text-nixtz-secondary">Laundry Service Management Dashboard</h1>
 
-        <div class="space-y-8">
-            <!-- Analytics Dashboard -->
-            <div class="bg-nixtz-card rounded-xl shadow-2xl p-6 border border-gray-700">
-                <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-xl font-bold text-white">Service Analytics (All Time)</h2>
-                    <button onclick="fetchAnalytics()" class="flex items-center text-nixtz-primary hover:text-white transition font-semibold text-sm">
-                        <i data-lucide="refresh-cw" class="w-4 h-4 mr-2"></i> Refresh Data
-                    </button>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <div class="lg:col-span-2 space-y-8">
+                
+                <div class="bg-nixtz-card rounded-xl shadow-2xl p-6 border border-gray-700">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-xl font-bold text-white">Service Analytics (All Time)</h2>
+                        <button onclick="fetchAnalytics()" class="flex items-center text-nixtz-primary hover:text-white transition font-semibold text-sm">
+                            <i data-lucide="refresh-cw" class="w-4 h-4 mr-2"></i> Refresh Data
+                        </button>
+                    </div>
+                    <div id="analytics-dashboard" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+                        <div class="text-gray-400 text-sm p-4 col-span-full">Loading service data...</div>
+                    </div>
                 </div>
-                <div id="analytics-dashboard" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-                    <!-- Analytics cards go here -->
-                    <div class="text-gray-400 text-sm p-4 col-span-full">Loading service data...</div>
+
+                <div class="bg-nixtz-card rounded-xl shadow-2xl p-6 border border-gray-700">
+                    <div class="flex justify-between items-center mb-6 border-b border-gray-700 pb-4">
+                        <h2 class="text-xl font-bold text-white">Full Request History</h2>
+                        <button onclick="fetchAllRequests()" class="flex items-center text-nixtz-secondary hover:bg-[#0da070] hover:text-white transition font-semibold text-sm">
+                            <i data-lucide="list-ordered" class="w-4 h-4 mr-2"></i> Load All
+                        </button>
+                    </div>
+                    
+                    <div class="overflow-x-auto rounded-lg border border-gray-700">
+                        <table class="min-w-full divide-y divide-gray-700">
+                            <thead class="bg-gray-800">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Department</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Requester/Contact</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden sm:table-cell">Items Summary</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden md:table-cell">Date</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="all-requests-body" class="divide-y divide-gray-700 bg-gray-900">
+                                <tr><td colspan="6" class="px-4 py-4 text-sm text-gray-500 text-center">Load data above.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
-            <!-- All Requests Table -->
-            <div class="bg-nixtz-card rounded-xl shadow-2xl p-6 border border-gray-700">
-                <div class="flex justify-between items-center mb-6 border-b border-gray-700 pb-4">
-                    <h2 class="text-xl font-bold text-white">Full Request History</h2>
-                    <button onclick="fetchAllRequests()" class="flex items-center text-nixtz-secondary hover:text-white transition font-semibold text-sm">
-                        <i data-lucide="list-ordered" class="w-4 h-4 mr-2"></i> Load All
-                    </button>
-                </div>
-                
-                <div class="overflow-x-auto rounded-lg border border-gray-700">
-                    <table class="min-w-full divide-y divide-gray-700">
-                        <thead class="bg-gray-800">
-                            <tr>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Department</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Requester/Contact</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden sm:table-cell">Items Summary</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden md:table-cell">Date</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="all-requests-body" class="divide-y divide-gray-700 bg-gray-900">
-                            <tr><td colspan="6" class="px-4 py-4 text-sm text-gray-500 text-center">Load data above.</td></tr>
-                        </tbody>
-                    </table>
+            <div class="lg:col-span-1">
+                <div class="bg-nixtz-card rounded-xl shadow-2xl p-6 border border-gray-700 sticky top-24">
+                    <h2 class="text-xl font-bold text-nixtz-primary mb-4 flex items-center">
+                        <i data-lucide="user-plus" class="w-5 h-5 mr-2"></i> Create New Staff User
+                    </h2>
+                    
+                    <form id="create-staff-form" class="space-y-4">
+                        <div>
+                            <label for="staff-username" class="block text-sm font-medium text-gray-400">Username</label>
+                            <input type="text" id="staff-username" required class="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:border-nixtz-primary transition">
+                        </div>
+                        <div>
+                            <label for="staff-email" class="block text-sm font-medium text-gray-400">Email</label>
+                            <input type="email" id="staff-email" required class="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:border-nixtz-primary transition">
+                        </div>
+                        <div>
+                            <label for="staff-password" class="block text-sm font-medium text-gray-400">Temporary Password (Min 8 Chars)</label>
+                            <input type="password" id="staff-password" required minlength="8" class="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:border-nixtz-primary transition">
+                        </div>
+                        <div>
+                            <label for="staff-role" class="block text-sm font-medium text-gray-400">Role</label>
+                            <select id="staff-role" required class="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:border-nixtz-primary transition">
+                                <option value="standard">Standard Staff (Service Access Only)</option>
+                                <option value="admin">Service Admin (Full Dashboard Access)</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="w-full py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-nixtz-secondary hover:bg-[#0da070] transition duration-150">
+                            Create Staff Account
+                        </button>
+                    </form>
                 </div>
             </div>
+
         </div>
     </main>
     
-    <!-- Scripts -->
     <script src="script.js"></script>
     <script src="auth_script.js"></script> 
     <script src="service_admin.js"></script>

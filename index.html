@@ -73,6 +73,10 @@ tailwind.config = {
         text-align: center;
         white-space: nowrap;
     }
+    /* Custom style for the Hero logo to ensure high contrast and prominence */
+    .hero-logo {
+        filter: drop-shadow(0 0 1rem rgba(16, 185, 129, 0.5));
+    }
 </style>
 </head>
 <body class="bg-nixtz-bg font-sans antialiased">
@@ -87,16 +91,15 @@ tailwind.config = {
 
         <div class="flex items-center space-x-4">
             <a href="index.html">
-                <!-- MODIFIED: Replace Logo -->
+                <!-- HEADER LOGO: Simplified or placeholder image for compact space -->
                 <img
-                    src="images/nixtz_logo.png"
+                    src="Gemini_Generated_Image_vazqvpvazqvpvazq.jpg"
                     alt="Nixtz Business Software Logo"
-                    class="h-14 sm:h-16 w-auto rounded-xl"
+                    class="h-10 w-auto rounded-xl"
                     title="Nixtz Business Software"
+                    style="filter: grayscale(100%); opacity: 0.7;"
                 >
             </a>
-
-            <!-- MODIFIED: Removed Stock Search Form -->
             </div>
 
         <div class="flex items-center space-x-4 sm:space-x-6">
@@ -298,9 +301,18 @@ tailwind.config = {
             <div class="lg:grid lg:grid-cols-2 lg:gap-12 items-center">
 
                 <div class="text-center lg:text-left mb-10 lg:mb-0">
-                    <h1 class="text-3xl sm:text-6xl lg:text-6xl font-extrabold tracking-tight text-white mb-6">
-                        MASTER OPERATIONS WITH <br><span class="text-nixtz-primary">NIXTZ</span>
+                    
+                    <!-- NEW LOGO POSITION -->
+                    <img
+                        src="Gemini_Generated_Image_vazqvpvazqvpvazq.jpg"
+                        alt="NIXTZ Logo"
+                        class="mx-auto lg:mx-0 mb-4 sm:mb-6 w-auto max-w-xs sm:max-w-sm hero-logo"
+                    >
+                    
+                    <h1 class="text-3xl sm:text-4xl lg:text-4xl font-extrabold tracking-tight text-white mb-6">
+                        Everything Software for Business Operations
                     </h1>
+                    
                     <p class="mt-4 max-w-xl lg:max-w-none mx-auto lg:mx-0 text-lg sm:text-xl text-gray-400">
                         The all-in-one software solution to **manage staff, track assets, and plan departmental budgets** efficiently.
                     </p>

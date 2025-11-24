@@ -31,7 +31,7 @@
 </head>
 <body class="bg-nixtz-bg font-sans min-h-screen flex flex-col text-white">
 
-    <!-- Header -->
+    <!-- Header START -->
     <header class="bg-nixtz-bg shadow-2xl sticky top-0 z-50 border-b border-gray-800">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
             <div class="flex items-center space-x-4">
@@ -45,11 +45,48 @@
                     <span class="text-xl font-bold text-white ml-2">Laundry Staff Panel</span>
                 </a>
             </div>
-            <a href="laundry_request.html" class="bg-nixtz-primary hover:bg-[#3f3bbf] text-white font-semibold py-1.5 px-4 rounded-full shadow-lg transition duration-300 text-sm border border-gray-700">
-                User Request Form
-            </a>
+            <div class="flex items-center space-x-4">
+                <a href="laundry_request.html" class="bg-nixtz-primary hover:bg-[#3f3bbf] text-white font-semibold py-1.5 px-4 rounded-full shadow-lg transition duration-300 text-sm border border-gray-700">
+                    User Request Form
+                </a>
+                <a href="service_admin.html" class="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-1.5 px-4 rounded-full shadow-lg transition duration-300 text-sm border border-gray-700">
+                    Service Admin
+                </a>
+
+                <!-- AUTH UI ELEMENTS START (Managed by script(6).js) -->
+                <div id="auth-buttons-container" class="flex items-center space-x-4 sm:space-x-6">
+                    <a href="service_auth.html" class="bg-gray-800 hover:bg-gray-700 text-white font-bold py-1.5 px-4 rounded-full shadow-lg transition duration-300 transform hover:scale-105 border border-gray-700 text-sm">
+                        Login
+                    </a>
+                </div>
+                
+                <div id="user-menu-container" class="group relative flex items-center space-x-2 hidden"> 
+                    <button 
+                        id="nav-user-button"
+                        class="w-10 h-10 bg-nixtz-primary rounded-full flex items-center justify-center font-bold text-white hover:scale-105 transition duration-200"
+                        title="User Settings">
+                        <i data-lucide="user" class="w-6 h-6"></i>
+                    </button>
+                    <span id="username-display" class="font-semibold text-white hidden sm:inline">User</span>
+
+                    <div id="user-dropdown" class="absolute right-0 top-full mt-3 w-64 bg-gray-800 rounded-xl shadow-3xl-dark border border-gray-700/50 p-4 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 origin-top-right scale-95 group-hover:scale-100 z-50">
+                        <p class="text-sm font-medium text-white mb-3 border-b border-gray-700 pb-2">Account: <span id="user-initials" class="font-normal text-nixtz-secondary"></span></p>
+                        <button id="profile-button" class="w-full text-left text-sm text-gray-300 hover:text-white transition duration-200 font-medium py-2 px-3 rounded-lg hover:bg-gray-700 mb-3">
+                            <i data-lucide="settings" class="w-4 h-4 mr-2 inline"></i>
+                            Profile & Password
+                        </button>
+                        <button id="logout-button" class="w-full text-center text-sm text-red-400 hover:text-red-500 transition duration-200 font-medium py-2 px-3 rounded-lg hover:bg-gray-700">
+                            <i data-lucide="log-out" class="w-4 h-4 mr-2 inline"></i>
+                            Logout
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <!-- AUTH UI ELEMENTS END -->
+
         </div>
     </header>
+    <!-- Header END -->
 
     <div id="message-box" class="fixed top-4 right-4 bg-nixtz-secondary text-white p-4 rounded-lg shadow-2xl z-[9999] hidden opacity-0 transition-opacity duration-300">
         <p id="message-text" class="font-semibold"></p>
