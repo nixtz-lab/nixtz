@@ -4,10 +4,11 @@ const router = express.Router();
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
-// Retrieve models
+// --- NEW MODEL IMPORT METHOD (Breaks Circular Dependency) ---
 const User = mongoose.model('User');
 const MembershipConfig = mongoose.model('MembershipConfig');
 const TmtStockRating = mongoose.model('TmtStockRating');
+// --- END NEW MODEL IMPORT METHOD ---
 
 // ===================================================================
 // USER MANAGEMENT

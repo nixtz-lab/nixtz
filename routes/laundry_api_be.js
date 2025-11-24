@@ -1,9 +1,12 @@
 // routes/laundry_api_be.js - Router for Laundry Service Requests
 const express = require('express');
 const router = express.Router();
-// Import models from the main server file
-const { LaundryRequest, User } = require('../server.js'); 
-const mongoose = require('mongoose');
+const mongoose = require('mongoose'); // Ensure Mongoose is imported
+
+// --- NEW MODEL IMPORT METHOD (Breaks Circular Dependency) ---
+const LaundryRequest = mongoose.model('LaundryRequest'); 
+const User = mongoose.model('User'); 
+// --- END NEW MODEL IMPORT METHOD ---
 
 // Helper to check if the user is authorized for staff actions (e.g., admin or a specific staff role)
 // For this example, we will allow anyone with 'standard', 'admin', or 'superadmin' to view the staff page.

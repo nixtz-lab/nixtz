@@ -1,10 +1,15 @@
 // routes/laundry_admin_api_be.js - Router for Laundry Service Admin Management
 const express = require('express');
 const router = express.Router();
-// Import models from the main server file (Updated to include ServiceStaffAccess)
-const { LaundryRequest, User, ServiceStaffAccess } = require('../server.js'); 
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs'); 
+
+// --- NEW MODEL IMPORT METHOD (Breaks Circular Dependency) ---
+const LaundryRequest = mongoose.model('LaundryRequest'); 
+const User = mongoose.model('User'); 
+const ServiceStaffAccess = mongoose.model('ServiceStaffAccess'); 
+// --- END NEW MODEL IMPORT METHOD ---
+
 
 // GET /api/laundry/admin/analytics - Get aggregated counts of requests by status
 router.get('/analytics', async (req, res) => {
