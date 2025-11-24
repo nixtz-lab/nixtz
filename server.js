@@ -132,7 +132,6 @@ const ServiceStaffAccessSchema = new mongoose.Schema({
     department: { type: String, required: true, trim: true },
     serviceScope: { type: String, default: 'laundry' } 
 });
-ServiceStaffAccessSchema.index({ semployeeId: 1 }, { unique: true });
 const ServiceStaffAccess = mongoose.model('ServiceStaffAccess', ServiceStaffAccessSchema);
 // --- END NEW SCHEMA ---
 
