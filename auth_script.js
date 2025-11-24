@@ -80,6 +80,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     localStorage.setItem('tmt_user_role', result.role);
                     localStorage.setItem('tmt_user_membership', result.membership || 'none');
                     
+                    // NEW LINE: Store page access list under the tmt_ prefix
+                    if (result.pageAccess) {
+                        // The backend sends 'pageAccess' as an array; localStorage stores strings
+                        localStorage.setItem('tmt_page_access', result.pageAccess.join(',')); 
+                    }
+                    
                     // Redirect to Business Dashboard
                     setTimeout(() => {
                         window.location.href = 'business_dashboard.html'; 
