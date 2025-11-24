@@ -177,8 +177,7 @@ const transporter = nodemailer.createTransport({
     tls: { rejectUnauthorized: false }
 });
 
-// CRITICAL: Ensure all middleware functions, including superAdminAuthMiddleware, are imported.
-const { authMiddleware, adminAuthMiddleware, superAdminAuthMiddleware } = require('./middleware/auth'); 
+const { authMiddleware, adminAuthMiddleware } = require('./middleware/auth'); 
 
 // --- Router Imports ---
 const staffRosterRoutes = require('./routes/staff_roster_api.js'); 
@@ -275,9 +274,7 @@ app.post('/api/auth/reset-password', async (req, res) => res.json({success:false
 
 // 5. MOUNT ROUTES (Admin & Operations)
 
-// Admin Routes - Prefixed with /api/admin. All routes in admin_panel_be.js are protected 
-// by authMiddleware and adminAuthMiddleware. SuperAdmin-only routes must apply 
-// superAdminAuthMiddleware internally within the router.
+// Admin Routes - Prefixed with /api/admin
 app.use('/api/admin', authMiddleware, adminAuthMiddleware, adminPanelRoutes);
 
 // NEW: LAUNDRY SERVICE ADMIN ROUTES - Requires full admin access
@@ -323,4 +320,4 @@ app.listen(PORT, () => {
 });
 
 // Updated Export:
-module.exports = { app, User, StaffRoster, StaffProfile, LaundryRequest, ServiceStaffAccess };
+module.exports = { app, User, StaffRoster, StaffProfile, LaundryRequest, ServiceStaffAccess }; // Export ServiceStaffAccess

@@ -4,6 +4,10 @@ const router = express.Router();
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
+// --- CRITICAL FIX: Import Super Admin Middleware ---
+// This assumes 'middleware/auth.js' is in the parent directory (../)
+const { superAdminAuthMiddleware } = require('../middleware/auth'); 
+
 // --- NEW MODEL IMPORT METHOD (Breaks Circular Dependency) ---
 const User = mongoose.model('User');
 const MembershipConfig = mongoose.model('MembershipConfig');
@@ -75,8 +79,8 @@ router.put('/users/:id/update-membership', async (req, res) => {
 // ADMIN MANAGEMENT
 // ===================================================================
 
-// POST Create New Admin (Route: /api/admin/create)
-router.post('/create', async (req, res) => {
+// POST Create New Admin (Route: /api/admin/create) - NOW SUPERADMIN ONLY
+router.post('/create', superAdminAuthMiddleware, async (req, res) => {
     const { username, email, password } = req.body;
 
     if (!username || !email || !password || password.length < 8) {
