@@ -16,7 +16,7 @@ const PORT = process.env.PORT || 3000;
 // --- CONFIGURATION ---
 const JWT_SECRET = process.env.JWT_SECRET || 'your_default_jwt_secret_please_change_this_for_prod';
 const MONGODB_URI = process.env.MONGODB_URI;
-const DATABASE_NAME = 'Nixtz New VPS2 DB'; 
+const DATABASE_NAME = 'nixtz_operations_db'; 
 
 if (!MONGODB_URI) {
     console.error("FATAL ERROR: MONGODB_URI is not defined.");
