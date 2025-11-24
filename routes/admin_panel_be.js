@@ -96,19 +96,20 @@ router.post('/create', async (req, res) => {
             username,
             email: email.toLowerCase(),
             passwordHash,
-            role: 'superadmin', // <--- TEMPORARILY SET TO SUPERADMIN FOR FIRST USER
+            role: 'admin',
             membership: 'vip',
             pageAccess: ['all']
         });
 
         await newAdmin.save();
-        res.status(201).json({ success: true, message: `Superadmin user ${username} created successfully.` });
+        res.status(201).json({ success: true, message: `Admin user ${username} created successfully.` });
 
     } catch (err) {
         console.error('Create Admin Error:', err);
         res.status(500).json({ success: false, message: 'Server error creating admin.' });
     }
 });
+
 // ===================================================================
 // MEMBERSHIP CONFIGURATION
 // ===================================================================
