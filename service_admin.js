@@ -185,11 +185,12 @@ async function handleCreateStaffFormSubmit(e) {
     
     // 1. Get form data (Using Name and Employee ID)
     const name = document.getElementById('staff-name').value.trim();
-    const employeeId = document.getElementById('staff-employee-id').value.trim();
+    const semployeeId = document.getElementById('staff-employee-id').value.trim();
     const password = document.getElementById('staff-password').value.trim();
+    const department = document.getElementById('staff-department').value;
     const role = document.getElementById('staff-role').value;
 
-    if (!name || !employeeId || !password || !role) {
+    if (!name || !semployeeId || !password || !department || !role) {
         window.showMessage("All fields (Name, ID, Password, Role) are required.", true);
         return;
     }
@@ -198,7 +199,7 @@ async function handleCreateStaffFormSubmit(e) {
          return;
     }
 
-    const payload = { name, employeeId, password, role }; 
+    const payload = { name, semployeeId, password, department, role }; 
     const token = localStorage.getItem('nixtz_auth_token');
 
     try {

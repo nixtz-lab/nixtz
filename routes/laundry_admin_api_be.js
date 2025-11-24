@@ -62,24 +62,24 @@ router.get('/all-requests', async (req, res) => {
  * ServiceStaffAccess document, decoupling it from StaffRoster.
  */
 router.post('/create-staff-v2', async (req, res) => {
-    const { name, employeeId, password, role } = req.body;
+    const { name, semployeeId, password, department, role } = req.body;
     
     // Validate required fields and role
-    if (!name || !employeeId || !password || !['standard', 'admin'].includes(role)) {
+    if (!name || !semployeeId || !password || !department || !['standard', 'admin'].includes(role)) {
         return res.status(400).json({ success: false, message: 'Invalid or missing user data (Name, ID, Password, Role).' });
     }
     
     try {
         // 1. Prepare unique identifiers for the core User account
-        const username = employeeId; // Using Employee ID as unique username for login
-        const email = `${employeeId.toLowerCase()}@nixtz.service.temp`; // Placeholder email
+        const username = semployeeId; // Using Employee ID as unique username for login
+        const email = `${semployeeId.toLowerCase()}@nixtz.service.temp`; // Placeholder email
         
         // Check for existing User (by ID/username or placeholder email)
         let userExists = await User.findOne({ $or: [{ email: email }, { username }] });
         if (userExists) return res.status(400).json({ success: false, message: 'Employee ID is already registered as a core user.' });
         
         // Check for existing ServiceStaffAccess (by Employee ID)
-        let serviceStaffExists = await ServiceStaffAccess.findOne({ employeeId });
+        let serviceStaffExists = await ServiceStaffAccess.findOne({ semployeeId });
         if (serviceStaffExists) return res.status(400).json({ success: false, message: 'Employee ID already exists in service staff records.' });
 
         // 2. Hash Password
@@ -101,12 +101,13 @@ router.post('/create-staff-v2', async (req, res) => {
         const newStaffAccess = new ServiceStaffAccess({
              user: newUser._id,
              name: name, 
-             employeeId: employeeId,
+             semployeeId: semployeeId,
+             department: department,
              serviceScope: 'laundry'
         });
         await newStaffAccess.save();
         
-        res.status(201).json({ success: true, message: `Staff account created for ${name} (${employeeId}).` });
+        res.status(201).json({ success: true, message: `Staff account created for ${name} (${semployeeId}).` });
     } catch (err) {
         console.error('Create Staff Account Error:', err);
         res.status(500).json({ success: false, message: 'Server error during staff creation.' });

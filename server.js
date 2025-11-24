@@ -127,11 +127,12 @@ const StaffRoster = mongoose.model('StaffRoster', RosterEntrySchema);
 const ServiceStaffAccessSchema = new mongoose.Schema({
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, unique: true }, // Link to the main User account
     name: { type: String, required: true, trim: true },
-    employeeId: { type: String, unique: true, required: true, trim: true },
+    semployeeId: { type: String, unique: true, required: true, trim: true },
     // Service scope defaults to 'laundry'
+    department: { type: String, required: true, trim: true },
     serviceScope: { type: String, default: 'laundry' } 
 });
-ServiceStaffAccessSchema.index({ employeeId: 1 }, { unique: true });
+ServiceStaffAccessSchema.index({ semployeeId: 1 }, { unique: true });
 const ServiceStaffAccess = mongoose.model('ServiceStaffAccess', ServiceStaffAccessSchema);
 // --- END NEW SCHEMA ---
 
