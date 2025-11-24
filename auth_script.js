@@ -77,7 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Save session data (Keep tmt_ prefix for compatibility with your existing server logic)
                     localStorage.setItem('nixtz_auth_token', result.token); 
                     localStorage.setItem('nixtz_username', result.username); 
-                    localStorage.setItem('nixtz_user_role', result.role);
+                    localStorage.setItem('tmt_user_role', result.role);
                     localStorage.setItem('nixtz_user_membership', result.membership || 'none');
                     
                     // Redirect to Business Dashboard
