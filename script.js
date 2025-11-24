@@ -265,11 +265,11 @@ function updateAuthUI() {
 
 
 function handleLogout() {
-    localStorage.removeItem('nixtz_auth_token'); // UPDATED KEY
+    localStorage.removeItem('tmt_auth_token'); // UPDATED KEY
     localStorage.removeItem('tmt_username'); 
     localStorage.removeItem('tmt_user_role'); // NEW
     localStorage.removeItem('tmt_user_membership'); // NEW
-    localStorage.removeItem('nixtz_page_access'); // UPDATED KEY
+    localStorage.removeItem('tmt_page_access'); // UPDATED KEY
     localStorage.removeItem('tmt_email'); // ADDED: Clear email on logout
 
     // Reset global state
