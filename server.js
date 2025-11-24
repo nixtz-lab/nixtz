@@ -123,6 +123,18 @@ const RosterEntrySchema = new mongoose.Schema({
 RosterEntrySchema.index({ user: 1, weekStartDate: 1 }, { unique: true }); 
 const StaffRoster = mongoose.model('StaffRoster', RosterEntrySchema);
 
+// --- LAUNDRY/SERVICE STAFF ACCESS SCHEMA (NEW) ---
+const ServiceStaffAccessSchema = new mongoose.Schema({
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, unique: true }, // Link to the main User account
+    name: { type: String, required: true, trim: true },
+    employeeId: { type: String, unique: true, required: true, trim: true },
+    // Service scope defaults to 'laundry'
+    serviceScope: { type: String, default: 'laundry' } 
+});
+ServiceStaffAccessSchema.index({ employeeId: 1 }, { unique: true });
+const ServiceStaffAccess = mongoose.model('ServiceStaffAccess', ServiceStaffAccessSchema);
+// --- END NEW SCHEMA ---
+
 // --- LAUNDRY SERVICE SCHEMA (Only Schema Definition Here) ---
 const LaundryRequestSchema = new mongoose.Schema({
     // Request details
@@ -305,4 +317,5 @@ app.listen(PORT, () => {
     console.log(`Local access: http://localhost:${PORT}`);
 });
 
-module.exports = { app, User, StaffRoster, StaffProfile, LaundryRequest }; // Export LaundryRequest
+// Updated Export:
+module.exports = { app, User, StaffRoster, StaffProfile, LaundryRequest, ServiceStaffAccess }; // Export ServiceStaffAccess
