@@ -187,13 +187,28 @@
                                     <select id="tmt-rating-select" class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-nixtz-primary">
                                         <option value="0">0 - N/A</option>
                                         <option value="5">5 - Strong Buy</option>
+                                        <option value="4">4 - Buy</option>
+                                        <option value="3">3 - Hold</option>
+                                        <option value="2">2 - Sell</option>
+                                        <option value="1">1 - Strong Sell</option>
                                     </select>
+                                </div>
+                                 <div>
+                                    <label class="block text-sm font-medium text-gray-400">TMT Rank (Optional, e.g., A+)</label>
+                                    <input type="text" id="tmt-rank-input" class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white uppercase focus:border-nixtz-primary">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-400">Target Price ($) (Optional)</label>
+                                    <input type="number" step="0.01" id="tmt-target-price-input" class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-nixtz-primary">
                                 </div>
                                 <button type="submit" class="w-full py-2 px-4 bg-nixtz-primary hover:bg-[#3f3bbf] text-white font-bold rounded-lg shadow-lg transition">Save Rating</button>
                             </form>
                         </div>
                         <div>
-                            <div id="tmt-ratings-list" class="max-h-[400px] overflow-y-auto pr-2 space-y-2"></div>
+                            <h3 class="text-lg font-bold text-nixtz-primary mb-3">Current TMT Ratings</h3>
+                            <div id="tmt-ratings-list" class="max-h-[400px] overflow-y-auto pr-2 space-y-2">
+                                <p class="text-gray-500">Loading stock ratings...</p>
+                            </div>
                         </div>
                     </div>
                 </div>

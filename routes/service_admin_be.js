@@ -6,7 +6,7 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs'); 
 
 // Get models from globally registered Mongoose models
-const User = mongoose.model('User');
+const sUser = mongoose.model('sUser');
 const ServiceStaffAccess = mongoose.model('ServiceStaffAccess');
 
 /**
@@ -16,20 +16,20 @@ const ServiceStaffAccess = mongoose.model('ServiceStaffAccess');
  */
 router.post('/create-staff-v2', async (req, res) => {
     // Note: The frontend sends the unique ID as 'semployeeId'
-    const { name, semployeeId, password, department, role } = req.body; 
+    const { sname, semployeeId, spassword, sdepartment, srole } = req.body; 
     
     // 1. Validate required fields and role
-    if (!name || !semployeeId || !password || !department || !['standard', 'admin'].includes(role)) {
+    if (!sname || !semployeeId || !spassword || !sdepartment || !['sstandard', 'sadmin'].includes(srole)) {
         return res.status(400).json({ success: false, message: 'Invalid or missing user data (Name, ID, Password, Department, Role). Role must be standard or admin.' });
     }
     
     try {
         // 2. Prepare unique identifiers for the core User account
-        const username = semployeeId; // Using unique Employee ID as username for login
-        const email = `${semployeeId.toLowerCase()}@nixtz.service.temp`; // Placeholder email
+        const susername = semployeeId; // Using unique Employee ID as username for login
+        const semail = `${semployeeId.toLowerCase()}@nixtz.service.temp`; // Placeholder email
         
         // Check for conflicts in the core User collection (using username or placeholder email)
-        let userExists = await User.findOne({ $or: [{ email: email }, { username }] });
+        let userExists = await sUser.findOne({ $or: [{ semail: semail }, { susername }] });
         if (userExists) return res.status(400).json({ success: false, message: 'Employee ID is already registered as a core user.' });
         
         // Check for conflicts in the ServiceStaffAccess collection
@@ -38,30 +38,30 @@ router.post('/create-staff-v2', async (req, res) => {
 
         // 3. Hash Password
         const salt = await bcrypt.genSalt(10);
-        const passwordHash = await bcrypt.hash(password, salt);
+        const spasswordHash = await bcrypt.hash(spassword, salt);
 
         // 4. Create the core User account
-        const newUser = new User({
-            username,
-            email: email.toLowerCase(),
-            passwordHash,
-            role, 
-            membership: 'none',
-            pageAccess: ['laundry_request', 'laundry_staff'] // Grant access to service pages
+        const newsUser = new sUser({
+            susername,
+            semail: email.toLowerCase(),
+            spasswordHash,
+            srole, 
+            smembership: 'none',
+            spageAccess: ['laundry_request', 'laundry_staff'] // Grant access to service pages
         });
-        await newUser.save();
+        await newsUser.save();
         
         // 5. Create the linked ServiceStaffAccess document
         const newStaffAccess = new ServiceStaffAccess({
-             user: newUser._id,
-             name: name, 
+             suser: newsUser._id,
+             sname: sname, 
              semployeeId: semployeeId, 
-             department: department, 
+             sdepartment: sdepartment, 
              serviceScope: 'laundry'
         });
         await newStaffAccess.save();
         
-        res.status(201).json({ success: true, message: `Staff account created for ${name} (${semployeeId}).` });
+        res.status(201).json({ success: true, message: `Staff account created for ${sname} (${semployeeId}).` });
     } catch (err) {
         console.error('Service Admin Create Staff Error:', err);
         if (err.code === 11000) { 
@@ -76,7 +76,7 @@ router.post('/create-staff-v2', async (req, res) => {
 router.get('/staff-list', async (req, res) => {
     try {
         const staffList = await ServiceStaffAccess.find({})
-            .populate('user', 'role') // Pulls in the user's core role
+            .populate('suser', 'srole') // Pulls in the user's core role
             .select('name semployeeId department serviceScope');
             
         res.json({ success: true, data: staffList });

@@ -1,4 +1,4 @@
-// server.js - NIXTZ BUSINESS OPERATIONS PLATFORM BACKEND
+// server.js - NIXTZ BUSINESS OPERATIONS PLATFORM BACKEND (UNIFIED ADMIN ROUTES)
 require('dotenv').config();
 
 const express = require('express');
@@ -183,10 +183,10 @@ const { authMiddleware, adminAuthMiddleware, superAdminAuthMiddleware } = requir
 // --- Router Imports ---
 const staffRosterRoutes = require('./routes/staff_roster_api.js'); 
 const staffProfileRoutes = require('./routes/staff_profile_api_be.js'); 
-const adminPanelRoutes = require('./routes/admin_panel_be.js'); // Admin Router
-const laundryRoutes = require('./routes/laundry_api_be.js'); // Standard Laundry API
-const laundryAdminRoutes = require('./routes/laundry_admin_api_be.js'); // Laundry Admin API
-const serviceAdminRoutes = require('./routes/service_admin_be.js'); // Service Admin Router
+// REMOVED: const adminPanelRoutes = require('./routes/admin_panel_be.js'); // DELETE THIS LINE
+const laundryRoutes = require('./routes/laundry_api_be.js'); 
+const laundryAdminRoutes = require('./routes/laundry_admin_api_be.js'); 
+const serviceAdminRoutes = require('./routes/service_admin_be.js'); 
 
 app.use(cors()); 
 app.use(express.json());
@@ -273,12 +273,182 @@ app.post('/api/auth/forgot-password', async (req, res) => res.json({success:fals
 app.post('/api/auth/reset-password', async (req, res) => res.json({success:false, message:"Implemented in original"}));
 
 
-// 5. MOUNT ROUTES (Admin & Operations)
+// ===================================================================
+// 5. CONSOLIDATED ADMIN PANEL ROUTES (/api/admin)
+// (Moved from routes/admin_panel_be.js)
+// ===================================================================
+// Middleware chain for all Admin routes: authMiddleware -> adminAuthMiddleware
 
-// Admin Routes - Prefixed with /api/admin. All routes in admin_panel_be.js are protected 
-// by authMiddleware and adminAuthMiddleware. SuperAdmin-only routes must apply 
-// superAdminAuthMiddleware internally within the router.
-app.use('/api/admin', authMiddleware, adminAuthMiddleware, adminPanelRoutes);
+// GET Pending Users
+app.get('/api/admin/users/pending', authMiddleware, adminAuthMiddleware, async (req, res) => {
+    try {
+        const pendingUsers = await User.find({ $or: [{ role: 'pending' }, { role: { $exists: false } }] })
+            .select('username email createdAt')
+            .sort({ createdAt: 1 });
+        res.json({ success: true, data: pendingUsers });
+    } catch (err) {
+        console.error('Pending Users Error:', err);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// PUT Approve User
+app.put('/api/admin/users/:id/approve', authMiddleware, adminAuthMiddleware, async (req, res) => {
+    try {
+        const user = await User.findByIdAndUpdate(
+            req.params.id, 
+            { role: 'standard', membership: 'none', pageAccess: [] }, 
+            { new: true }
+        );
+        res.json({ success: true, message: 'User approved.', data: user });
+    } catch (err) {
+        console.error('Approve User Error:', err);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// GET Active Users
+app.get('/api/admin/users', authMiddleware, adminAuthMiddleware, async (req, res) => {
+    try {
+        const users = await User.find({ role: { $in: ['standard', 'admin', 'superadmin'] } })
+            .select('username email role membership pageAccess');
+        res.json({ success: true, data: users });
+    } catch (err) {
+        console.error('Get Users Error:', err);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// PUT Update Membership
+app.put('/api/admin/users/:id/update-membership', authMiddleware, adminAuthMiddleware, async (req, res) => {
+    const { membership } = req.body;
+    try {
+        let pageAccess = [];
+        if (membership !== 'none') {
+            const config = await MembershipConfig.findOne({ level: membership });
+            if (config) pageAccess = config.pages;
+        }
+        const user = await User.findByIdAndUpdate(req.params.id, { membership, pageAccess }, { new: true });
+        res.json({ success: true, message: 'Membership updated.', data: user });
+    } catch (err) {
+        console.error('Update Membership Error:', err);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// POST Create New Admin (Superadmin Only)
+app.post('/api/admin/create', authMiddleware, superAdminAuthMiddleware, async (req, res) => {
+    const { username, email, password } = req.body;
+
+    if (!username || !email || !password || password.length < 8) {
+        return res.status(400).json({ success: false, message: 'Please provide username, email, and a password (min 8 chars).' });
+    }
+
+    try {
+        let userExists = await User.findOne({ $or: [{ email: email.toLowerCase() }, { username }] });
+        if (userExists) {
+            return res.status(400).json({ success: false, message: 'User with this email or username already exists.' });
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        const passwordHash = await bcrypt.hash(password, salt);
+
+        const newAdmin = new User({
+            username,
+            email: email.toLowerCase(),
+            passwordHash,
+            role: 'admin',
+            membership: 'vip',
+            pageAccess: ['all']
+        });
+
+        await newAdmin.save();
+        res.status(201).json({ success: true, message: `Admin user ${username} created successfully.` });
+
+    } catch (err) {
+        console.error('Create Admin Error:', err);
+        res.status(500).json({ success: false, message: 'Server error creating admin.' });
+    }
+});
+
+// GET Membership Config
+app.get('/api/admin/membership-config', authMiddleware, adminAuthMiddleware, async (req, res) => {
+    try {
+        const levels = ['standard', 'platinum', 'vip'];
+        const defaults = { 
+            standard: { pages: ['staff_roster', 'budget_tracker'], price: 10 }, 
+            platinum: { pages: ['staff_roster', 'asset_tracker'], price: 30 }, 
+            vip: { pages: ['all'], price: 50 } 
+        };
+        
+        const configs = await Promise.all(levels.map(async level => {
+            let config = await MembershipConfig.findOne({ level });
+            if (!config) {
+                config = new MembershipConfig({ level, pages: defaults[level].pages, monthlyPrice: defaults[level].price });
+                await config.save();
+            }
+            return config;
+        }));
+        res.json({ success: true, data: configs });
+    } catch (err) {
+        console.error('Membership Config Error:', err);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// PUT Update Membership Config
+app.put('/api/admin/membership-config/:level', authMiddleware, adminAuthMiddleware, async (req, res) => {
+    const { pages, monthlyPrice } = req.body;
+    try {
+        const config = await MembershipConfig.findOneAndUpdate({ level: req.params.level }, { pages, monthlyPrice }, { new: true, upsert: true });
+        await User.updateMany({ membership: req.params.level }, { $set: { pageAccess: pages } });
+        res.json({ success: true, message: 'Config updated.', data: config });
+    } catch (err) {
+        console.error('Update Config Error:', err);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// GET Stock Ratings
+app.get('/api/admin/stock-ratings', authMiddleware, adminAuthMiddleware, async (req, res) => {
+    try {
+        const ratings = await TmtStockRating.find().sort({ ticker: 1 });
+        res.json({ success: true, data: ratings });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// POST/PUT Stock Rating
+app.post('/api/admin/stock-rating', authMiddleware, adminAuthMiddleware, async (req, res) => {
+    const { ticker, rating, rank, targetPrice } = req.body;
+    try {
+        const updated = await TmtStockRating.findOneAndUpdate(
+            { ticker: ticker.toUpperCase() }, 
+            { ticker: ticker.toUpperCase(), rating, rank, targetPrice }, 
+            { new: true, upsert: true }
+        );
+        res.json({ success: true, message: 'Rating saved.', data: updated });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// DELETE Stock Rating
+app.delete('/api/admin/stock-rating/:ticker', authMiddleware, adminAuthMiddleware, async (req, res) => {
+    try {
+        await TmtStockRating.deleteOne({ ticker: req.params.ticker.toUpperCase() });
+        res.json({ success: true, message: 'Rating deleted.' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+// ===================================================================
+// END CONSOLIDATED ADMIN PANEL ROUTES
+// ===================================================================
+
+
+// 6. MOUNT OTHER ROUTERS
 
 // NEW: LAUNDRY SERVICE ADMIN ROUTES - Requires full admin access
 app.use('/api/laundry/admin', authMiddleware, adminAuthMiddleware, laundryAdminRoutes);
@@ -291,7 +461,7 @@ app.use('/api/service/admin', authMiddleware, adminAuthMiddleware, serviceAdminR
 app.use('/api/laundry', authMiddleware, laundryRoutes);
 
 
-// 6. STOCK WATCHLIST
+// 7. STOCK WATCHLIST
 app.post('/api/user/watchlist/add', authMiddleware, async (req, res) => {
     const { ticker } = req.body;
     if (!ticker) return res.status(400).json({ success: false, message: 'Ticker required.' });
@@ -316,7 +486,7 @@ app.get('/api/user/watchlist', authMiddleware, async (req, res) => {
     }
 });
 
-// 7. START SERVER
+// 8. START SERVER
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
     console.log(`Local access: http://localhost:${PORT}`);
