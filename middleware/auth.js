@@ -1,14 +1,15 @@
-// middleware/auth.js (FINAL FIX)
+// middleware/auth.js
 
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
+// NOTE: Model access must be delayed until inside authMiddleware to prevent crash.
 
 // --- CRITICAL CONFIGURATION ---
 const JWT_SECRET = process.env.JWT_SECRET || 'your_default_jwt_secret_please_change_this_for_prod';
 
-// --- Auth Middleware ---
+// --- Auth Middleware (TMT Structure with DB Lookup) ---
 const authMiddleware = async (req, res, next) => {
-    // 🚨 FIX: Model access moved here to prevent server crash on module load
+    // 🚨 FIX: Model access delayed until here
     const User = mongoose.model('User'); 
     
     // 1. Extract token safely
@@ -26,7 +27,8 @@ const authMiddleware = async (req, res, next) => {
             throw new Error('Invalid token structure');
         }
         
-        // 3. Look up user in the database (TMT logic)
+        // 3. Look up user in the database (Ensures user still exists and token fields are current)
+        // Selects the fields used by Admin and other core checks
         const user = await User.findById(decoded.user.id).select('username role membership pageAccess');
 
         if (!user) {

@@ -1,4 +1,4 @@
-// server.js - NIXTZ BUSINESS OPERATIONS PLATFORM BACKEND (UNIFIED ADMIN ROUTES)
+// server.js - NIXTZ BUSINESS OPERATIONS PLATFORM BACKEND (CORE SYSTEM ONLY)
 require('dotenv').config();
 
 const express = require('express');
@@ -28,11 +28,11 @@ mongoose.connect(MONGODB_URI, { dbName: DATABASE_NAME })
     .catch(err => console.error('MongoDB Connection Error:', err.message));
 
 // ===================================================================
-// 2. SCHEMAS (CORE & SERVICE SEPARATION)
+// 2. SCHEMAS (CORE MODULES ONLY)
 // ===================================================================
 
-// 🚨 CORE MODEL: USER (Used by Dashboard, Admin Panel, Roster, Index)
-const CoreUserSchema = new mongoose.Schema({
+// Core User & Config
+const UserSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true, trim: true },
     email: { type: String, required: true, unique: true, trim: true, lowercase: true },
     passwordHash: { type: String, required: true },
@@ -40,28 +40,10 @@ const CoreUserSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now },
     role: { type: String, default: 'pending', enum: ['pending', 'standard', 'admin', 'superadmin'] },
     membership: { type: String, default: 'none', enum: ['none', 'standard', 'platinum', 'vip'] },
-    pageAccess: { type: [String], default: [] },
-    watchlist: { type: [String], default: [] },
-    resetPasswordToken: String,
-    resetPasswordExpires: Date
+    pageAccess: { type: [String], default: [] }, 
 });
-const User = mongoose.model('User', CoreUserSchema); // Registered as 'User'
+const User = mongoose.model('User', UserSchema);
 
-// 🚨 SERVICE MODEL: SUSER (Used by Service Admin pages only)
-const ServiceUserSchema = new mongoose.Schema({
-    susername: { type: String, required: true, unique: true, trim: true },
-    semail: { type: String, required: true, unique: true, trim: true, lowercase: true },
-    spasswordHash: { type: String, required: true },
-    createdAt: { type: Date, default: Date.now },
-    srole: { type: String, default: 'pending', enum: ['pending', 'standard', 'admin', 'superadmin'] },
-    smembership: { type: String, default: 'none', enum: ['none', 'standard', 'platinum', 'vip'] },
-    spageAccess: { type: [String], default: [] },
-    resetPasswordToken: String,
-    resetPasswordExpires: Date
-});
-const SUser = mongoose.model('SUser', ServiceUserSchema); // Registered as 'SUser'
-
-// User & Config
 const MembershipConfigSchema = new mongoose.Schema({
     level: { type: String, required: true, unique: true, enum: ['standard', 'platinum', 'vip'] },
     pages: { type: [String], default: [] },
@@ -69,7 +51,7 @@ const MembershipConfigSchema = new mongoose.Schema({
 });
 const MembershipConfig = mongoose.model('MembershipConfig', MembershipConfigSchema);
 
-// Finance & Stocks
+// Budget Transaction Schema
 const BudgetTransactionSchema = new mongoose.Schema({
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     description: { type: String, required: true, trim: true },
@@ -79,34 +61,17 @@ const BudgetTransactionSchema = new mongoose.Schema({
 });
 const BudgetTransaction = mongoose.model('BudgetTransaction', BudgetTransactionSchema);
 
-const TmtStockRatingSchema = new mongoose.Schema({
-    ticker: { type: String, required: true, unique: true, uppercase: true, trim: true },
-    rating: { type: Number, required: true, min: 0, max: 5 },
-    rank: { type: String, trim: true, default: '' },
-    targetPrice: { type: Number, default: null }
-});
-const TmtStockRating = mongoose.model('TmtStockRating', TmtStockRatingSchema);
-
-const UserStockRatingSchema = new mongoose.Schema({
+const BudgetProjectionSchema = new mongoose.Schema({
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    ticker: { type: String, required: true, uppercase: true, trim: true },
-    rating: { type: Number, required: true, min: 0, max: 5 }
+    monthYear: { type: String, required: true, trim: true },
+    projectedIncome: { type: Number, required: true, default: 0 },
+    projectedExpenses: { type: Map, of: Number, default: {} }
 });
-const UserStockRating = mongoose.model('UserStockRating', UserStockRatingSchema);
+BudgetProjectionSchema.index({ user: 1, monthYear: 1 }, { unique: true });
+const BudgetProjection = mongoose.model('BudgetProjection', BudgetProjectionSchema);
 
-const PortfolioHoldingSchema = new mongoose.Schema({
-    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    broker: { type: String, required: true, trim: true },
-    ticker: { type: String, required: true, uppercase: true, trim: true },
-    shares: { type: Number, required: true, min: 0 },
-    buy_price: { type: Number, required: true, min: 0 },
-    buy_date: { type: Date, required: true },
-    asset_class: { type: String, default: 'Equity' },
-    annual_dividend: { type: Number, default: 0 } 
-});
-const PortfolioHolding = mongoose.model('PortfolioHolding', PortfolioHoldingSchema);
 
-// Staff & Roster (These still link to the Core 'User' model)
+// Staff & Roster Schemas
 const StaffProfileSchema = new mongoose.Schema({
     name: { type: String, required: true, unique: true, trim: true },
     employeeId: { type: String, unique: true, required: true, trim: true },
@@ -115,6 +80,8 @@ const StaffProfileSchema = new mongoose.Schema({
     fixedDayOff: { type: String, enum: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun', 'None'], default: 'None' },
     isNightRotator: { type: Boolean, default: false },
     currentRotationDay: { type: Number, default: 0 }, 
+    // This field is required by the generator/profile router
+    nextWeekHolidayRequest: { type: String, default: 'None' }, 
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
 });
 StaffProfileSchema.index({ user: 1, employeeId: 1 }, { unique: true });
@@ -138,50 +105,13 @@ const RosterEntrySchema = new mongoose.Schema({
     }],
 });
 RosterEntrySchema.index({ user: 1, weekStartDate: 1 }, { unique: true }); 
-const StaffRoster = mongoose.model('StaffRoster', RosterEntrySchema);
-
-// --- SERVICE STAFF ACCESS SCHEMA (Links to the NEW 'SUser' model) ---
-const ServiceStaffAccessSchema = new mongoose.Schema({
-    // Links to the NEW Service User Model ('SUser')
-    suser: { type: mongoose.Schema.Types.ObjectId, ref: 'SUser', required: true, unique: true }, 
-    sname: { type: String, required: true, trim: true },
-    semployeeId: { type: String, unique: true, required: true, trim: true },
-    sdepartment: { type: String, required: true, trim: true },
-    serviceScope: { type: String, default: 'laundry' } 
-});
-const ServiceStaffAccess = mongoose.model('ServiceStaffAccess', ServiceStaffAccessSchema);
-// --- END NEW SCHEMA ---
-
-// --- LAUNDRY SERVICE SCHEMA (Links to the Core 'User' Model, assuming requester is core user) ---
-const LaundryRequestSchema = new mongoose.Schema({
-    requesterId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    requesterUsername: { type: String, required: true },
-    department: { type: String, required: true, trim: true },
-    contactExt: { type: String, trim: true }, 
-    notes: { type: String, trim: true, default: '' },
-    items: [{
-        type: { type: String, required: true, enum: ['Uniform', 'Towels', 'Linens', 'Staff Clothing', 'Other'] },
-        count: { type: Number, required: true, min: 1 },
-        details: { type: String, default: '' }
-    }],
-    status: { 
-        type: String, 
-        default: 'Pending Pickup', 
-        enum: ['Pending Pickup', 'Picked Up', 'In Progress', 'Ready for Delivery', 'Completed', 'Cancelled'] 
-    },
-    requestedAt: { type: Date, default: Date.now },
-    pickedUpAt: { type: Date },
-    completedAt: { type: Date },
-    staffAssigned: { type: mongoose.Schema.Types.ObjectId, ref: 'SUser' }, // Assign to Service User
-});
-const LaundryRequest = mongoose.model('LaundryRequest', LaundryRequestSchema);
-
+const StaffRoster = mongoose.model('StaffRoster', RosterEntrySchema); 
 
 // 3. MIDDLEWARE & CONFIG
 const transporter = nodemailer.createTransport({
-    host: 'smtpout.secureserver.net',
+    host: 'smtpout.secureserver.net', 
     port: 465,
-    secure: true,
+    secure: true, 
     auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASSWORD 
@@ -189,26 +119,24 @@ const transporter = nodemailer.createTransport({
     tls: { rejectUnauthorized: false }
 });
 
-// CRITICAL: Ensure all middleware functions, including superAdminAuthMiddleware, are imported.
+// Import the shared middleware
 const { authMiddleware, adminAuthMiddleware, superAdminAuthMiddleware } = require('./middleware/auth'); 
 
-// --- Router Imports ---
+// --- Router Imports (Only Core Routers) ---
+const budgetPlannerRoutes = require('./routes/budget_planner_be.js');
 const staffRosterRoutes = require('./routes/staff_roster_api.js'); 
 const staffProfileRoutes = require('./routes/staff_profile_api_be.js'); 
-// REMOVED: const adminPanelRoutes = require('./routes/admin_panel_be.js'); // DELETE THIS LINE
-const laundryRoutes = require('./routes/laundry_api_be.js'); 
-const laundryAdminRoutes = require('./routes/laundry_admin_api_be.js'); 
-const serviceAdminRoutes = require('./routes/service_admin_be.js'); 
+// All TMT/Stock/Service Routers REMOVED
 
 app.use(cors()); 
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
 
 // ===================================================================
-// 4. AUTHENTICATION ROUTES (MUST USE CORE USER MODEL)
+// 4. AUTHENTICATION & CORE USER ROUTES
 // ===================================================================
 
-// Register (Uses Core User Model)
+// Register
 app.post('/api/auth/register', async (req, res) => {
     const { username, email, password } = req.body;
     if (!username || !email || !password || password.length < 8) {
@@ -222,8 +150,12 @@ app.post('/api/auth/register', async (req, res) => {
         const passwordHash = await bcrypt.hash(password, salt);
 
         const newUser = new User({
-            username, email: email.toLowerCase(), passwordHash,
-            role: 'pending', membership: 'none', pageAccess: []
+            username,
+            email: email.toLowerCase(),
+            passwordHash,
+            role: 'pending',
+            membership: 'none',
+            pageAccess: []
         });
         await newUser.save();
         res.status(201).json({ success: true, message: 'Account created! Awaiting admin approval.' });
@@ -233,7 +165,7 @@ app.post('/api/auth/register', async (req, res) => {
     }
 });
 
-// Login (Uses Core User Model)
+// Login
 app.post('/api/auth/login', async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ success: false, message: 'Enter email and password.' });
@@ -247,7 +179,6 @@ app.post('/api/auth/login', async (req, res) => {
         const isMatch = await bcrypt.compare(password, user.passwordHash);
         if (!isMatch) return res.status(400).json({ success: false, message: 'Invalid credentials.' });
 
-        // Payload uses CORE fields
         const payload = { user: { id: user.id, username: user.username, role: user.role, membership: user.membership, pageAccess: user.pageAccess } };
         jwt.sign(payload, JWT_SECRET, { expiresIn: '5d' }, (err, token) => {
             if (err) throw err;
@@ -268,10 +199,10 @@ app.post('/api/auth/login', async (req, res) => {
     }
 });
 
-// Get Profile (Uses Core User Model)
+// Get Profile
 app.get('/api/user/profile', authMiddleware, async (req, res) => {
     try {
-        const user = await User.findById(req.user.id).select('-passwordHash');
+        const user = await User.findById(req.user.id).select('username email currency membership role pageAccess'); 
         if (!user) return res.status(404).json({ success: false, message: 'User not found.' });
         res.json({ success: true, data: user });
     } catch (err) {
@@ -279,13 +210,8 @@ app.get('/api/user/profile', authMiddleware, async (req, res) => {
     }
 });
 
-// Forgot & Reset Password (Uses Core User Model)
-app.post('/api/auth/forgot-password', async (req, res) => res.json({success:false, message:"Implemented in original"}));
-app.post('/api/auth/reset-password', async (req, res) => res.json({success:false, message:"Implemented in original"}));
-
-
 // ===================================================================
-// 5. CONSOLIDATED ADMIN PANEL ROUTES (MUST USE CORE USER MODEL)
+// 5. CONSOLIDATED ADMIN PANEL ROUTES (CORE MANAGEMENT ONLY)
 // ===================================================================
 
 // GET Pending Users
@@ -340,7 +266,7 @@ app.put('/api/admin/users/:id/update-membership', authMiddleware, adminAuthMiddl
         const user = await User.findByIdAndUpdate(req.params.id, { membership, pageAccess }, { new: true });
         res.json({ success: true, message: 'Membership updated.', data: user });
     } catch (err) {
-        console.error('Update Membership Error:', err);
+        console.error('Update Membership Error:', err.message);
         res.status(500).json({ success: false, message: 'Server error.' });
     }
 });
@@ -413,93 +339,84 @@ app.put('/api/admin/membership-config/:level', authMiddleware, adminAuthMiddlewa
         await User.updateMany({ membership: req.params.level }, { $set: { pageAccess: pages } });
         res.json({ success: true, message: 'Config updated.', data: config });
     } catch (err) {
-        console.error('Update Config Error:', err);
+        console.error('Update Config Error:', err.message);
         res.status(500).json({ success: false, message: 'Server error.' });
     }
 });
 
-// GET Stock Ratings
-app.get('/api/admin/stock-ratings', authMiddleware, adminAuthMiddleware, async (req, res) => {
-    try {
-        const ratings = await TmtStockRating.find().sort({ ticker: 1 });
-        res.json({ success: true, data: ratings });
-    } catch (err) {
-        res.status(500).json({ success: false, message: 'Server error.' });
-    }
-});
-
-// POST/PUT Stock Rating
-app.post('/api/admin/stock-rating', authMiddleware, adminAuthMiddleware, async (req, res) => {
-    const { ticker, rating, rank, targetPrice } = req.body;
-    try {
-        const updated = await TmtStockRating.findOneAndUpdate(
-            { ticker: ticker.toUpperCase() }, 
-            { ticker: ticker.toUpperCase(), rating, rank, targetPrice }, 
-            { new: true, upsert: true }
-        );
-        res.json({ success: true, message: 'Rating saved.', data: updated });
-    } catch (err) {
-        res.status(500).json({ success: false, message: 'Server error.' });
-    }
-});
-
-// DELETE Stock Rating
-app.delete('/api/admin/stock-rating/:ticker', authMiddleware, adminAuthMiddleware, async (req, res) => {
-    try {
-        await TmtStockRating.deleteOne({ ticker: req.params.ticker.toUpperCase() });
-        res.json({ success: true, message: 'Rating deleted.' });
-    } catch (err) {
-        res.status(500).json({ success: false, message: 'Server error.' });
-    }
-});
 // ===================================================================
-// END CONSOLIDATED ADMIN PANEL ROUTES
+// 6. MOUNT CORE ROUTERS (Staff and Budget)
 // ===================================================================
 
-
-// 6. MOUNT OTHER ROUTERS
-
-// NEW: LAUNDRY SERVICE ADMIN ROUTES - Requires full admin access
-app.use('/api/laundry/admin', authMiddleware, adminAuthMiddleware, laundryAdminRoutes);
-
-// Operations Routes
 app.use('/api/staff/profile', authMiddleware, staffProfileRoutes); 
 app.use('/api/staff/roster', authMiddleware, staffRosterRoutes); 
-app.use('/api/service/admin', authMiddleware, adminAuthMiddleware, serviceAdminRoutes);
-// Standard Laundry API
-app.use('/api/laundry', authMiddleware, laundryRoutes);
+app.use('/api/projections', authMiddleware, budgetPlannerRoutes); 
 
+// ===================================================================
+// 7. BUDGET/FINANCE ROUTES (CONSOLIDATED)
+// ===================================================================
 
-// 7. STOCK WATCHLIST
-app.post('/api/user/watchlist/add', authMiddleware, async (req, res) => {
-    const { ticker } = req.body;
-    if (!ticker) return res.status(400).json({ success: false, message: 'Ticker required.' });
-    try {
-        const upperTicker = ticker.toUpperCase().trim();
-        const user = await User.findById(req.user.id);
-        if (user.watchlist.includes(upperTicker)) return res.json({ success: true, message: 'Already in watchlist.' });
-        user.watchlist.push(upperTicker);
-        await user.save();
-        res.json({ success: true, message: 'Added.', data: user.watchlist });
-    } catch (err) {
-        res.status(500).json({ success: false, message: 'Server error.' });
+app.get('/api/transactions', authMiddleware, async (req, res) => {
+    try { 
+        const transactions = await BudgetTransaction.find({ user: req.user.id }).sort({ timestamp: -1 }); 
+        res.json({ success: true, data: transactions }); 
+    } catch (err) { 
+        console.error('Fetch Transactions Error:', err.message); 
+        res.status(500).json({ success: false, message: 'Server error fetching transactions.' }); 
+    }
+});
+app.post('/api/transactions', authMiddleware, async (req, res) => {
+    const { description, amount, type } = req.body; 
+    const validTypes = ['income', 'expense']; 
+    if (!description || typeof amount !== 'number' || amount <= 0 || !type || !validTypes.includes(type)) { 
+        return res.status(400).json({ success: false, message: 'Please provide a valid description, positive amount, and type (income/expense).' }); 
+    } 
+    try { 
+        const newTransaction = new BudgetTransaction({ user: req.user.id, description: description.trim(), amount: amount, type }); 
+        const savedTransaction = await newTransaction.save(); 
+        res.status(201).json({ success: true, message: 'Transaction saved.', data: savedTransaction }); 
+    } catch (err) { 
+        console.error('Add Transaction Error:', err.message); 
+        if (err.name === 'ValidationError') { 
+            return res.status(400).json({ success: false, message: `Validation Error: ${err.message}` }); 
+        } 
+        res.status(500).json({ success: false, message: 'Server error saving transaction.' }); 
+    }
+});
+app.delete('/api/transactions/:id', authMiddleware, async (req, res) => { 
+    try { 
+        const transactionId = req.params.id; 
+        let query = { _id: transactionId, user: req.user.id }; 
+        if (req.user.role === 'superadmin') { 
+            query = { _id: transactionId }; 
+        } 
+        const transaction = await BudgetTransaction.findOne(query); 
+        if (!transaction) { 
+            return res.status(404).json({ success: false, message: 'Transaction not found or you are not authorized to delete it.' }); 
+        } 
+        await BudgetTransaction.deleteOne({ _id: transactionId }); 
+        res.json({ success: true, message: 'Transaction deleted.' }); 
+    } catch (err) { 
+        console.error('Delete Transaction Error:', err.message); 
+        if (err.name === 'CastError') { 
+            return res.status(400).json({ success: false, message: 'Invalid transaction ID format.' }); 
+        } 
+        res.status(500).json({ success: false, message: 'Server error deleting transaction.' }); 
     }
 });
 
-app.get('/api/user/watchlist', authMiddleware, async (req, res) => {
-    try {
-        const user = await User.findById(req.user.id);
-        res.json({ success: true, data: user.watchlist });
-    } catch (err) {
-        res.status(500).json({ success: false, message: 'Server error.' });
-    }
-});
-
-// 8. START SERVER
+// 9. START SERVER
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
-    console.log(`Local access: http://localhost:${PORT}`);
 });
 
 // Updated Export:
-module.exports = { app, User, SUser, StaffRoster, StaffProfile, LaundryRequest, ServiceStaffAccess };
+module.exports = { 
+    app, 
+    User, 
+    StaffRoster, 
+    StaffProfile, 
+    BudgetTransaction, 
+    BudgetProjection, 
+    MembershipConfig 
+};

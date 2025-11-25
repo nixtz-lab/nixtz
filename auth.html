@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title id="page-title">Nixtz | Account</title>
+    <title id="page-title">Nixtz | Account</title> 
 
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -12,14 +12,10 @@
             theme: {
                 extend: {
                     colors: {
+                        // 🚨 BRAND FIX: Nixtz colors defined
                         'nixtz-primary': '#4F46E5', // Indigo/Blue
                         'nixtz-secondary': '#10B981', // Emerald/Green
-                        'nixtz-bg': '#0F172A', // Very dark background
-                        'nixtz-card': '#1E293B', // Dark card background
-                        // Retaining old names for compatibility if needed, mapping to new palette
-                        'tmt-primary': '#4F46E5', 
-                        'tmt-secondary': '#10B981',
-                        'tmt-bg': '#0F172A',
+                        'nixtz-bg': '#0F172A', // Dark background (Used in body)
                     },
                     fontFamily: {
                         sans: ['Inter', 'sans-serif'],
@@ -29,60 +25,59 @@
         }
     </script>
 
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     
     <style>
-        body { font-family: 'Inter', sans-serif; }
-        .form-container { animation: fadeIn 0.5s ease-out; }
+        .form-container {
+            animation: fadeIn 0.5s ease-out;
+        }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
     </style>
 </head>
-<body class="bg-nixtz-bg font-sans min-h-screen flex flex-col text-white">
+<body class="bg-nixtz-bg font-sans min-h-screen flex flex-col">
 
     <header class="bg-nixtz-bg shadow-2xl sticky top-0 z-50 border-b border-gray-800">
         <div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-3">
             <div class="flex items-center">
                 <a href="index.html" title="Back to Home">
                     <img
-                        src="images/nixtz_logo.png"
+                        src="images/nixtz_logo.png" 
                         alt="Nixtz Logo"
                         class="h-14 sm:h-16 w-auto rounded-xl"
-                        title="Nixtz Business Software"
+                        title="Nixtz Logo"
                     >
                 </a>
             </div>
         </div>
     </header>
-    
-    <div id="message-box" class="fixed top-4 right-4 bg-nixtz-primary p-4 rounded-lg shadow-2xl z-[9999] hidden opacity-0 transition-opacity duration-300 text-white">
+    <div id="message-box" class="fixed top-4 right-4 text-white p-4 rounded-lg shadow-2xl z-[9999] hidden opacity-0 transition-opacity duration-300 bg-nixtz-secondary">
         <p id="message-text" class="font-semibold"></p>
     </div>
 
     <main class="flex-grow flex items-center justify-center p-4">
-        <div class="w-full max-w-md bg-nixtz-card rounded-xl shadow-2xl p-8 space-y-6 border border-gray-700">
+        <div class="w-full max-w-md bg-gray-900 rounded-xl shadow-2xl p-8 space-y-6">
             <h1 id="form-title" class="text-3xl font-extrabold text-white text-center"></h1>
             <p id="form-subtitle" class="text-center text-gray-400"></p>
 
             <form id="register-form" class="form-container space-y-4 hidden">
                 <div>
                     <label for="reg-username" class="block text-sm font-medium text-gray-300">Username</label>
-                    <input type="text" id="reg-username" name="username" required class="mt-1 block w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-nixtz-primary focus:border-nixtz-primary transition">
+                    <input type="text" id="reg-username" name="username" required class="mt-1 block w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-nixtz-primary focus:border-nixtz-primary">
                 </div>
                 <div>
                     <label for="reg-email" class="block text-sm font-medium text-gray-300">Email Address</label>
-                    <input type="email" id="reg-email" name="email" required class="mt-1 block w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-nixtz-primary focus:border-nixtz-primary transition">
+                    <input type="email" id="reg-email" name="email" required class="mt-1 block w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-nixtz-primary focus:border-nixtz-primary">
                 </div>
                 <div>
                     <label for="reg-password" class="block text-sm font-medium text-gray-300">Password (min 8 chars)</label>
-                    <input type="password" id="reg-password" name="password" required minlength="8" class="mt-1 block w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-nixtz-primary focus:border-nixtz-primary transition">
+                    <input type="password" id="reg-password" name="password" required minlength="8" class="mt-1 block w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-nixtz-primary focus:border-nixtz-primary">
                 </div>
                 <div>
                     <label for="reg-confirm-password" class="block text-sm font-medium text-gray-300">Confirm Password</label>
-                    <input type="password" id="reg-confirm-password" name="confirmPassword" required minlength="8" class="mt-1 block w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-nixtz-primary focus:border-nixtz-primary transition">
+                    <input type="password" id="reg-confirm-password" name="confirmPassword" required minlength="8" class="mt-1 block w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-nixtz-primary focus:border-nixtz-primary">
                 </div>
                 <button type="submit" class="w-full py-2 px-4 border border-transparent rounded-full shadow-sm text-sm font-bold text-white bg-nixtz-secondary hover:bg-[#0da070] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-nixtz-secondary transition duration-150">
                     Join Now
@@ -92,11 +87,11 @@
             <form id="login-form" class="form-container space-y-4 hidden">
                 <div>
                     <label for="login-email" class="block text-sm font-medium text-gray-300">Email Address</label>
-                    <input type="email" id="login-email" name="email" required class="mt-1 block w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-nixtz-primary focus:border-nixtz-primary transition">
+                    <input type="email" id="login-email" name="email" required class="mt-1 block w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-nixtz-primary focus:border-nixtz-primary">
                 </div>
                 <div>
                     <label for="login-password" class="block text-sm font-medium text-gray-300">Password</label>
-                    <input type="password" id="login-password" name="password" required class="mt-1 block w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-nixtz-primary focus:border-nixtz-primary transition">
+                    <input type="password" id="login-password" name="password" required class="mt-1 block w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-nixtz-primary focus:border-nixtz-primary">
                 </div>
                 
                 <div class="text-right">
@@ -110,7 +105,8 @@
             </form>
 
             <div class="text-center pt-2 text-sm">
-                <p id="switch-text" class="text-gray-400"></p>
+                <p id="switch-text" class="text-gray-400">
+                    </p>
             </div>
             
         </div>
@@ -122,24 +118,17 @@
             <a href="business_dashboard.html" class="inline-flex items-center justify-center px-6 py-3 mr-4 border border-nixtz-primary text-base font-medium rounded-full text-nixtz-primary hover:bg-nixtz-primary hover:text-white transition duration-300 transform hover:scale-105 font-bold">
                 Go to Dashboard
             </a>
-            <a href="auth.html?mode=join" class="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-full text-white bg-nixtz-secondary hover:bg-[#0da070] transition duration-300 transform hover:scale-105 font-bold">
+            <a href="https://www.youtube.com/@nixtz" target="_blank" class="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-full text-white bg-nixtz-secondary hover:bg-[#0da070] transition duration-300 transform hover:scale-105 font-bold">
                 Start Your Free Trial
             </a>
             <div class="mt-8 border-t border-gray-800 pt-8">
                 <p class="text-sm text-gray-500">&copy; 2024 Nixtz. Simplify Everything.</p>
-                <p class="text-xs text-gray-600 mt-2">Nixtz is an operational management platform. Consult qualified professionals for specific business advice.</p>
+                <p class="text-xs text-gray-600 mt-2">Disclaimer: All content is for operational purposes only.</p>
             </div>
         </div>
     </footer>
 
-    <!-- Scripts are loaded here -->
     <script src="auth_script.js" defer></script>
-    <script src="script.js"></script>
 
-    <script>
-        // Removed original redundant inline script block. 
-        // Mode switching is now handled by auth_script.js (default logic) 
-        // and service_auth_script.js (override logic).
-    </script>
 </body>
 </html>
