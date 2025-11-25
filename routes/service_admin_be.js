@@ -1,25 +1,30 @@
 // routes/service_admin_be.js - Router for Service Staff User Management
 const express = require('express');
 const router = express.Router();
-// Import models (using mongoose.model() to prevent circular dependency issues)
+// Import core modules
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs'); 
 
-// Get models from globally registered Mongoose models
-const sUser = mongoose.model('sUser');
-const ServiceStaffAccess = mongoose.model('ServiceStaffAccess');
+// --- CRITICAL FIX: Use helper functions to safely access models inside route handlers ---
+// The models are registered globally as 'User' and 'ServiceStaffAccess'
+const getSUserModel = () => mongoose.model('User');
+const getServiceStaffAccessModel = () => mongoose.model('ServiceStaffAccess');
 
 /**
  * POST /api/service/admin/create-staff-v2 - Create a new service staff user
- * Accepts Name, Employee ID (semployeeId), Password, Department, and Role.
  * Creates a linked User account for login and a ServiceStaffAccess record.
  */
 router.post('/create-staff-v2', async (req, res) => {
-    // Note: The frontend sends the unique ID as 'semployeeId'
+    
+    // 🚨 FIX: Model access delayed and aliased
+    const SUser = getSUserModel(); 
+    const ServiceStaffAccess = getServiceStaffAccessModel(); 
+
+    // Destructure prefixed local variables from req.body
     const { sname, semployeeId, spassword, sdepartment, srole } = req.body; 
     
     // 1. Validate required fields and role
-    if (!sname || !semployeeId || !spassword || !sdepartment || !['sstandard', 'sadmin'].includes(srole)) {
+    if (!sname || !semployeeId || !spassword || !sdepartment || !['standard', 'admin'].includes(srole)) {
         return res.status(400).json({ success: false, message: 'Invalid or missing user data (Name, ID, Password, Department, Role). Role must be standard or admin.' });
     }
     
@@ -28,8 +33,8 @@ router.post('/create-staff-v2', async (req, res) => {
         const susername = semployeeId; // Using unique Employee ID as username for login
         const semail = `${semployeeId.toLowerCase()}@nixtz.service.temp`; // Placeholder email
         
-        // Check for conflicts in the core User collection (using username or placeholder email)
-        let userExists = await sUser.findOne({ $or: [{ semail: semail }, { susername }] });
+        // Check for conflicts in the core User collection using the NEW SCHEMA FIELD NAMES
+        let userExists = await SUser.findOne({ $or: [{ semail: semail }, { susername: susername }] });
         if (userExists) return res.status(400).json({ success: false, message: 'Employee ID is already registered as a core user.' });
         
         // Check for conflicts in the ServiceStaffAccess collection
@@ -38,26 +43,28 @@ router.post('/create-staff-v2', async (req, res) => {
 
         // 3. Hash Password
         const salt = await bcrypt.genSalt(10);
-        const spasswordHash = await bcrypt.hash(spassword, salt);
+        const passwordHash = await bcrypt.hash(spassword, salt); 
 
-        // 4. Create the core User account
-        const newsUser = new sUser({
-            susername,
-            semail: email.toLowerCase(),
-            spasswordHash,
-            srole, 
-            smembership: 'none',
-            spageAccess: ['laundry_request', 'laundry_staff'] // Grant access to service pages
+        // 4. Create the core User account (using SUser model)
+        const newSUser = new SUser({
+            // MAPPING: Use the prefixed field names for the User model schema
+            susername: susername,
+            semail: semail.toLowerCase(),
+            spasswordHash: passwordHash, // Storing the hashed password
+            srole: srole, 
+            smembership: 'none', // Assuming schema field is 'smembership'
+            spageAccess: ['laundry_request', 'laundry_staff'] // Assuming schema field is 'spageAccess'
         });
-        await newsUser.save();
+        await newSUser.save();
         
         // 5. Create the linked ServiceStaffAccess document
         const newStaffAccess = new ServiceStaffAccess({
-             suser: newsUser._id,
+             // MAPPING: Use the prefixed field names for the ServiceStaffAccess model schema
+             suser: newSUser._id,
              sname: sname, 
              semployeeId: semployeeId, 
              sdepartment: sdepartment, 
-             serviceScope: 'laundry'
+             serviceScope: 'laundry' 
         });
         await newStaffAccess.save();
         
@@ -74,10 +81,16 @@ router.post('/create-staff-v2', async (req, res) => {
 
 // Placeholder for future staff listing/config endpoint
 router.get('/staff-list', async (req, res) => {
+    // 🚨 FIX: Model access delayed
+    const ServiceStaffAccess = getServiceStaffAccessModel();
+    
     try {
         const staffList = await ServiceStaffAccess.find({})
-            .populate('suser', 'srole') // Pulls in the user's core role
-            .select('name semployeeId department serviceScope');
+            // 🚨 CRITICAL: Populate field must be the new prefixed name (suser)
+            // 🚨 CRITICAL: The selection must also use the new prefixed role field (srole)
+            .populate('suser', 'srole') 
+            // Select must use the prefixed field names
+            .select('sname semployeeId sdepartment serviceScope'); 
             
         res.json({ success: true, data: staffList });
     } catch (err) {

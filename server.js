@@ -125,11 +125,11 @@ const StaffRoster = mongoose.model('StaffRoster', RosterEntrySchema);
 
 // --- LAUNDRY/SERVICE STAFF ACCESS SCHEMA (NEW) ---
 const ServiceStaffAccessSchema = new mongoose.Schema({
-    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, unique: true }, // Link to the main User account
-    name: { type: String, required: true, trim: true },
+    suser: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, unique: true }, // Link to the main User account
+    sname: { type: String, required: true, trim: true },
     semployeeId: { type: String, unique: true, required: true, trim: true },
     // Service scope defaults to 'laundry'
-    department: { type: String, required: true, trim: true },
+    sdepartment: { type: String, required: true, trim: true },
     serviceScope: { type: String, default: 'laundry' } 
 });
 const ServiceStaffAccess = mongoose.model('ServiceStaffAccess', ServiceStaffAccessSchema);
