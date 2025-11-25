@@ -22,10 +22,26 @@ if (!MONGODB_URI) {
     console.error("FATAL ERROR: MONGODB_URI is not defined.");
 }
 
-// 1. MONGODB CONNECTION
-mongoose.connect(MONGODB_URI, { dbName: DATABASE_NAME })
-    .then(() => console.log('MongoDB Connected Successfully to NIXTZ DB'))
-    .catch(err => console.error('MongoDB Connection Error:', err.message));
+// 1. MONGODB CONNECTION (UPDATED with modern options)
+// A function to handle the database connection attempt
+const connectDB = async () => {
+    try {
+        await mongoose.connect(MONGODB_URI, { 
+            dbName: DATABASE_NAME,
+            serverSelectionTimeoutMS: 5000, // Keep trying for 5 seconds
+            socketTimeoutMS: 45000,
+            // The options 'useNewUrlParser' and 'useUnifiedTopology' are now defaults and no longer needed.
+        });
+        console.log('✅ MongoDB Connected Successfully to NIXTZ DB');
+    } catch (err) {
+        // Log the specific connection error. If ECONNREFUSED appears here, it confirms an environment issue.
+        console.error('❌ MongoDB Connection Error:', err.message);
+        console.log('Retrying connection in 5 seconds...');
+        setTimeout(connectDB, 5000); // Retry connection after 5 seconds
+    }
+};
+
+connectDB(); // Initial connection attempt
 
 // ===================================================================
 // 2. SCHEMAS (CORE MODULES ONLY)
@@ -171,7 +187,8 @@ app.post('/api/auth/login', async (req, res) => {
     if (!email || !password) return res.status(400).json({ success: false, message: 'Enter email and password.' });
 
     try {
-        let user = await User.findOne({ email: email.toLowerCase() });
+        // NOTE: If the DB connection is still down, this User.findOne() call is what will time out (10000ms)
+        let user = await User.findOne({ email: email.toLowerCase() }); 
         if (!user) return res.status(400).json({ success: false, message: 'Invalid credentials.' });
 
         if (user.role === 'pending') return res.status(403).json({ success: false, message: 'Account pending approval.' });
@@ -393,7 +410,7 @@ app.delete('/api/transactions/:id', authMiddleware, async (req, res) => {
         } 
         const transaction = await BudgetTransaction.findOne(query); 
         if (!transaction) { 
-            return res.status(404).json({ success: false, message: 'Transaction not found or you are not authorized to delete it.' }); 
+            return res.status(404).json({ success: false, message: 'Transaction not found or you are not authorized to delete it.' });
         } 
         await BudgetTransaction.deleteOne({ _id: transactionId }); 
         res.json({ success: true, message: 'Transaction deleted.' }); 
