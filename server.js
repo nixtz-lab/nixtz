@@ -27,10 +27,12 @@ mongoose.connect(MONGODB_URI, { dbName: DATABASE_NAME })
     .then(() => console.log('MongoDB Connected Successfully to NIXTZ DB'))
     .catch(err => console.error('MongoDB Connection Error:', err.message));
 
-// 2. SCHEMAS (ALL MODULES)
+// ===================================================================
+// 2. SCHEMAS (CORE & SERVICE SEPARATION)
+// ===================================================================
 
-// User & Config
-const UserSchema = new mongoose.Schema({
+// 🚨 CORE MODEL: USER (Used by Dashboard, Admin Panel, Roster, Index)
+const CoreUserSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true, trim: true },
     email: { type: String, required: true, unique: true, trim: true, lowercase: true },
     passwordHash: { type: String, required: true },
@@ -43,8 +45,23 @@ const UserSchema = new mongoose.Schema({
     resetPasswordToken: String,
     resetPasswordExpires: Date
 });
-const User = mongoose.model('User', UserSchema);
+const User = mongoose.model('User', CoreUserSchema); // Registered as 'User'
 
+// 🚨 SERVICE MODEL: SUSER (Used by Service Admin pages only)
+const ServiceUserSchema = new mongoose.Schema({
+    susername: { type: String, required: true, unique: true, trim: true },
+    semail: { type: String, required: true, unique: true, trim: true, lowercase: true },
+    spasswordHash: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now },
+    srole: { type: String, default: 'pending', enum: ['pending', 'standard', 'admin', 'superadmin'] },
+    smembership: { type: String, default: 'none', enum: ['none', 'standard', 'platinum', 'vip'] },
+    spageAccess: { type: [String], default: [] },
+    resetPasswordToken: String,
+    resetPasswordExpires: Date
+});
+const SUser = mongoose.model('SUser', ServiceUserSchema); // Registered as 'SUser'
+
+// User & Config
 const MembershipConfigSchema = new mongoose.Schema({
     level: { type: String, required: true, unique: true, enum: ['standard', 'platinum', 'vip'] },
     pages: { type: [String], default: [] },
@@ -89,7 +106,7 @@ const PortfolioHoldingSchema = new mongoose.Schema({
 });
 const PortfolioHolding = mongoose.model('PortfolioHolding', PortfolioHoldingSchema);
 
-// Staff & Roster
+// Staff & Roster (These still link to the Core 'User' model)
 const StaffProfileSchema = new mongoose.Schema({
     name: { type: String, required: true, unique: true, trim: true },
     employeeId: { type: String, unique: true, required: true, trim: true },
@@ -123,35 +140,30 @@ const RosterEntrySchema = new mongoose.Schema({
 RosterEntrySchema.index({ user: 1, weekStartDate: 1 }, { unique: true }); 
 const StaffRoster = mongoose.model('StaffRoster', RosterEntrySchema);
 
-// --- LAUNDRY/SERVICE STAFF ACCESS SCHEMA (NEW) ---
+// --- SERVICE STAFF ACCESS SCHEMA (Links to the NEW 'SUser' model) ---
 const ServiceStaffAccessSchema = new mongoose.Schema({
-    suser: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, unique: true }, // Link to the main User account
+    // Links to the NEW Service User Model ('SUser')
+    suser: { type: mongoose.Schema.Types.ObjectId, ref: 'SUser', required: true, unique: true }, 
     sname: { type: String, required: true, trim: true },
     semployeeId: { type: String, unique: true, required: true, trim: true },
-    // Service scope defaults to 'laundry'
     sdepartment: { type: String, required: true, trim: true },
     serviceScope: { type: String, default: 'laundry' } 
 });
 const ServiceStaffAccess = mongoose.model('ServiceStaffAccess', ServiceStaffAccessSchema);
 // --- END NEW SCHEMA ---
 
-// --- LAUNDRY SERVICE SCHEMA (Only Schema Definition Here) ---
+// --- LAUNDRY SERVICE SCHEMA (Links to the Core 'User' Model, assuming requester is core user) ---
 const LaundryRequestSchema = new mongoose.Schema({
-    // Request details
     requesterId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     requesterUsername: { type: String, required: true },
     department: { type: String, required: true, trim: true },
-    contactExt: { type: String, trim: true }, // Contact extension or phone number
+    contactExt: { type: String, trim: true }, 
     notes: { type: String, trim: true, default: '' },
-
-    // Items to be cleaned
     items: [{
         type: { type: String, required: true, enum: ['Uniform', 'Towels', 'Linens', 'Staff Clothing', 'Other'] },
         count: { type: Number, required: true, min: 1 },
         details: { type: String, default: '' }
     }],
-    
-    // Status tracking
     status: { 
         type: String, 
         default: 'Pending Pickup', 
@@ -160,7 +172,7 @@ const LaundryRequestSchema = new mongoose.Schema({
     requestedAt: { type: Date, default: Date.now },
     pickedUpAt: { type: Date },
     completedAt: { type: Date },
-    staffAssigned: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    staffAssigned: { type: mongoose.Schema.Types.ObjectId, ref: 'SUser' }, // Assign to Service User
 });
 const LaundryRequest = mongoose.model('LaundryRequest', LaundryRequestSchema);
 
@@ -192,9 +204,11 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
 
-// 4. AUTHENTICATION ROUTES
+// ===================================================================
+// 4. AUTHENTICATION ROUTES (MUST USE CORE USER MODEL)
+// ===================================================================
 
-// Register
+// Register (Uses Core User Model)
 app.post('/api/auth/register', async (req, res) => {
     const { username, email, password } = req.body;
     if (!username || !email || !password || password.length < 8) {
@@ -208,12 +222,8 @@ app.post('/api/auth/register', async (req, res) => {
         const passwordHash = await bcrypt.hash(password, salt);
 
         const newUser = new User({
-            username,
-            email: email.toLowerCase(),
-            passwordHash,
-            role: 'pending',
-            membership: 'none',
-            pageAccess: []
+            username, email: email.toLowerCase(), passwordHash,
+            role: 'pending', membership: 'none', pageAccess: []
         });
         await newUser.save();
         res.status(201).json({ success: true, message: 'Account created! Awaiting admin approval.' });
@@ -223,7 +233,7 @@ app.post('/api/auth/register', async (req, res) => {
     }
 });
 
-// Login
+// Login (Uses Core User Model)
 app.post('/api/auth/login', async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ success: false, message: 'Enter email and password.' });
@@ -237,6 +247,7 @@ app.post('/api/auth/login', async (req, res) => {
         const isMatch = await bcrypt.compare(password, user.passwordHash);
         if (!isMatch) return res.status(400).json({ success: false, message: 'Invalid credentials.' });
 
+        // Payload uses CORE fields
         const payload = { user: { id: user.id, username: user.username, role: user.role, membership: user.membership, pageAccess: user.pageAccess } };
         jwt.sign(payload, JWT_SECRET, { expiresIn: '5d' }, (err, token) => {
             if (err) throw err;
@@ -257,7 +268,7 @@ app.post('/api/auth/login', async (req, res) => {
     }
 });
 
-// Get Profile
+// Get Profile (Uses Core User Model)
 app.get('/api/user/profile', authMiddleware, async (req, res) => {
     try {
         const user = await User.findById(req.user.id).select('-passwordHash');
@@ -268,16 +279,14 @@ app.get('/api/user/profile', authMiddleware, async (req, res) => {
     }
 });
 
-// Forgot & Reset Password (keep your existing logic here if needed, abbreviated for clarity)
+// Forgot & Reset Password (Uses Core User Model)
 app.post('/api/auth/forgot-password', async (req, res) => res.json({success:false, message:"Implemented in original"}));
 app.post('/api/auth/reset-password', async (req, res) => res.json({success:false, message:"Implemented in original"}));
 
 
 // ===================================================================
-// 5. CONSOLIDATED ADMIN PANEL ROUTES (/api/admin)
-// (Moved from routes/admin_panel_be.js)
+// 5. CONSOLIDATED ADMIN PANEL ROUTES (MUST USE CORE USER MODEL)
 // ===================================================================
-// Middleware chain for all Admin routes: authMiddleware -> adminAuthMiddleware
 
 // GET Pending Users
 app.get('/api/admin/users/pending', authMiddleware, adminAuthMiddleware, async (req, res) => {
@@ -336,7 +345,7 @@ app.put('/api/admin/users/:id/update-membership', authMiddleware, adminAuthMiddl
     }
 });
 
-// POST Create New Admin (Superadmin Only)
+// POST Create New Admin
 app.post('/api/admin/create', authMiddleware, superAdminAuthMiddleware, async (req, res) => {
     const { username, email, password } = req.body;
 
@@ -493,4 +502,4 @@ app.listen(PORT, () => {
 });
 
 // Updated Export:
-module.exports = { app, User, StaffRoster, StaffProfile, LaundryRequest, ServiceStaffAccess };
+module.exports = { app, User, SUser, StaffRoster, StaffProfile, LaundryRequest, ServiceStaffAccess };

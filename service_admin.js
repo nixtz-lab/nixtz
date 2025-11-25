@@ -6,7 +6,18 @@
 
 document.addEventListener('DOMContentLoaded', () => {
     if (typeof lucide !== 'undefined') lucide.createIcons();
-    initServiceAdminPage(); // Renamed initialization function
+    // 🚨 INIT CALL REMOVED: Initial data loading is now called directly here, 
+    // as initServiceAdminPage() contained auth checks.
+    
+    // Load initial data (assuming a token or access method is active)
+    fetchAnalytics();
+    fetchAllRequests();
+    
+    // Attach listener to the staff creation form (ID: create-staff-form)
+    const createStaffForm = document.getElementById('create-staff-form');
+    if (createStaffForm) {
+        createStaffForm.addEventListener('submit', handleCreateStaffFormSubmit);
+    }
 });
 
 const statusMap = {
@@ -23,6 +34,7 @@ const statusMap = {
 // ------------------------------------
 
 async function fetchAnalytics() {
+    // 🚨 TOKEN LOGIC KEPT: Authentication (token check) is necessary for API calls
     const token = localStorage.getItem('nixtz_auth_token');
     if (!token) return;
 
@@ -45,6 +57,7 @@ async function fetchAnalytics() {
 
 async function fetchAllRequests() {
     const tableBody = document.getElementById('all-requests-body');
+    // 🚨 TOKEN LOGIC KEPT: Authentication (token check) is necessary for API calls
     const token = localStorage.getItem('nixtz_auth_token');
     if (!tableBody || !token) return;
 
@@ -145,6 +158,7 @@ function renderRequestRow(request) {
 // ------------------------------------
 
 async function deleteRequest(id, department) {
+    // 🚨 TOKEN LOGIC KEPT: Authentication (token check) is necessary for API calls
     const token = localStorage.getItem('nixtz_auth_token');
     if (!token) return;
 
@@ -199,7 +213,7 @@ async function handleCreateStaffFormSubmit(e) {
          return;
     }
 
-    // 🚨 FIX: Change the payload keys to match the prefixed names the backend expects
+    // Payload keys match the prefixed names the backend expects
     const payload = { 
         sname: name,             
         semployeeId: semployeeId,
@@ -207,6 +221,7 @@ async function handleCreateStaffFormSubmit(e) {
         sdepartment: department, 
         srole: role              
     }; 
+    // 🚨 TOKEN LOGIC KEPT: Authentication (token check) is necessary for API calls
     const token = localStorage.getItem('nixtz_auth_token');
 
     try {
@@ -282,25 +297,7 @@ function showCustomConfirm(message) {
 }
 
 // ------------------------------------
-// 5. INITIALIZATION
+// 5. INITIALIZATION (REMOVED AUTH CHECKS)
 // ------------------------------------
-function initServiceAdminPage() {
-    // Check for admin/superadmin role as this page is under /api/laundry/admin
-    const role = window.getUserRole();
-    const isAuthorized = role === 'admin' || role === 'superadmin';
-    if (!window.getAuthStatus() || !isAuthorized) {
-         window.showMessage("Access Denied. Only system administrators can access this page.", true);
-         setTimeout(() => window.location.href = 'business_dashboard.html', 1000); 
-         return;
-    }
-
-    // Load initial data
-    fetchAnalytics();
-    fetchAllRequests();
-    
-    // NEW: Attach listener to the staff creation form (ID: create-staff-form)
-    const createStaffForm = document.getElementById('create-staff-form');
-    if (createStaffForm) {
-        createStaffForm.addEventListener('submit', handleCreateStaffFormSubmit);
-    }
-}
+// 🚨 initServiceAdminPage function was removed entirely and replaced by direct calls 
+// in DOMContentLoaded.
