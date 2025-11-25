@@ -24,7 +24,7 @@ if (!MONGODB_URI) {
     process.exit(1); 
 }
 
-// 1. MONGODB CONNECTION (UPDATED: Added connection options and wait-for-db logic)
+// 1. MONGODB CONNECTION (Robust connection logic)
 const connectDB = async () => {
     try {
         await mongoose.connect(MONGODB_URI, { 
@@ -224,7 +224,8 @@ app.post('/api/auth/login', async (req, res) => {
 // Get Profile
 app.get('/api/user/profile', authMiddleware, async (req, res) => {
     try {
-        const user = await User.findById(req.user.id).select('username email currency membership role pageAccess'); 
+        // FIX APPLIED HERE: Removed .select() to ensure the role field is always retrieved
+        const user = await User.findById(req.user.id); 
         if (!user) return res.status(404).json({ success: false, message: 'User not found.' });
         res.json({ success: true, data: user });
     } catch (err) {
