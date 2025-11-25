@@ -30,7 +30,7 @@ const authMiddleware = async (req, res, next) => {
         // 3. Look up user in the database (Ensures user still exists and token fields are current)
         
         // 🚨 CRITICAL FIX: Changed from findById() to findOne({_id: ...}) 
-        // to correctly handle both ObjectId and String IDs.
+        // This ensures the query works whether the ID is a MongoDB ObjectId or a simple string.
         const user = await User.findOne({ _id: decoded.user.id }).select('username role membership pageAccess');
 
         if (!user) {
