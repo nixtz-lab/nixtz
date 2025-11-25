@@ -77,7 +77,7 @@ window.getServiceStaffDepartment = async () => {
     }
 };
 
-// --- INITIALIZATION CHECK ---
+// --- INITIALIZATION CHECK (CRITICALLY FIXED) ---
 
 document.addEventListener('DOMContentLoaded', () => {
     // CRITICAL: business_dashboard is NOT in this list, ensuring it's not interfered with.
@@ -92,14 +92,19 @@ document.addEventListener('DOMContentLoaded', () => {
              return;
         }
         
-        // 2. Check Role Status (If logged in, check if they have service privileges)
+        // 2. Check Role Status (If logged in, check if they have valid service privileges)
         const role = getUserRole();
-        if (role !== 'admin' && role !== 'superadmin' && role !== 'standard') {
-            window.showMessage("Access Denied. Insufficient staff privileges.", true);
+
+        // 🚨 CRITICAL FIX: Explicitly deny access for roles that are unauthorized or inactive.
+        if (role === 'pending' || role === 'none' || !role) {
+            window.showMessage("Access Denied. Account pending approval or insufficient privileges.", true);
             setTimeout(() => {
                  // Redirect unauthorized users away from service pages
                  window.location.href = 'business_dashboard.html'; 
             }, 800);
+            return; // Stop further script execution on this page
         }
+        
+        // All other roles (standard, admin, superadmin) are allowed to proceed.
     }
 });

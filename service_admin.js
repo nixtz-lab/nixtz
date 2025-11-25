@@ -178,7 +178,7 @@ window.deleteRequest = deleteRequest; // Expose globally for HTML onclick
 
 /**
  * NEW: Handles the submission of the form to create a new staff user.
- * Sends POST request to /api/laundry/admin/create-staff-v2 (Name, ID, Password, Role).
+ * Sends POST request to /api/laundry/admin/create-staff-v2.
  */
 async function handleCreateStaffFormSubmit(e) {
     e.preventDefault();
@@ -199,7 +199,14 @@ async function handleCreateStaffFormSubmit(e) {
          return;
     }
 
-    const payload = { name, semployeeId, password, department, role }; 
+    // 🚨 FIX: Change the payload keys to match the prefixed names the backend expects
+    const payload = { 
+        sname: name,             
+        semployeeId: semployeeId,
+        spassword: password,     
+        sdepartment: department, 
+        srole: role              
+    }; 
     const token = localStorage.getItem('nixtz_auth_token');
 
     try {
