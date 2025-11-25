@@ -201,7 +201,14 @@ app.post('/api/auth/login', async (req, res) => {
         const isMatch = await bcrypt.compare(password, user.passwordHash);
         if (!isMatch) return res.status(400).json({ success: false, message: 'Invalid credentials.' });
 
-        const payload = { user: { id: user.id, username: user.username, role: user.role, membership: user.membership, pageAccess: user.pageAccess } };
+        // 🚨 CRITICAL FIX: Convert user ID to string before putting it into the JWT payload.
+        const payload = { user: { 
+            id: user._id.toString(), // <-- FIX applied here
+            username: user.username, 
+            role: user.role, 
+            membership: user.membership, 
+            pageAccess: user.pageAccess 
+        } };
         jwt.sign(payload, JWT_SECRET, { expiresIn: '5d' }, (err, token) => {
             if (err) throw err;
             res.json({
