@@ -10,7 +10,6 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your_default_jwt_secret_please_cha
 // --- Auth Middleware (The core authentication and database check) ---
 const authMiddleware = async (req, res, next) => {
     // ✅ SAFE MODEL ACCESS: We access the model here to prevent application crash
-    // if this file loads before the schema is registered in server.js.
     const User = mongoose.model('User'); 
     
     // 1. Extract token safely
@@ -29,8 +28,10 @@ const authMiddleware = async (req, res, next) => {
         }
         
         // 3. Look up user in the database (Ensures user still exists and token fields are current)
-        // **This is the database-dependent line that causes your current failure.**
-        const user = await User.findById(decoded.user.id).select('username role membership pageAccess');
+        
+        // 🚨 CRITICAL FIX: Changed from findById() to findOne({_id: ...}) 
+        // to correctly handle both ObjectId and String IDs.
+        const user = await User.findOne({ _id: decoded.user.id }).select('username role membership pageAccess');
 
         if (!user) {
              // This is the error returned if the ID is wrong or the database query returns null
