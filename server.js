@@ -80,6 +80,7 @@ const StaffProfileSchema = new mongoose.Schema({
     fixedDayOff: { type: String, enum: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun', 'None'], default: 'None' },
     isNightRotator: { type: Boolean, default: false },
     currentRotationDay: { type: Number, default: 0 }, 
+    // This field is required by the generator/profile router
     nextWeekHolidayRequest: { type: String, default: 'None' }, 
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
 });
@@ -122,9 +123,10 @@ const transporter = nodemailer.createTransport({
 const { authMiddleware, adminAuthMiddleware, superAdminAuthMiddleware } = require('./middleware/auth'); 
 
 // --- Router Imports (Core Routers) ---
-const budgetPlannerRoutes = require('./routes/budget_planner_be.js'); // RESTORED
+const budgetPlannerRoutes = require('./routes/budget_planner_be.js');
 const staffRosterRoutes = require('./routes/staff_roster_api.js'); 
 const staffProfileRoutes = require('./routes/staff_profile_api_be.js'); 
+// All TMT/Stock/Service Routers REMOVED
 
 app.use(cors()); 
 app.use(express.json());
