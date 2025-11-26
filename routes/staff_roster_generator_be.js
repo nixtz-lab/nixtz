@@ -58,7 +58,8 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
         }
         
         if (requestWeek === weekStartString) {
-            if (DAYS_FULL.includes(requestValue) || requestValue === 'Full Week') {
+            // Check for specific days, full week, or the new 'Sick Leave' type
+            if (DAYS_FULL.includes(requestValue) || requestValue === 'Full Week' || requestValue === 'Sick Leave') {
                  return { type: 'Leave', day: requestValue };
             } 
             else if (['Morning', 'Afternoon', 'Night'].includes(requestValue)) {
@@ -104,16 +105,44 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
             
             // 0a. Requested Leave Override
             if (request.type === 'Leave') {
-                if (request.day === day || request.day === 'Full Week') {
-                    staffEntry.weeklySchedule[dayIndex].shifts = [{ shiftId: null, jobRole: `Leave (${request.day === 'Full Week' ? 'Week Off' : 'Requested'})`, timeRange: 'Full Day', color: '#B91C1C' }];
-                    return; // Stop processing this staff member for this day
+                
+                // CRITICAL FIX START: Check for requested day, full week, or specific leave type
+                const isRequestedDay = request.day === day || request.day === 'Sick Leave';
+                const isFullWeek = request.day === 'Full Week';
+
+                if (isRequestedDay || isFullWeek) {
+                    const leaveType = isFullWeek ? 'Week Off' : (request.day === 'Sick Leave' ? 'Sick' : 'Requested');
+                    
+                    staffEntry.weeklySchedule[dayIndex].shifts = [{ 
+                        shiftId: null, 
+                        jobRole: `Leave (${leaveType})`, 
+                        timeRange: 'Full Day', 
+                        color: '#B91C1C' 
+                    }];
+                    // If staff has a valid request applied today, stop here for this staff member,
+                    // but continue the outer loop to check other staff.
+                    return; 
                 }
+                // CRITICAL FIX END: If a single-day request is active but does not match the current day,
+                // the staff member is available for scheduling (Steps 1-5).
             } 
             
-            // 0b. Fixed Day Off Assignment (Only assign if not already on requested leave)
-            if (staff.fixedDayOff === day && !isScheduled(staffEntry, dayIndex)) {
-                 const roleColor = ROLE_COLORS[staff.position] || ROLE_COLORS['Normal Staff'];
-                 staffEntry.weeklySchedule[dayIndex].shifts = [{ shiftId: null, jobRole: 'Leave (Fixed)', timeRange: 'Full Day', color: roleColor }];
+            // 0b. Fixed Day Off Assignment (Only assign if not already scheduled)
+            // CHECK 1: Ensure staff is NOT already scheduled by a previous step (i.e., not a requested day off or a shift)
+            if (!isScheduled(staffEntry, dayIndex)) {
+                
+                // CHECK 2: Is today their fixed day off?
+                if (staff.fixedDayOff === day) {
+                     const roleColor = ROLE_COLORS[staff.position] || ROLE_COLORS['Normal Staff'];
+                     staffEntry.weeklySchedule[dayIndex].shifts = [{ 
+                         shiftId: null, 
+                         jobRole: 'Leave (Fixed)', 
+                         timeRange: 'Full Day', 
+                         color: roleColor 
+                     }];
+                     // Fixed Day Off is assigned, skip to next staff member.
+                     return;
+                }
             }
         });
         
