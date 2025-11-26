@@ -5,8 +5,6 @@
  * This structure now only defines fixed ID, Name, Roles, and Required Counts.
  * The time strings used within the generation logic (e.g., '08:00-17:00') 
  * MUST match the dynamic times saved on the frontend for consistency.
- * * NOTE: The generator logic below is simplified and only uses the CORE_SHIFTS (1, 2, 3) 
- * for assignment, as the new frontend structure handles sub-shifts dynamically.
  */
 const SHIFTS = { 
     // ID 1: Morning Shift
@@ -97,6 +95,7 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
         // ----------------------------------------
         
         // 0. CHECK WEEKLY REQUEST & FIXED DAY OFF OVERRIDE (HIGH PRIORITY)
+        // This MUST be the first step and is the only place Leave/DayOff is assigned.
         staffProfiles.forEach(staff => {
             const staffEntry = weeklyRosterMap.get(staff.employeeId);
             const request = getWeeklyRequest(staff);
@@ -105,11 +104,12 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
             if (request.type === 'Leave') {
                 if (request.day === day || request.day === 'Full Week') {
                     staffEntry.weeklySchedule[dayIndex].shifts = [{ shiftId: null, jobRole: `Leave (${request.day === 'Full Week' ? 'Week Off' : 'Requested'})`, timeRange: 'Full Day', color: '#B91C1C' }];
-                    return;
+                    return; // Stop processing this staff member for this day
                 }
             } 
             
-            // 0b. Fixed Day Off Assignment (If not already on requested leave)
+            // 0b. Fixed Day Off Assignment 
+            // We use the fixedDayOff here and rely on isScheduled to prevent overwrite by requested leave
             if (staff.fixedDayOff === day && !isScheduled(staffEntry, dayIndex)) {
                  const roleColor = ROLE_COLORS[staff.position] || ROLE_COLORS['Normal Staff'];
                  staffEntry.weeklySchedule[dayIndex].shifts = [{ shiftId: null, jobRole: 'Leave (Fixed)', timeRange: 'Full Day', color: roleColor }];
