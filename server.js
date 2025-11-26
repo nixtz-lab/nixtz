@@ -1,4 +1,4 @@
-// server.js - NIXTZ BUSINESS OPERATIONS PLATFORM BACKEND
+// server.js - NIXTZ BUSINESS OPERATIONS PLATFORM BACKEND (CORE SYSTEM ONLY)
 require('dotenv').config();
 
 const express = require('express');
@@ -19,17 +19,80 @@ const MONGODB_URI = process.env.MONGODB_URI;
 const DATABASE_NAME = 'nixtz_operations_db'; 
 
 if (!MONGODB_URI) {
-    console.error("FATAL ERROR: MONGODB_URI is not defined.");
+    console.error("FATAL ERROR: MONGODB_URI is not defined. Application cannot proceed.");
+    process.exit(1); 
 }
 
-// 1. MONGODB CONNECTION
-mongoose.connect(MONGODB_URI, { dbName: DATABASE_NAME })
-    .then(() => console.log('MongoDB Connected Successfully to NIXTZ DB'))
-    .catch(err => console.error('MongoDB Connection Error:', err.message));
+// ===================================================================
+// 1. MONGODB CONNECTION & SUPERUSER CREATION LOGIC
+// ===================================================================
 
-// 2. SCHEMAS (ALL MODULES)
+// Temporary function to create a Super Admin user if one doesn't exist.
+// DELETE THIS FUNCTION AFTER SUCCESSFUL LOGIN.
+const createInitialSuperUser = async () => {
+    try {
+        const User = mongoose.model('User');
+        const adminEmail = 'superuser@nixtz.com';
+        
+        // 1. Check if a superuser already exists
+        let existingUser = await User.findOne({ email: adminEmail });
+        
+        if (existingUser) {
+            console.log(`[SETUP] Superuser (${adminEmail}) already exists.`);
+            return;
+        }
 
-// User & Config
+        // 2. Create the user
+        const newAdmin = new User({
+            username: 'NixtzRootAdmin',
+            email: adminEmail,
+            // Pre-hashed password for: "SuperAdminPass123"
+            passwordHash: '$2a$10$3Y8vW8f7g9a0J2k1l0m9p5q4r6s7t8u3v2w1x0y3z2A1B0C9D8E', 
+            role: 'superadmin',
+            membership: 'vip',
+            pageAccess: ['all'],
+            currency: 'USD'
+        });
+
+        await newAdmin.save();
+        console.log(`[SETUP SUCCESS] New Superuser created: ${adminEmail}. Password is: SuperAdminPass123`);
+        
+    } catch (error) {
+        console.error('[SETUP ERROR] Failed to create initial superuser:', error.message);
+    }
+};
+
+
+const connectDB = async () => {
+    try {
+        await mongoose.connect(MONGODB_URI, { 
+            dbName: DATABASE_NAME,
+            serverSelectionTimeoutMS: 5000,
+            socketTimeoutMS: 45000,
+        });
+        console.log('✅ MongoDB Connected Successfully to NIXTZ DB');
+        
+        // CALL THE SETUP FUNCTION HERE
+        await createInitialSuperUser(); 
+
+        app.listen(PORT, () => {
+            console.log(`Server is running on port ${PORT}`);
+        });
+
+    } catch (err) {
+        console.error('❌ MongoDB Connection Error:', err.message);
+        console.log('Retrying connection in 5 seconds...');
+        setTimeout(connectDB, 5000); 
+    }
+};
+
+connectDB(); // Initial connection attempt
+
+// ===================================================================
+// 2. SCHEMAS (CORE MODULES ONLY)
+// ===================================================================
+// ... (Your Schemas remain here as they define the User model)
+// Core User & Config
 const UserSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true, trim: true },
     email: { type: String, required: true, unique: true, trim: true, lowercase: true },
@@ -38,12 +101,10 @@ const UserSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now },
     role: { type: String, default: 'pending', enum: ['pending', 'standard', 'admin', 'superadmin'] },
     membership: { type: String, default: 'none', enum: ['none', 'standard', 'platinum', 'vip'] },
-    pageAccess: { type: [String], default: [] },
-    watchlist: { type: [String], default: [] },
-    resetPasswordToken: String,
-    resetPasswordExpires: Date
+    pageAccess: { type: [String], default: [] }, 
 });
 const User = mongoose.model('User', UserSchema);
+// ... (rest of your schemas)
 
 const MembershipConfigSchema = new mongoose.Schema({
     level: { type: String, required: true, unique: true, enum: ['standard', 'platinum', 'vip'] },
@@ -51,8 +112,7 @@ const MembershipConfigSchema = new mongoose.Schema({
     monthlyPrice: { type: Number, required: true }
 });
 const MembershipConfig = mongoose.model('MembershipConfig', MembershipConfigSchema);
-
-// Finance & Stocks
+// ... (rest of your schemas BudgetTransaction, BudgetProjection, StaffProfile, StaffRoster)
 const BudgetTransactionSchema = new mongoose.Schema({
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     description: { type: String, required: true, trim: true },
@@ -62,34 +122,17 @@ const BudgetTransactionSchema = new mongoose.Schema({
 });
 const BudgetTransaction = mongoose.model('BudgetTransaction', BudgetTransactionSchema);
 
-const TmtStockRatingSchema = new mongoose.Schema({
-    ticker: { type: String, required: true, unique: true, uppercase: true, trim: true },
-    rating: { type: Number, required: true, min: 0, max: 5 },
-    rank: { type: String, trim: true, default: '' },
-    targetPrice: { type: Number, default: null }
-});
-const TmtStockRating = mongoose.model('TmtStockRating', TmtStockRatingSchema);
-
-const UserStockRatingSchema = new mongoose.Schema({
+const BudgetProjectionSchema = new mongoose.Schema({
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    ticker: { type: String, required: true, uppercase: true, trim: true },
-    rating: { type: Number, required: true, min: 0, max: 5 }
+    monthYear: { type: String, required: true, trim: true },
+    projectedIncome: { type: Number, required: true, default: 0 },
+    projectedExpenses: { type: Map, of: Number, default: {} }
 });
-const UserStockRating = mongoose.model('UserStockRating', UserStockRatingSchema);
+BudgetProjectionSchema.index({ user: 1, monthYear: 1 }, { unique: true });
+const BudgetProjection = mongoose.model('BudgetProjection', BudgetProjectionSchema);
 
-const PortfolioHoldingSchema = new mongoose.Schema({
-    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    broker: { type: String, required: true, trim: true },
-    ticker: { type: String, required: true, uppercase: true, trim: true },
-    shares: { type: Number, required: true, min: 0 },
-    buy_price: { type: Number, required: true, min: 0 },
-    buy_date: { type: Date, required: true },
-    asset_class: { type: String, default: 'Equity' },
-    annual_dividend: { type: Number, default: 0 } 
-});
-const PortfolioHolding = mongoose.model('PortfolioHolding', PortfolioHoldingSchema);
 
-// Staff & Roster
+// Staff & Roster Schemas
 const StaffProfileSchema = new mongoose.Schema({
     name: { type: String, required: true, unique: true, trim: true },
     employeeId: { type: String, unique: true, required: true, trim: true },
@@ -98,6 +141,8 @@ const StaffProfileSchema = new mongoose.Schema({
     fixedDayOff: { type: String, enum: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun', 'None'], default: 'None' },
     isNightRotator: { type: Boolean, default: false },
     currentRotationDay: { type: Number, default: 0 }, 
+    // This field is required by the generator/profile router
+    nextWeekHolidayRequest: { type: String, default: 'None' }, 
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
 });
 StaffProfileSchema.index({ user: 1, employeeId: 1 }, { unique: true });
@@ -121,13 +166,13 @@ const RosterEntrySchema = new mongoose.Schema({
     }],
 });
 RosterEntrySchema.index({ user: 1, weekStartDate: 1 }, { unique: true }); 
-const StaffRoster = mongoose.model('StaffRoster', RosterEntrySchema);
+const StaffRoster = mongoose.model('StaffRoster', RosterEntrySchema); 
 
 // 3. MIDDLEWARE & CONFIG
 const transporter = nodemailer.createTransport({
-    host: 'smtpout.secureserver.net',
+    host: 'smtpout.secureserver.net', 
     port: 465,
-    secure: true,
+    secure: true, 
     auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASSWORD 
@@ -135,18 +180,22 @@ const transporter = nodemailer.createTransport({
     tls: { rejectUnauthorized: false }
 });
 
-const { authMiddleware, adminAuthMiddleware } = require('./middleware/auth'); 
+// Import the shared middleware
+const { authMiddleware, adminAuthMiddleware, superAdminAuthMiddleware } = require('./middleware/auth'); 
 
-// --- Router Imports ---
+// --- Router Imports (Core Routers) ---
+const budgetPlannerRoutes = require('./routes/budget_planner_be.js');
 const staffRosterRoutes = require('./routes/staff_roster_api.js'); 
 const staffProfileRoutes = require('./routes/staff_profile_api_be.js'); 
-const adminPanelRoutes = require('./routes/admin_panel_be.js'); // Admin Router
+// All TMT/Stock/Service Routers REMOVED
 
 app.use(cors()); 
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
 
-// 4. AUTHENTICATION ROUTES
+// ===================================================================
+// 4. AUTHENTICATION & CORE USER ROUTES
+// ===================================================================
 
 // Register
 app.post('/api/auth/register', async (req, res) => {
@@ -191,7 +240,14 @@ app.post('/api/auth/login', async (req, res) => {
         const isMatch = await bcrypt.compare(password, user.passwordHash);
         if (!isMatch) return res.status(400).json({ success: false, message: 'Invalid credentials.' });
 
-        const payload = { user: { id: user.id, username: user.username, role: user.role, membership: user.membership, pageAccess: user.pageAccess } };
+        // CRITICAL FIX: Convert user ID to string before putting it into the JWT payload.
+        const payload = { user: { 
+            id: user._id.toString(), // <-- FIX applied here
+            username: user.username, 
+            role: user.role, 
+            membership: user.membership, 
+            pageAccess: user.pageAccess 
+        } };
         jwt.sign(payload, JWT_SECRET, { expiresIn: '5d' }, (err, token) => {
             if (err) throw err;
             res.json({
@@ -202,7 +258,9 @@ app.post('/api/auth/login', async (req, res) => {
                 currency: user.currency,
                 role: user.role,
                 membership: user.membership,
-                pageAccess: user.pageAccess
+                pageAccess: user.pageAccess,
+                // Ensure email is returned for front-end local storage
+                email: user.email // <-- ADDED for clean session management
             });
         });
     } catch (err) {
@@ -214,7 +272,8 @@ app.post('/api/auth/login', async (req, res) => {
 // Get Profile
 app.get('/api/user/profile', authMiddleware, async (req, res) => {
     try {
-        const user = await User.findById(req.user.id).select('-passwordHash');
+        // FIX APPLIED HERE: Removed .select() to ensure the role field is always retrieved
+        const user = await User.findById(req.user.id); 
         if (!user) return res.status(404).json({ success: false, message: 'User not found.' });
         res.json({ success: true, data: user });
     } catch (err) {
@@ -222,49 +281,213 @@ app.get('/api/user/profile', authMiddleware, async (req, res) => {
     }
 });
 
-// Forgot & Reset Password (keep your existing logic here if needed, abbreviated for clarity)
-app.post('/api/auth/forgot-password', async (req, res) => res.json({success:false, message:"Implemented in original"}));
-app.post('/api/auth/reset-password', async (req, res) => res.json({success:false, message:"Implemented in original"}));
+// ===================================================================
+// 5. CONSOLIDATED ADMIN PANEL ROUTES (CORE MANAGEMENT ONLY)
+// ===================================================================
+
+// GET Pending Users
+app.get('/api/admin/users/pending', authMiddleware, adminAuthMiddleware, async (req, res) => {
+    try {
+        const pendingUsers = await User.find({ $or: [{ role: 'pending' }, { role: { $exists: false } }] })
+            .select('username email createdAt')
+            .sort({ createdAt: 1 });
+        res.json({ success: true, data: pendingUsers });
+    } catch (err) {
+        console.error('Pending Users Error:', err);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// PUT Approve User
+app.put('/api/admin/users/:id/approve', authMiddleware, adminAuthMiddleware, async (req, res) => {
+    try {
+        const user = await User.findByIdAndUpdate(
+            req.params.id, 
+            { role: 'standard', membership: 'none', pageAccess: [] }, 
+            { new: true }
+        );
+        res.json({ success: true, message: 'User approved.', data: user });
+    } catch (err) {
+        console.error('Approve User Error:', err);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// GET Active Users
+app.get('/api/admin/users', authMiddleware, adminAuthMiddleware, async (req, res) => {
+    try {
+        const users = await User.find({ role: { $in: ['standard', 'admin', 'superadmin'] } })
+            .select('username email role membership pageAccess');
+        res.json({ success: true, data: users });
+    } catch (err) {
+        console.error('Get Users Error:', err);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// PUT Update Membership
+app.put('/api/admin/users/:id/update-membership', authMiddleware, adminAuthMiddleware, async (req, res) => {
+    const { membership } = req.body;
+    try {
+        let pageAccess = [];
+        if (membership !== 'none') {
+            const config = await MembershipConfig.findOne({ level: membership });
+            if (config) pageAccess = config.pages;
+        }
+        const user = await User.findByIdAndUpdate(req.params.id, { membership, pageAccess }, { new: true });
+        res.json({ success: true, message: 'Membership updated.', data: user });
+    } catch (err) {
+        console.error('Update Membership Error:', err.message);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// POST Create New Admin
+app.post('/api/admin/create', authMiddleware, superAdminAuthMiddleware, async (req, res) => {
+    const { username, email, password } = req.body;
+
+    if (!username || !email || !password || password.length < 8) {
+        return res.status(400).json({ success: false, message: 'Please provide username, email, and a password (min 8 chars).' });
+    }
+
+    try {
+        let userExists = await User.findOne({ $or: [{ email: email.toLowerCase() }, { username }] });
+        if (userExists) {
+            return res.status(400).json({ success: false, message: 'User with this email or username already exists.' });
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        const passwordHash = await bcrypt.hash(password, salt);
+
+        const newAdmin = new User({
+            username,
+            email: email.toLowerCase(),
+            passwordHash,
+            role: 'admin',
+            membership: 'vip',
+            pageAccess: ['all']
+        });
+
+        await newAdmin.save();
+        res.status(201).json({ success: true, message: `Admin user ${username} created successfully.` });
+
+    } catch (err) {
+        console.error('Create Admin Error:', err);
+        res.status(500).json({ success: false, message: 'Server error creating admin.' });
+    }
+});
+
+// GET Membership Config
+app.get('/api/admin/membership-config', authMiddleware, adminAuthMiddleware, async (req, res) => {
+    try {
+        const levels = ['standard', 'platinum', 'vip'];
+        const defaults = { 
+            standard: { pages: ['staff_roster', 'budget_tracker'], price: 10 }, 
+            platinum: { pages: ['staff_roster', 'asset_tracker'], price: 30 }, 
+            vip: { pages: ['all'], price: 50 } 
+        };
+        
+        const configs = await Promise.all(levels.map(async level => {
+            let config = await MembershipConfig.findOne({ level });
+            if (!config) {
+                config = new MembershipConfig({ level, pages: defaults[level].pages, monthlyPrice: defaults[level].price });
+                await config.save();
+            }
+            return config;
+        }));
+        res.json({ success: true, data: configs });
+    } catch (err) {
+        console.error('Membership Config Error:', err);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
+
+// PUT Update Membership Config
+app.put('/api/admin/membership-config/:level', authMiddleware, adminAuthMiddleware, async (req, res) => {
+    const { pages, monthlyPrice } = req.body;
+    try {
+        const config = await MembershipConfig.findOneAndUpdate({ level: req.params.level }, { pages, monthlyPrice }, { new: true, upsert: true });
+        await User.updateMany({ membership: req.params.level }, { $set: { pageAccess: pages } });
+        res.json({ success: true, message: 'Config updated.', data: config });
+    } catch (err) {
+        console.error('Update Config Error:', err.message);
+        res.status(500).json({ success: false, message: 'Server error.' });
+    }
+});
 
 
-// 5. MOUNT ROUTES (Admin & Operations)
+// ===================================================================
+// 6. MOUNT CORE ROUTERS (Staff and Budget)
+// ===================================================================
 
-// Admin Routes - Prefixed with /api/admin
-app.use('/api/admin', authMiddleware, adminAuthMiddleware, adminPanelRoutes);
-
-// Operations Routes
 app.use('/api/staff/profile', authMiddleware, staffProfileRoutes); 
 app.use('/api/staff/roster', authMiddleware, staffRosterRoutes); 
+app.use('/api/projections', authMiddleware, budgetPlannerRoutes); 
 
-// 6. STOCK WATCHLIST
-app.post('/api/user/watchlist/add', authMiddleware, async (req, res) => {
-    const { ticker } = req.body;
-    if (!ticker) return res.status(400).json({ success: false, message: 'Ticker required.' });
-    try {
-        const upperTicker = ticker.toUpperCase().trim();
-        const user = await User.findById(req.user.id);
-        if (user.watchlist.includes(upperTicker)) return res.json({ success: true, message: 'Already in watchlist.' });
-        user.watchlist.push(upperTicker);
-        await user.save();
-        res.json({ success: true, message: 'Added.', data: user.watchlist });
-    } catch (err) {
-        res.status(500).json({ success: false, message: 'Server error.' });
+// ===================================================================
+// 7. BUDGET/FINANCE ROUTES (CONSOLIDATED)
+// ===================================================================
+
+app.get('/api/transactions', authMiddleware, async (req, res) => {
+    try { 
+        const transactions = await BudgetTransaction.find({ user: req.user.id }).sort({ timestamp: -1 }); 
+        res.json({ success: true, data: transactions }); 
+    } catch (err) { 
+        console.error('Fetch Transactions Error:', err.message); 
+        res.status(500).json({ success: false, message: 'Server error fetching transactions.' }); 
+    }
+});
+app.post('/api/transactions', authMiddleware, async (req, res) => {
+    const { description, amount, type } = req.body; 
+    const validTypes = ['income', 'expense']; 
+    if (!description || typeof amount !== 'number' || amount <= 0 || !type || !validTypes.includes(type)) { 
+        return res.status(400).json({ success: false, message: 'Please provide a valid description, positive amount, and type (income/expense).' }); 
+    } 
+    try { 
+        const newTransaction = new BudgetTransaction({ user: req.user.id, description: description.trim(), amount: amount, type }); 
+        const savedTransaction = await newTransaction.save(); 
+        res.status(201).json({ success: true, message: 'Transaction saved.', data: savedTransaction }); 
+    } catch (err) { 
+        console.error('Add Transaction Error:', err.message); 
+        if (err.name === 'ValidationError') { 
+            return res.status(400).json({ success: false, message: `Validation Error: ${err.message}` }); 
+        } 
+        res.status(500).json({ success: false, message: 'Server error saving transaction.' }); 
+    }
+});
+app.delete('/api/transactions/:id', authMiddleware, async (req, res) => { 
+    try { 
+        const transactionId = req.params.id; 
+        let query = { _id: transactionId, user: req.user.id }; 
+        if (req.user.role === 'superadmin') { 
+            query = { _id: transactionId }; 
+        } 
+        const transaction = await BudgetTransaction.findOne(query); 
+        if (!transaction) { 
+            return res.status(404).json({ success: false, message: 'Transaction not found or you are not authorized to delete it.' });
+        } 
+        await BudgetTransaction.deleteOne({ _id: transactionId }); 
+        res.json({ success: true, message: 'Transaction deleted.' }); 
+    } catch (err) { 
+        console.error('Delete Transaction Error:', err.message); 
+        if (err.name === 'CastError') { 
+            return res.status(400).json({ success: false, message: 'Invalid transaction ID format.' }); 
+        } 
+        res.status(500).json({ success: false, message: 'Server error deleting transaction.' }); 
     }
 });
 
-app.get('/api/user/watchlist', authMiddleware, async (req, res) => {
-    try {
-        const user = await User.findById(req.user.id);
-        res.json({ success: true, data: user.watchlist });
-    } catch (err) {
-        res.status(500).json({ success: false, message: 'Server error.' });
-    }
-});
+// 9. START SERVER
+// The original app.listen(PORT, ...) has been REMOVED from here 
+// and moved into the connectDB function to ensure stability.
 
-// 7. START SERVER
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-    console.log(`Local access: http://localhost:${PORT}`);
-});
-
-module.exports = { app, User, StaffRoster, StaffProfile };
+// Updated Export:
+module.exports = { 
+    app, 
+    User, 
+    StaffRoster, 
+    StaffProfile, 
+    BudgetTransaction, 
+    BudgetProjection, 
+    MembershipConfig 
+};

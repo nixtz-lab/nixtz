@@ -102,9 +102,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (url.includes('/login')) {
                     // 🚨 BRAND FIX: Save using nixtz_ prefix
                     localStorage.setItem('nixtz_auth_token', result.token); 
-                    localStorage.setItem('tmt_username', result.username); 
-                    localStorage.setItem('tmt_user_role', result.role);
-                    localStorage.setItem('tmt_user_membership', result.membership);
+                    localStorage.setItem('nixtz_username', result.username); 
+                    localStorage.setItem('nixtz_user_role', result.role);
+                    localStorage.setItem('nixtz_user_membership', result.membership);
                     localStorage.setItem('nixtz_page_access', JSON.stringify(result.pageAccess)); 
                     
                     // 🚨 REDIRECT FIX: Redirect to Core Dashboard
