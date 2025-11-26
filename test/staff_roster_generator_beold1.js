@@ -91,13 +91,6 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
     // --- Main Daily Scheduling Loop ---
     DAYS_FULL.forEach((day, dayIndex) => {
         
-        // --- Role tracking for the current day ---
-        // Tracks roles assigned to Normal Staff (non-Delivery Drivers)
-        const morningShiftRolesAssigned = { C3: 0, C4: 0, C5: 0 };
-        const afternoonShiftRolesAssigned = { C3: 0, C4: 0, C5: 0 };
-        let hasExtendedDeliveryCover = false; // Tracks 07:00-21:00 shift
-        // ----------------------------------------
-        
         // 0. CHECK WEEKLY REQUEST OVERRIDE (Temporary Leave/Shift Change)
         staffProfiles.forEach(staff => {
             const staffEntry = weeklyRosterMap.get(staff.employeeId);
@@ -140,30 +133,18 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
                 const tempShiftPref = (request.type === 'ShiftChange') ? request.shift : driver.shiftPreference; 
                 
                 let shiftDetails;
-                let jobRole = 'C3 (Del)';
-
                 if (tempShiftPref.includes('Morning')) {
+                    // Note: This specific cover time ('07:00-21:00') is a hybrid shift, but for core shifts:
                     shiftDetails = { id: 1, time: MORNING_TIME };
                 } else {
                     shiftDetails = { id: 2, time: AFTERNOON_TIME };
                 }
 
                 if (otherDriver && otherDriver.fixedDayOff === day) {
-                    // If covering a fellow driver, use an extended shift time
-                    jobRole = 'C3 (Del Cov)';
-                    driverEntry.weeklySchedule[dayIndex].shifts.push({ shiftId: 1, jobRole: jobRole, timeRange: '07:00-21:00', color: ROLE_COLORS['Delivery'] });
-                    hasExtendedDeliveryCover = true; // Set flag
+                    // If covering a fellow driver, use an extended shift time (can be hardcoded here for complexity)
+                    driverEntry.weeklySchedule[dayIndex].shifts.push({ shiftId: 1, jobRole: 'C3 (Del Cov)', timeRange: '07:00-21:00', color: ROLE_COLORS['Delivery'] });
                 } else {
-                    driverEntry.weeklySchedule[dayIndex].shifts.push({ shiftId: shiftDetails.id, jobRole: jobRole, timeRange: shiftDetails.time, color: ROLE_COLORS['Delivery'] });
-                }
-            }
-            
-            // Track C3 assignment from the dedicated Delivery Drivers
-            if (driverEntry.weeklySchedule[dayIndex].shifts.length > 0 && driverEntry.weeklySchedule[dayIndex].shifts[0].jobRole.includes('C3')) {
-                if (driverEntry.weeklySchedule[dayIndex].shifts[0].shiftId === 1) {
-                    morningShiftRolesAssigned.C3++;
-                } else if (driverEntry.weeklySchedule[dayIndex].shifts[0].shiftId === 2) {
-                    afternoonShiftRolesAssigned.C3++;
+                    driverEntry.weeklySchedule[dayIndex].shifts.push({ shiftId: shiftDetails.id, jobRole: 'C3 (Del)', timeRange: shiftDetails.time, color: ROLE_COLORS['Delivery'] });
                 }
             }
         });
@@ -224,36 +205,7 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
         }
         
         // 5. Morning/Afternoon Normal Staff (Fill-in)
-        
-        // Re-calculate how many staff are already scheduled for Morning/Afternoon (Sup, Mgr, Night Cover)
-        let totalMorningStaff = 0;
-        let totalAfternoonStaff = 0;
-        
-        staffProfiles.forEach(s => {
-            const entry = weeklyRosterMap.get(s.employeeId);
-            if (entry.weeklySchedule[dayIndex].shifts.length > 0) {
-                const shiftId = entry.weeklySchedule[dayIndex].shifts[0].shiftId;
-                if (shiftId === 1) totalMorningStaff++;
-                if (shiftId === 2) totalAfternoonStaff++;
-            }
-        });
-        
-        // Adjust Morning/Afternoon roles assigned counts based on existing assignments (Mgr, Sup, Del)
-        // Note: The Delivery Driver logic (Step 2) already updates the C3 counts correctly.
-        
-        // Define quotas for Normal Staff roles that need to be filled.
-        const requiredMorningC3 = 1; 
-        const requiredMorningC4 = 1; 
-        const requiredMorningC5 = 1;
-        
-        const requiredAfternoonC3 = 1;
-        const requiredAfternoonC4 = 1;
-        const requiredAfternoonC5 = hasExtendedDeliveryCover ? 0 : 1; // C5 not required if extended delivery cover is present.
-
-        const requiredMorning = SHIFTS[1].required; // 6
-        const requiredAfternoon = SHIFTS[2].required; // 5
-
-        // Use the coveragePool (non-rotators) to fill Morning/Afternoon slots
+        let staffCounter = 0;
         coveragePool.forEach(staff => {
             const staffEntry = weeklyRosterMap.get(staff.employeeId);
             const request = getWeeklyRequest(staff);
@@ -262,91 +214,26 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
 
             if (alreadyScheduled) return;
             
-            // Check for Fixed Day Off or Leave Requests (already done in step 0, but added here for the specific pool loop)
-            if (staff.fixedDayOff === day || (request.type === 'Leave' && request.day === day)) {
-                 staffEntry.weeklySchedule[dayIndex].shifts.push({ shiftId: null, jobRole: 'Leave (Off)', timeRange: 'Full Day' });
-                 return;
-            }
+            // Standard Normal Staff fixed day off logic
+            const assignedDayOff = (staffCounter % 5) + 2; 
+            if (assignedDayOff === dayIndex) {
+                 staffEntry.weeklySchedule[dayIndex].shifts.push({ shiftId: null, jobRole: 'Leave', timeRange: 'Full Day' });
+            } else {
+                const tempShiftPref = (request.type === 'ShiftChange') ? request.shift : staff.shiftPreference;
+                
+                let shiftId;
+                let timeRange;
 
-            const tempShiftPref = (request.type === 'ShiftChange') ? request.shift : staff.shiftPreference;
-            
-            let assigned = false;
-
-            // --- A. Prioritize Morning (Shift 1) based on preference and quota ---
-            if ((tempShiftPref === 'Morning' || totalMorningStaff < totalAfternoonStaff) && totalMorningStaff < requiredMorning) {
-                let jobRole = 'C4'; // Default general role
+                if (tempShiftPref === 'Morning') { shiftId = 1; timeRange = MORNING_TIME; }
+                else { shiftId = 2; timeRange = AFTERNOON_TIME; }
                 
-                // 1. Assign C5 (if needed)
-                if (morningShiftRolesAssigned.C5 < requiredMorningC5) {
-                    jobRole = 'C5';
-                    morningShiftRolesAssigned.C5++;
-                } 
-                // 2. Assign C4 (if needed)
-                else if (morningShiftRolesAssigned.C4 < requiredMorningC4) {
-                    jobRole = 'C4';
-                    morningShiftRolesAssigned.C4++;
-                }
-                // 3. Assign C3 (if needed - required one C3 from Normal Staff)
-                else if (morningShiftRolesAssigned.C3 < requiredMorningC3) {
-                    jobRole = 'C3';
-                    morningShiftRolesAssigned.C3++;
-                }
-                // 4. Fill remaining slots with C4 (as requested: "the rest can me C2 and C4")
-                else {
-                    // We primarily use C4 for day shifts. C2 is for night.
-                    jobRole = 'C4'; 
-                }
-                
-                staffEntry.weeklySchedule[dayIndex].shifts.push({ 
-                    shiftId: 1, 
-                    jobRole: jobRole, 
-                    timeRange: MORNING_TIME 
-                });
-                totalMorningStaff++;
-                assigned = true;
+                const jobRole = tempShiftPref === 'Morning' ? 'C4' : 'C5';
+                staffEntry.weeklySchedule[dayIndex].shifts.push({ shiftId: shiftId, jobRole: jobRole, timeRange: timeRange });
             }
-            
-            // --- B. Assign Afternoon (Shift 2) if not scheduled and quota remains ---
-            if (!assigned && totalAfternoonStaff < requiredAfternoon) {
-                
-                let jobRole = 'C4';
-                
-                // 1. Assign C3 (if needed - required 1 C3 for afternoon from Normal Staff)
-                if (afternoonShiftRolesAssigned.C3 < requiredAfternoonC3) {
-                    jobRole = 'C3';
-                    afternoonShiftRolesAssigned.C3++;
-                } 
-                // 2. Assign C4 (if needed)
-                else if (afternoonShiftRolesAssigned.C4 < requiredAfternoonC4) {
-                    jobRole = 'C4';
-                    afternoonShiftRolesAssigned.C4++;
-                }
-                // 3. Assign C5 (Conditional assignment based on extended delivery cover)
-                else if (afternoonShiftRolesAssigned.C5 < requiredAfternoonC5) { 
-                    jobRole = 'C5';
-                    afternoonShiftRolesAssigned.C5++;
-                }
-                // 4. Fill remaining slots with C4
-                else {
-                    jobRole = 'C4';
-                }
-                
-                staffEntry.weeklySchedule[dayIndex].shifts.push({ 
-                    shiftId: 2, 
-                    jobRole: jobRole, 
-                    timeRange: AFTERNOON_TIME 
-                });
-                totalAfternoonStaff++;
-                assigned = true;
-            } 
-            
-            // --- C. Assign Day Off if all quotas are met for both shifts ---
-            if (!assigned) {
-                staffEntry.weeklySchedule[dayIndex].shifts.push({ shiftId: null, jobRole: 'Leave (Auto Off)', timeRange: 'Full Day' });
-            }
+            staffCounter++;
         });
 
-    }); // End of DAYS_FULL.forEach
+    }); 
 
     // Final Formatting - ATTACH POSITION FOR FRONTEND SORTING
     return Array.from(weeklyRosterMap.values()).map(staff => ({

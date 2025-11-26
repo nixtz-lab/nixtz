@@ -744,6 +744,24 @@ async function handleAddStaff(e) {
 
 // --- STAFF LIST MANAGEMENT LOGIC (Updated) ---
 
+/**
+ * @function openStaffListModal (FIXED: Missing function)
+ * Handles the display logic for the staff list modal.
+ */
+function openStaffListModal() {
+    if (!window.getAuthStatus || !getAuthStatus()) {
+        showMessage("Please log in to view the staff list.", true);
+        return;
+    }
+    
+    loadStaffProfiles(); 
+
+    document.getElementById('staff-list-modal').classList.remove('hidden');
+    document.getElementById('staff-list-modal').classList.add('flex');
+}
+window.openStaffListModal = openStaffListModal;
+
+
 async function loadStaffProfiles() {
     const container = document.getElementById('staff-profiles-container');
     const msgBox = document.getElementById('staff-list-message');
