@@ -19,35 +19,13 @@ const MONGODB_URI = process.env.MONGODB_URI;
 const DATABASE_NAME = 'nixtz_operations_db'; 
 
 if (!MONGODB_URI) {
-    console.error("FATAL ERROR: MONGODB_URI is not defined. Application cannot proceed.");
-    // Exit if the connection URI is missing
-    process.exit(1); 
+    console.error("FATAL ERROR: MONGODB_URI is not defined.");
 }
 
-// 1. MONGODB CONNECTION (Robust connection logic)
-const connectDB = async () => {
-    try {
-        await mongoose.connect(MONGODB_URI, { 
-            dbName: DATABASE_NAME,
-            serverSelectionTimeoutMS: 5000, // Timeout after 5s for the initial connection handshake
-            socketTimeoutMS: 45000, // Keep-alive socket time
-        });
-        console.log('✅ MongoDB Connected Successfully to NIXTZ DB');
-
-        // ONLY START THE EXPRESS SERVER AFTER A SUCCESSFUL DB CONNECTION
-        app.listen(PORT, () => {
-            console.log(`Server is running on port ${PORT}`);
-        });
-
-    } catch (err) {
-        // Log the error and retry connection after 5 seconds
-        console.error('❌ MongoDB Connection Error:', err.message);
-        console.log('Retrying connection in 5 seconds...');
-        setTimeout(connectDB, 5000); 
-    }
-};
-
-connectDB(); // Initial connection attempt
+// 1. MONGODB CONNECTION
+mongoose.connect(MONGODB_URI, { dbName: DATABASE_NAME })
+    .then(() => console.log('MongoDB Connected Successfully to NIXTZ DB'))
+    .catch(err => console.error('MongoDB Connection Error:', err.message));
 
 // ===================================================================
 // 2. SCHEMAS (CORE MODULES ONLY)
@@ -102,7 +80,6 @@ const StaffProfileSchema = new mongoose.Schema({
     fixedDayOff: { type: String, enum: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun', 'None'], default: 'None' },
     isNightRotator: { type: Boolean, default: false },
     currentRotationDay: { type: Number, default: 0 }, 
-    // This field is required by the generator/profile router
     nextWeekHolidayRequest: { type: String, default: 'None' }, 
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
 });
@@ -145,10 +122,9 @@ const transporter = nodemailer.createTransport({
 const { authMiddleware, adminAuthMiddleware, superAdminAuthMiddleware } = require('./middleware/auth'); 
 
 // --- Router Imports (Core Routers) ---
-const budgetPlannerRoutes = require('./routes/budget_planner_be.js');
+const budgetPlannerRoutes = require('./routes/budget_planner_be.js'); // RESTORED
 const staffRosterRoutes = require('./routes/staff_roster_api.js'); 
 const staffProfileRoutes = require('./routes/staff_profile_api_be.js'); 
-// All TMT/Stock/Service Routers REMOVED
 
 app.use(cors()); 
 app.use(express.json());
@@ -201,14 +177,7 @@ app.post('/api/auth/login', async (req, res) => {
         const isMatch = await bcrypt.compare(password, user.passwordHash);
         if (!isMatch) return res.status(400).json({ success: false, message: 'Invalid credentials.' });
 
-        // 🚨 CRITICAL FIX: Convert user ID to string before putting it into the JWT payload.
-        const payload = { user: { 
-            id: user._id.toString(), // <-- FIX applied here
-            username: user.username, 
-            role: user.role, 
-            membership: user.membership, 
-            pageAccess: user.pageAccess 
-        } };
+        const payload = { user: { id: user.id, username: user.username, role: user.role, membership: user.membership, pageAccess: user.pageAccess } };
         jwt.sign(payload, JWT_SECRET, { expiresIn: '5d' }, (err, token) => {
             if (err) throw err;
             res.json({
@@ -231,8 +200,7 @@ app.post('/api/auth/login', async (req, res) => {
 // Get Profile
 app.get('/api/user/profile', authMiddleware, async (req, res) => {
     try {
-        // FIX APPLIED HERE: Removed .select() to ensure the role field is always retrieved
-        const user = await User.findById(req.user.id); 
+        const user = await User.findById(req.user.id).select('username email currency membership role pageAccess'); 
         if (!user) return res.status(404).json({ success: false, message: 'User not found.' });
         res.json({ success: true, data: user });
     } catch (err) {
@@ -423,7 +391,7 @@ app.delete('/api/transactions/:id', authMiddleware, async (req, res) => {
         } 
         const transaction = await BudgetTransaction.findOne(query); 
         if (!transaction) { 
-            return res.status(404).json({ success: false, message: 'Transaction not found or you are not authorized to delete it.' });
+            return res.status(404).json({ success: false, message: 'Transaction not found or you are not authorized to delete it.' }); 
         } 
         await BudgetTransaction.deleteOne({ _id: transactionId }); 
         res.json({ success: true, message: 'Transaction deleted.' }); 
@@ -437,8 +405,9 @@ app.delete('/api/transactions/:id', authMiddleware, async (req, res) => {
 });
 
 // 9. START SERVER
-// The original app.listen(PORT, ...) has been REMOVED from here 
-// and moved into the connectDB function to ensure stability.
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+});
 
 // Updated Export:
 module.exports = { 
