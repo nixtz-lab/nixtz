@@ -18,19 +18,21 @@ const getPageAccess = () => {
         
         if (!access) return [];
 
-        // Check if data is stored as a JSON array (like ["staff_roster", "index"])
-        if (access.startsWith('[')) {
-             // Directly parse the JSON string array and normalize slugs
-             const parsedArray = JSON.parse(access);
-             return parsedArray.map(s => s.trim().toLowerCase());
+        const pageSlugs = access.split(',').map(s => s.trim().toLowerCase()).filter(s => s);
+        
+        if (pageSlugs.length === 0 && access.startsWith('[')) {
+             return JSON.parse(access);
         }
 
-        // Handle simple comma-separated string fallback (for old data)
-        return access.split(',').map(s => s.trim().toLowerCase()).filter(s => s);
+        return pageSlugs;
 
     } catch (e) {
         console.error("Error parsing page access:", e);
-        return [];
+        try {
+             return access ? JSON.parse(access) : [];
+        } catch (e2) {
+             return [];
+        }
     }
 };
 
