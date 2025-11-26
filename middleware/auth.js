@@ -2,14 +2,14 @@
 
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
-// NOTE: Model access must be delayed until inside authMiddleware to prevent crash.
+// NOTE: We rely on the User model being registered in server.js before this code is executed.
 
 // --- CRITICAL CONFIGURATION ---
 const JWT_SECRET = process.env.JWT_SECRET || 'your_default_jwt_secret_please_change_this_for_prod';
 
-// --- Auth Middleware (TMT Structure with DB Lookup) ---
+// --- Auth Middleware (The core authentication and database check) ---
 const authMiddleware = async (req, res, next) => {
-    // 🚨 FIX: Model access delayed until here
+    // ✅ SAFE MODEL ACCESS: We access the model here to prevent application crash
     const User = mongoose.model('User'); 
     
     // 1. Extract token safely
@@ -28,10 +28,13 @@ const authMiddleware = async (req, res, next) => {
         }
         
         // 3. Look up user in the database (Ensures user still exists and token fields are current)
-        // Selects the fields used by Admin and other core checks
-        const user = await User.findById(decoded.user.id).select('username role membership pageAccess');
+        
+        // 🚨 CRITICAL FIX: Changed from findById() to findOne({_id: ...}) 
+        // This ensures the query works whether the ID is a MongoDB ObjectId or a simple string.
+        const user = await User.findOne({ _id: decoded.user.id }).select('username role membership pageAccess');
 
         if (!user) {
+             // This is the error returned if the ID is wrong or the database query returns null
              return res.status(401).json({ success: false, message: 'Invalid token: User not found.' });
         }
 
@@ -54,7 +57,7 @@ const authMiddleware = async (req, res, next) => {
     }
 };
 
-// --- Admin Auth Middleware ---
+// --- Admin Auth Middleware (Authorization) ---
 const adminAuthMiddleware = (req, res, next) => {
     // Checks role attached to req.user from authMiddleware
     if (req.user && (req.user.role === 'admin' || req.user.role === 'superadmin')) {
@@ -64,7 +67,7 @@ const adminAuthMiddleware = (req, res, next) => {
     }
 };
 
-// --- Super Admin Auth Middleware ---
+// --- Super Admin Auth Middleware (Highest Authorization) ---
 const superAdminAuthMiddleware = (req, res, next) => {
     // Checks role attached to req.user from authMiddleware
     if (req.user && req.user.role === 'superadmin') {
