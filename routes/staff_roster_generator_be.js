@@ -5,6 +5,8 @@
  * This structure now only defines fixed ID, Name, Roles, and Required Counts.
  * The time strings used within the generation logic (e.g., '08:00-17:00') 
  * MUST match the dynamic times saved on the frontend for consistency.
+ * * NOTE: The generator logic below is simplified and only uses the CORE_SHIFTS (1, 2, 3) 
+ * for assignment, as the new frontend structure handles sub-shifts dynamically.
  */
 const SHIFTS = { 
     // ID 1: Morning Shift
@@ -12,13 +14,7 @@ const SHIFTS = {
     // ID 2: Afternoon Shift
     2: { name: 'Afternoon', time: 'DYNAMIC_TIME_2', roles: ['C1', 'C5', 'C3'], required: 5 }, 
     // ID 3: Night Shift
-    3: { name: 'Night', time: 'DYNAMIC_TIME_3', roles: ['C1', 'C2'], required: 'N/A' },
-    // ID 4: Early Morning (Example of user-defined time)
-    4: { name: 'Early Morning', time: 'DYNAMIC_TIME_4', roles: ['C4', 'C5'], required: 2 }, 
-    // ID 5: Optional Slot A
-    5: { name: 'Optional Shift A', time: 'DYNAMIC_TIME_5', roles: ['C4'], required: 0 }, 
-    // ID 6: Optional Slot B
-    6: { name: 'Optional Shift B', time: 'DYNAMIC_TIME_6', roles: ['C5'], required: 0 } 
+    3: { name: 'Night', time: 'DYNAMIC_TIME_3', roles: ['C1', 'C2'], required: 'N/A' }
 };
 
 // Colors for easy identification on the frontend
@@ -48,12 +44,7 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
     // --- Utility function to check and extract request ---
     function getWeeklyRequest(profile) {
         
-        // 1. Check for PERMANENT CLEAR (set by frontend Update modal)
-        if (profile.nextWeekHolidayRequest === 'None') { 
-            return { type: 'None' };
-        }
-        
-        if (!profile.nextWeekHolidayRequest || typeof profile.nextWeekHolidayRequest !== 'string') {
+        if (profile.nextWeekHolidayRequest === 'None' || !profile.nextWeekHolidayRequest || typeof profile.nextWeekHolidayRequest !== 'string') {
             return { type: 'None' };
         }
         
@@ -65,12 +56,10 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
         
         const [requestWeek, requestValue] = parts;
 
-        // 2. Check if the request date has already passed. 
         if (requestWeek < weekStartString) {
              return { type: 'None' };
         }
         
-        // 3. Check if the request applies to the CURRENT week being generated
         if (requestWeek === weekStartString) {
             if (DAYS_FULL.includes(requestValue) || requestValue === 'Full Week') {
                  return { type: 'Leave', day: requestValue };
@@ -131,8 +120,8 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
         if (manager) {
             const pae = weeklyRosterMap.get(manager.employeeId);
             
-            // CRITICAL CHECK: Skip if Manager is already on leave (from Step 0)
-            if (isScheduled(pae, dayIndex)) { /* Already handled by leave/fixed day off */ }
+            // CRITICAL CHECK: Skip if Manager is already scheduled (Leave/Fixed Day Off)
+            if (isScheduled(pae, dayIndex)) { /* Skip assignment */ }
             else {
                 // Manager default assignment
                 pae.weeklySchedule[dayIndex].shifts.push({ shiftId: 1, jobRole: 'C1 (Mgr)', timeRange: MORNING_TIME, color: ROLE_COLORS['Manager'] });
@@ -145,9 +134,9 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
             const otherDriver = deliveryDrivers[1 - index];
             const request = getWeeklyRequest(driver);
 
-            // CRITICAL CHECK: Skip if Driver is already on leave (from Step 0)
+            // CRITICAL CHECK: Skip if Driver is already scheduled (Leave/Fixed Day Off)
             if (isScheduled(driverEntry, dayIndex)) { 
-                // However, we still need to track C3 assignment if they are scheduled!
+                // If they are scheduled with a shift (not Leave), count C3
                 if (driverEntry.weeklySchedule[dayIndex].shifts.length > 0 && driverEntry.weeklySchedule[dayIndex].shifts[0].jobRole.includes('C3')) {
                     const shiftId = driverEntry.weeklySchedule[dayIndex].shifts[0].shiftId;
                     if (shiftId === 1) morningShiftRolesAssigned.C3++;
@@ -162,6 +151,7 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
             let shiftDetails;
             let jobRole = 'C3 (Del)';
 
+            // Determine if using CORE shift 1 or 2 times
             if (tempShiftPref.includes('Morning')) {
                 shiftDetails = { id: 1, time: MORNING_TIME };
             } else {
@@ -188,7 +178,7 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
             const supEntry = weeklyRosterMap.get(sup.employeeId);
             const request = getWeeklyRequest(sup);
 
-            // CRITICAL CHECK: Skip if Supervisor is already on leave (from Step 0)
+            // CRITICAL CHECK: Skip if Supervisor is already scheduled (Leave/Fixed Day Off)
             if (isScheduled(supEntry, dayIndex)) { return; }
             
             const tempShiftPref = (request.type === 'ShiftChange') ? request.shift : sup.shiftPreference;
@@ -199,7 +189,7 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
             
             if (tempShiftPref === 'Morning') { shiftId = 1; timeRange = MORNING_TIME; }
             else if (tempShiftPref === 'Afternoon') { shiftId = 2; timeRange = AFTERNOON_TIME; }
-            else { shiftId = 3; timeRange = NIGHT_TIME; }
+            else { shiftId = 3; timeRange = NIGHT_TIME; } // Night shift for supervisors
 
             supEntry.weeklySchedule[dayIndex].shifts.push({ shiftId: shiftId, jobRole: 'C1 (Sup)', timeRange: timeRange, color: ROLE_COLORS['Supervisor'] });
         });
@@ -207,15 +197,11 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
         // 4. Night Normal Staff (Rotators) and Coverage
         nightStaffPool.forEach(staff => {
             const staffEntry = weeklyRosterMap.get(staff.employeeId);
-            const request = getWeeklyRequest(staff);
-
-            // CRITICAL CHECK: Skip if Night Rotator is already on leave (from Step 0)
+            
+            // CRITICAL CHECK: Skip if Night Rotator is already scheduled (Leave/Fixed Day Off)
             if (isScheduled(staffEntry, dayIndex)) { return; }
             
-            // Night staff relies on fixedDayOff for stability
-            // (Note: Fixed day off already handled in Step 0, this assigns the shift)
-            
-            // Use NIGHT_TIME from dynamic SHIFTS structure
+            // Assign Night shift (ID 3)
             staffEntry.weeklySchedule[dayIndex].shifts.push({ shiftId: 3, jobRole: 'C2', timeRange: NIGHT_TIME });
         });
         
@@ -223,18 +209,19 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
         let neededNightCoverage = 2 - actualNightStaff;
         
         if (neededNightCoverage > 0) {
+            // Find staff in the coveragePool who are NOT yet scheduled
             let availableCover = coveragePool.filter(s => !isScheduled(weeklyRosterMap.get(s.employeeId), dayIndex));
             
             for(let i=0; i < neededNightCoverage && i < availableCover.length; i++) {
                 const coverStaff = availableCover[i];
-                // Use NIGHT_TIME from dynamic SHIFTS structure
+                // Assign Night shift (ID 3) to fill coverage gap
                 weeklyRosterMap.get(coverStaff.employeeId).weeklySchedule[dayIndex].shifts.push({ shiftId: 3, jobRole: 'C4 (Night Cov)', timeRange: NIGHT_TIME });
             }
         }
         
         // 5. Morning/Afternoon Normal Staff (Fill-in)
         
-        // Re-calculate how many staff are already scheduled for Morning/Afternoon
+        // Recalculate scheduled staff counts *after* all priority assignments (Mgr, Sup, Del, Night)
         let totalMorningStaff = 0;
         let totalAfternoonStaff = 0;
         
@@ -263,7 +250,7 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
         coveragePool.forEach(staff => {
             const staffEntry = weeklyRosterMap.get(staff.employeeId);
             
-            // CRITICAL CHECK: Skip if staff is already scheduled (Step 0, or Night Cover)
+            // CRITICAL CHECK: Skip if staff is already scheduled
             if (isScheduled(staffEntry, dayIndex)) return; 
             
             const request = getWeeklyRequest(staff);
