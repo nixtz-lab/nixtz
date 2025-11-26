@@ -5,13 +5,13 @@
 
 // --- CORE GLOBAL UTILITIES ---
 const API_BASE_URL = window.location.origin;
-// 🚨 BRAND FIX: Use nixtz_ prefix
-const getAuthStatus = () => localStorage.getItem('nixtz_auth_token') !== null;
-const getUserRole = () => localStorage.getItem('nixtz_user_role'); 
+// 🚨 CRITICAL FIX: Reading must use 'tmt_auth_token'
+const getAuthStatus = () => localStorage.getItem('tmt_auth_token') !== null;
+const getUserRole = () => localStorage.getItem('tmt_user_role'); 
 const getPageAccess = () => { 
     try {
-        // 🚨 BRAND FIX: Use nixtz_ prefix
-        const access = localStorage.getItem('nixtz_page_access');
+        // 🚨 CRITICAL FIX: Reading must use 'tmt_page_access'
+        const access = localStorage.getItem('tmt_page_access');
         return access ? JSON.parse(access) : [];
     } catch (e) {
         console.error("Error parsing page access:", e);
@@ -19,8 +19,8 @@ const getPageAccess = () => {
     }
 };
 const JOIN_PAGE_URL = "auth.html?mode=join";
-// 🚨 BRAND FIX: Use nixtz_ prefix
-const COOKIE_CONSENT_KEY = "nixtz_cookie_accepted"; 
+// 🚨 SYNCHRONIZATION: Using tmt_ prefix for cookie key
+const COOKIE_CONSENT_KEY = "tmt_cookie_accepted"; 
 let currentUserEmail = null; 
 
 window.getAuthStatus = getAuthStatus;
@@ -40,8 +40,8 @@ function showMessage(text, isError = false) {
 
     msgText.textContent = text;
     
-    // 🚨 BRAND FIX: Use nixtz-primary/secondary colors (must be defined in CSS/Tailwind)
-    msgBox.classList.remove('hidden', 'bg-red-500', 'bg-nixtz-primary', 'opacity-0'); 
+    // BRAND FIX: Use nixtz-primary/secondary colors
+    msgBox.classList.remove('hidden', 'bg-red-500', 'bg-nixtz-primary', 'opacity-0');
     
     if (isError) {
         msgBox.classList.add('bg-red-500'); 
@@ -111,8 +111,8 @@ function checkAccessAndRedirect(targetUrl, event) {
         }, 300); 
     } else {
         // If the user is logged in but the slug is missing from their allowedPages
-        // 🚨 BRAND FIX: Use nixtz_user_membership
-        const userMembership = localStorage.getItem('nixtz_user_membership') || 'none'; 
+        // 🚨 FIX: Must read tmt_user_membership
+        const userMembership = localStorage.getItem('tmt_user_membership') || 'none'; 
         showMessage(`Access Denied. You are a ${userMembership.toUpperCase()} member. This content is not included in your current subscription.`, true);
         
         // Optional: window.location.href = 'membership_upgrade.html'; 
@@ -194,8 +194,8 @@ function updateAuthUI() {
     const authButtonsContainer = document.getElementById('auth-buttons-container');
     const userMenuContainer = document.getElementById('user-menu-container'); 
     const usernameDisplay = document.getElementById('username-display');
-    // 🚨 BRAND FIX: Use nixtz_ prefix
-    const username = localStorage.getItem('nixtz_username'); 
+    // 🚨 FIX: Must read tmt_username
+    const username = localStorage.getItem('tmt_username'); 
     const userInitials = document.getElementById('user-initials'); 
     
     const adminLinkContainer = document.getElementById('admin-link-container');
@@ -229,13 +229,13 @@ function updateAuthUI() {
 
 
 function handleLogout() {
-    // 🚨 BRAND FIX: Use nixtz_ prefix
-    localStorage.removeItem('nixtz_auth_token'); 
-    localStorage.removeItem('nixtz_username'); 
-    localStorage.removeItem('nixtz_user_role'); 
-    localStorage.removeItem('nixtz_user_membership'); 
-    localStorage.removeItem('nixtz_page_access'); 
-    localStorage.removeItem('nixtz_email'); 
+    // 🚨 CRITICAL FIX: Clearing all tmt_ keys
+    localStorage.removeItem('tmt_auth_token'); 
+    localStorage.removeItem('tmt_username'); 
+    localStorage.removeItem('tmt_user_role'); 
+    localStorage.removeItem('tmt_user_membership'); 
+    localStorage.removeItem('tmt_page_access'); 
+    localStorage.removeItem('tmt_email'); 
 
     // Reset global state
     currentUserEmail = null; 
@@ -262,8 +262,8 @@ async function fetchUserData() {
         const response = await fetch(`${API_BASE_URL}/api/user/profile`, {
             method: 'GET',
             headers: {
-                // 🚨 BRAND FIX: Use nixtz_ prefix
-                'Authorization': `Bearer ${localStorage.getItem('nixtz_auth_token')}`,
+                // 🚨 CRITICAL FIX: Use tmt_auth_token for the API header
+                'Authorization': `Bearer ${localStorage.getItem('tmt_auth_token')}`,
                 'Content-Type': 'application/json',
             },
         });
@@ -280,7 +280,7 @@ async function fetchUserData() {
             
             // Store email in local storage for persistence
             if (result.data.email) {
-                localStorage.setItem('nixtz_email', result.data.email);
+                localStorage.setItem('tmt_email', result.data.email);
             }
             
             // Update modal elements if they exist
@@ -316,9 +316,9 @@ function showProfileModal() {
     const savePasswordButton = document.getElementById('save-password-button');
 
     // Populate details
-    // 🚨 BRAND FIX: Use nixtz_ prefix
-    if (modalUsernameEl) modalUsernameEl.textContent = localStorage.getItem('nixtz_username') || 'N/A';
-    if (modalEmailEl) modalEmailEl.textContent = currentUserEmail || localStorage.getItem('nixtz_email') || 'Loading...'; 
+    // 🚨 FIX: Use tmt_ prefix
+    if (modalUsernameEl) modalUsernameEl.textContent = localStorage.getItem('tmt_username') || 'N/A';
+    if (modalEmailEl) modalEmailEl.textContent = currentUserEmail || localStorage.getItem('tmt_email') || 'Loading...'; 
 
     // Reset password form
     if (passwordForm) passwordForm.reset();
@@ -385,8 +385,8 @@ async function changePassword(e) {
         const response = await fetch(`${API_BASE_URL}/api/user/change-password`, {
             method: 'PUT',
             headers: {
-                // 🚨 BRAND FIX: Use nixtz_ prefix
-                'Authorization': `Bearer ${localStorage.getItem('nixtz_auth_token')}`,
+                // 🚨 CRITICAL FIX: Use tmt_auth_token for the API header
+                'Authorization': `Bearer ${localStorage.getItem('tmt_auth_token')}`,
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({ currentPassword, newPassword }),
@@ -401,7 +401,7 @@ async function changePassword(e) {
 
         // Success
         passwordMessageBox.textContent = result.message || "Password updated successfully!";
-        // 🚨 BRAND FIX: Use nixtz-primary color
+        // BRAND FIX: Use nixtz-primary color
         passwordMessageBox.className = 'p-3 rounded-lg text-white mb-3 bg-nixtz-primary'; 
         document.getElementById('change-password-form').reset();
         
@@ -425,55 +425,5 @@ async function changePassword(e) {
         if (savePasswordButton) savePasswordButton.disabled = false;
     }
 }
-
-// --- END: ADDED PROFILE MODAL FUNCTIONS ---
-
-// --- Functions removed: fetchRealSuggestions, handleSearchInput, selectSuggestion (Stock/TMT) ---
-
-
-// --- Event Listeners Setup ---
-document.addEventListener('DOMContentLoaded', () => {
-    
-    setupMobileMenuToggle();
-
-    // --- MODIFIED: REMOVED STOCK SEARCH LOGIC ---
-    // The previous TMT/Stock search form event listener is now removed.
-    
-    // --- START: ADDED MODAL LISTENERS ---
-    
-    const profileButton = document.getElementById('profile-button');
-    const profileModal = document.getElementById('profile-modal');
-    const closeModalBtn = document.getElementById('close-profile-modal');
-    const passwordForm = document.getElementById('change-password-form');
-
-    // Attach listeners
-    if (profileButton) {
-        profileButton.addEventListener('click', showProfileModal);
-    }
-    if (closeModalBtn) {
-        closeModalBtn.addEventListener('click', () => {
-            if (profileModal) profileModal.classList.add('hidden');
-        });
-    }
-    if (passwordForm) {
-        passwordForm.addEventListener('submit', changePassword);
-    }
-
-    // --- END: ADDED MODAL LISTENERS ---
-
-
-    checkCookieConsent(); 
-    updateAuthUI(); 
-
-    // Fetch user email if logged in
-    if (getAuthStatus()) {
-        fetchUserData();
-    }
-
-    const logoutBtn = document.getElementById('logout-button');
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', handleLogout);
-    }
-    
-    console.log("Authentication status:", getAuthStatus());
-});
+window.changePassword = changePassword;
+// ... (rest of the file listeners) ...
