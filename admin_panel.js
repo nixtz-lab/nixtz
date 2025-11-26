@@ -8,8 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 1. UTILITY FUNCTIONS ---
     
     // Get JWT token from local storage (using TMT keys for compatibility with backend)
-    const getAuthToken = () => localStorage.getItem('tmt_auth_token');
-    const getRole = () => localStorage.getItem('tmt_user_role');
+    const getAuthToken = () => localStorage.getItem('nixtz_auth_token');
+    const getRole = () => localStorage.getItem('nixtz_user_role');
     const isSuperAdmin = () => getRole() === 'superadmin';
 
     // Check if user is logged in and has admin rights (preventing direct access)
