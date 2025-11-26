@@ -247,10 +247,10 @@ function updateAuthUI() {
 
 
 function handleLogout() {
-    localStorage.removeItem('tmt_auth_token'); // UPDATED KEY
-    localStorage.removeItem('tmt_username'); 
-    localStorage.removeItem('tmt_user_role'); // NEW
-    localStorage.removeItem('tmt_user_membership'); // NEW
+    localStorage.removeItem('nixtz_auth_token'); // UPDATED KEY
+    localStorage.removeItem('nixtz_username'); 
+    localStorage.removeItem('nixtz_user_role'); // NEW
+    localStorage.removeItem('nixtz_user_membership'); // NEW
     localStorage.removeItem('nixtz_page_access'); // UPDATED KEY
 
     // Reset global state
