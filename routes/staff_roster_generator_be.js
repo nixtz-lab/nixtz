@@ -103,10 +103,10 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
             const staffEntry = weeklyRosterMap.get(staff.employeeId);
             const request = getWeeklyRequest(staff);
             
-            // 0a. Requested Leave Override
+            // --- FIX START: Handle Requested Leave FIRST, then Fixed Day Off ---
+            
+            // 0a. Requested Leave Override (Highest Priority)
             if (request.type === 'Leave') {
-                
-                // CRITICAL FIX START: Check for requested day, full week, or specific leave type
                 const isRequestedDay = request.day === day || request.day === 'Sick Leave';
                 const isFullWeek = request.day === 'Full Week';
 
@@ -119,16 +119,13 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
                         timeRange: 'Full Day', 
                         color: '#B91C1C' 
                     }];
-                    // If staff has a valid request applied today, stop here for this staff member,
-                    // but continue the outer loop to check other staff.
+                    // Requested leave assigned, skip to next staff member for this day.
                     return; 
                 }
-                // CRITICAL FIX END: If a single-day request is active but does not match the current day,
-                // the staff member is available for scheduling (Steps 1-5).
             } 
             
-            // 0b. Fixed Day Off Assignment (Only assign if not already scheduled)
-            // CHECK 1: Ensure staff is NOT already scheduled by a previous step (i.e., not a requested day off or a shift)
+            // 0b. Fixed Day Off Assignment (If not already scheduled)
+            // CHECK 1: Ensure staff is NOT already scheduled (by requested leave)
             if (!isScheduled(staffEntry, dayIndex)) {
                 
                 // CHECK 2: Is today their fixed day off?
@@ -144,6 +141,7 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
                      return;
                 }
             }
+            // --- FIX END ---
         });
         
         // 1. Manager 
