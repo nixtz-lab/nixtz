@@ -6,11 +6,20 @@
 
 const API_URL = `${window.API_BASE_URL}/api/staff/roster`;
 const PROFILE_API_URL = `${window.API_BASE_URL}/api/staff/profile`;
-// CRITICAL CHANGE: Use mutable variable for shifts
+
+// CRITICAL CHANGE: Added Shift ID 4, 5, and 6 slots
 let SHIFTS = { 
-    1: { name: 'Morning', time: '07:00-16:00', required: 6, roles: ['C1', 'C4', 'C3'] },
+    // ID 1: Standard Morning Shift
+    1: { name: 'Morning', time: '07:00-16:00', required: 4, roles: ['C1', 'C4', 'C3'] }, 
+    // ID 2: Afternoon Shift
     2: { name: 'Afternoon', time: '13:30-22:30', required: 5, roles: ['C1', 'C5', 'C3'] },
-    3: { name: 'Night', time: '22:00-07:00', required: 'N/A', roles: ['C1', 'C2'] }
+    // ID 3: Night Shift
+    3: { name: 'Night', time: '22:00-07:00', required: 'N/A', roles: ['C1', 'C2'] },
+    // ID 4: Early Morning (User-defined time)
+    4: { name: 'Early Morning', time: '06:00-15:00', required: 2, roles: ['C4', 'C5'] },
+    // --- OPTIONAL SHIFTS (Slots 5 & 6) ---
+    5: { name: 'Optional Shift A', time: '00:00-00:00', required: 0, roles: ['C4'] },
+    6: { name: 'Optional Shift B', time: '00:00-00:00', required: 0, roles: ['C5'] }
 };
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -93,7 +102,10 @@ function updateShiftDefinitionDisplay() {
     container.innerHTML = content;
 }
 
-
+/**
+ * @function openShiftConfigModal
+ * Displays the modal showing all shift configurations and the '+' button.
+ */
 function openShiftConfigModal() {
     if (!window.getAuthStatus || !getAuthStatus()) {
         showMessage("Please log in to edit shift configuration.", true);
@@ -103,25 +115,111 @@ function openShiftConfigModal() {
     const container = document.getElementById('shift-inputs-container');
     container.innerHTML = '';
     
+    let firstHiddenShiftId = null;
+
     // Generate inputs for each shift
     for (const id in SHIFTS) {
         const shift = SHIFTS[id];
+        const shiftId = parseInt(id);
         const shiftDiv = document.createElement('div');
         shiftDiv.className = 'p-3 bg-gray-800 rounded-lg border border-gray-700';
+        
+        // Handle optional slots (ID 5 and above)
+        if (shiftId >= 5) {
+             shiftDiv.classList.add('optional-shift-slot');
+             
+             // Check if this slot has a non-default name/time (i.e., it was configured)
+             const isConfigured = shift.time !== '00:00-00:00' || shift.name !== 'Optional Shift A' && shift.name !== 'Optional Shift B';
+
+             if (!isConfigured) {
+                shiftDiv.style.display = 'none';
+                if (!firstHiddenShiftId) firstHiddenShiftId = shiftId;
+             }
+        }
+
         shiftDiv.innerHTML = `
-            <label class="block text-sm font-medium text-gray-400 mb-1">Shift ${id} Configuration</label>
-            <input type="text" id="shift-name-${id}" value="${shift.name}" placeholder="Shift Name (e.g., Morning)" required 
+            <label class="block text-sm font-medium text-gray-400 mb-1">Shift ${shiftId} Configuration</label>
+            <input type="text" id="shift-name-${shiftId}" value="${shift.name}" placeholder="Shift Name (e.g., Morning)" required 
                    class="w-full p-2 rounded-lg bg-gray-900 border border-gray-600 text-white focus:border-nixtz-primary mb-2 text-sm">
-            <input type="text" id="shift-time-${id}" value="${shift.time}" placeholder="Time Range (e.g., 07:00-16:00)" required 
+            <input type="text" id="shift-time-${shiftId}" value="${shift.time}" placeholder="Time Range (e.g., 07:00-16:00)" required 
                    class="w-full p-2 rounded-lg bg-gray-900 border border-gray-600 text-white focus:border-nixtz-primary text-sm">
         `;
         container.appendChild(shiftDiv);
     }
     
+    // Determine the next starting ID for the '+' button
+    const nextStartingShiftId = firstHiddenShiftId || 5; 
+    
+    // Check if there are any hidden slots left to add
+    const hasHiddenSlots = document.querySelectorAll('#shift-inputs-container .optional-shift-slot[style*="display: none"]').length > 0;
+
+    // Add the "+" button logic only if there are hidden slots
+    if (hasHiddenSlots) {
+        container.innerHTML += `
+            <button type="button" onclick="toggleOptionalShift(this, ${nextStartingShiftId})" id="add-shift-btn" 
+                    class="w-full p-3 bg-nixtz-primary text-white rounded-lg font-bold shadow-lg hover:bg-[#3f3bbf] transition duration-300">
+                <i data-lucide="plus" class="w-5 h-5 mr-1 inline"></i> Add Optional Shift Slot
+            </button>
+        `;
+    }
+
     document.getElementById('shift-config-modal').classList.remove('hidden');
     document.getElementById('shift-config-modal').classList.add('flex');
+    window.lucide.createIcons();
 }
 window.openShiftConfigModal = openShiftConfigModal;
+
+/**
+ * @function toggleOptionalShift
+ * Reveals the next hidden optional shift slot and updates the button.
+ */
+window.toggleOptionalShift = function(button, targetShiftId) {
+    const container = document.getElementById('shift-inputs-container');
+    const allShiftIds = Object.keys(SHIFTS).map(Number).filter(id => id >= 5);
+    
+    // 1. Find the target slot (Shift ID container)
+    let targetSlot = null;
+    
+    // Iterate through all shift inputs to find the correct DOM element by its ID
+    container.querySelectorAll('.p-3.bg-gray-800.rounded-lg').forEach((slot) => {
+        const inputId = slot.querySelector(`input[id^="shift-name-"]`)?.id;
+        const currentId = inputId ? parseInt(inputId.split('-').pop()) : null;
+        
+        if (currentId === targetShiftId) {
+            targetSlot = slot;
+        }
+    });
+
+    if (!targetSlot) return; 
+
+    // 2. Show the target slot
+    targetSlot.style.display = 'block';
+
+    // 3. Determine the next hidden slot ID
+    let nextHiddenShiftId = null;
+    for (const id of allShiftIds) {
+        if (id > targetShiftId) {
+            const nextSlotDom = container.querySelector(`input#shift-name-${id}`)?.closest('.optional-shift-slot');
+            
+            if (nextSlotDom && nextSlotDom.style.display === 'none') {
+                nextHiddenShiftId = id;
+                break;
+            }
+        }
+    }
+
+    // 4. Update the button for the next action
+    if (nextHiddenShiftId) {
+        button.setAttribute('onclick', `toggleOptionalShift(this, ${nextHiddenShiftId})`);
+        button.innerHTML = `<i data-lucide="plus" class="w-5 h-5 mr-1 inline"></i> Add Optional Shift Slot ${nextHiddenShiftId}`;
+        button.classList.replace('bg-red-600', 'bg-nixtz-primary'); 
+    } else {
+        // If no more hidden slots exist
+        button.style.display = 'none';
+    }
+    
+    window.lucide.createIcons();
+}
 
 
 document.getElementById('shift-config-form')?.addEventListener('submit', (e) => {
@@ -298,7 +396,7 @@ function updateShiftSummaries() {
     const daysMap = {};
     
     DAYS.forEach(day => {
-        daysMap[day] = { 1: { actual: 0, required: SHIFTS[1].required }, 2: { actual: 0, required: SHIFTS[2].required }, 3: { actual: 0, required: 'N/A' } };
+        daysMap[day] = { 1: { actual: 0, required: SHIFTS[1].required }, 2: { actual: 0, required: SHIFTS[2].required }, 3: { actual: 0, required: SHIFTS[3].required }, 4: { actual: 0, required: SHIFTS[4]?.required || 0 }, 5: { actual: 0, required: SHIFTS[5]?.required || 0 }, 6: { actual: 0, required: SHIFTS[6]?.required || 0 } };
     });
 
     DAYS.forEach(day => {
@@ -309,7 +407,7 @@ function updateShiftSummaries() {
             const shiftIdMatch = cellText.match(/^(\d+)/);
             if (shiftIdMatch) {
                 const shiftId = parseInt(shiftIdMatch[1]);
-                if (shiftId && daysMap[day][shiftId]) {
+                if (shiftId && daysMap[day][shiftId] !== undefined) {
                     daysMap[day][shiftId].actual++;
                 }
             }
@@ -321,9 +419,14 @@ function updateShiftSummaries() {
         if (!summaryCell) return;
         
         let content = '';
+        // Only iterate through configured shifts (1-4) or those with non-zero requirements
         for (const shiftId in daysMap[day]) {
             const data = daysMap[day][shiftId];
             const required = data.required === 'N/A' ? '' : data.required;
+            
+            // Skip non-configured optional shifts if actual count is 0
+            if (parseInt(shiftId) > 4 && data.actual === 0 && required === 0) continue;
+            
             const statusClass = (data.required !== 'N/A' && data.actual < data.required) ? 'text-red-400' : 'text-nixtz-secondary';
 
             if(data.actual > 0 || required !== '') {
@@ -336,6 +439,7 @@ function updateShiftSummaries() {
         summaryCell.innerHTML = content;
     });
 }
+
 
 function createShiftDropdown(cell) {
     if (cell.querySelector('.shift-dropdown')) return;
@@ -355,7 +459,8 @@ function createShiftDropdown(cell) {
     for (const id in SHIFTS) {
         const shiftId = parseInt(id);
         const shiftConfig = SHIFTS[id];
-        if (!shiftConfig) continue; // Skip if config is missing
+        // Skip optional/unconfigured shifts unless they have staff assigned
+        if (!shiftConfig || (shiftId > 4 && shiftConfig.required === 0 && shiftConfig.time === '00:00-00:00')) continue; 
 
         shiftDropdown.innerHTML += `<div class="text-xs text-gray-400 mt-2 border-t border-gray-600 pt-1">${shiftConfig.name} (${shiftConfig.time})</div>`;
 
@@ -457,7 +562,17 @@ function addStaffRow(initialData = {}) {
             const shift = daySchedule.shifts[0];
             const shiftId = shift.shiftId;
             const jobRole = shift.jobRole;
-            const timeRange = shift.timeRange; // Time range is read directly from roster data
+            let timeRange = shift.timeRange; // Time range is read directly from roster data
+            
+            // --- FIX: Use SHIFTS cache if time is a placeholder ---
+            if (timeRange.startsWith('DYNAMIC_TIME_')) {
+                // If the shiftId is defined, use the real time from the live SHIFTS config
+                const realShiftConfig = SHIFTS[shiftId];
+                if (realShiftConfig) {
+                    timeRange = realShiftConfig.time;
+                }
+            }
+            // --- END FIX ---
             
             if (jobRole && jobRole.includes('Leave')) {
                 cellContent = jobRole;

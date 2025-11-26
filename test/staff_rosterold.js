@@ -6,7 +6,8 @@
 
 const API_URL = `${window.API_BASE_URL}/api/staff/roster`;
 const PROFILE_API_URL = `${window.API_BASE_URL}/api/staff/profile`;
-const SHIFTS = { 
+// CRITICAL CHANGE: Use mutable variable for shifts
+let SHIFTS = { 
     1: { name: 'Morning', time: '07:00-16:00', required: 6, roles: ['C1', 'C4', 'C3'] },
     2: { name: 'Afternoon', time: '13:30-22:30', required: 5, roles: ['C1', 'C5', 'C3'] },
     3: { name: 'Night', time: '22:00-07:00', required: 'N/A', roles: ['C1', 'C2'] }
@@ -17,7 +18,157 @@ let currentRosterData = [];
 let currentWeekStartDate = null;
 let currentStaffData = {}; // Cache for single profile editing
 let staffProfilesCache = []; // Global cache for profiles
+let initialEditProfileData = ''; // To store original data for warning check
 const AUTH_TOKEN_KEY = localStorage.getItem('nixtz_auth_token') ? 'nixtz_auth_token' : 'tmt_auth_token'; // Use the correct key
+
+// --- SHIFT CONFIGURATION LOGIC ---
+
+const SHIFT_CONFIG_KEY = 'nixtz_shift_config'; // Key for localStorage
+
+function loadShiftConfig() {
+    const savedConfig = localStorage.getItem(SHIFT_CONFIG_KEY);
+    if (savedConfig) {
+        try {
+            const parsedConfig = JSON.parse(savedConfig);
+            // Only update the properties we expect to be dynamic
+            for (const id in SHIFTS) {
+                if (parsedConfig[id] && parsedConfig[id].name && parsedConfig[id].time) {
+                    SHIFTS[id].name = parsedConfig[id].name;
+                    SHIFTS[id].time = parsedConfig[id].time;
+                }
+            }
+            updateShiftDefinitionDisplay();
+            return true;
+        } catch (e) {
+            console.error("Failed to parse saved shift configuration.", e);
+        }
+    }
+    updateShiftDefinitionDisplay(); // Display default if none saved
+    return false;
+}
+
+function saveShiftConfigToLocal(newConfig) {
+    // Only save the mutable parts (name and time)
+    const simplifiedConfig = {};
+    for (const id in newConfig) {
+        simplifiedConfig[id] = { name: newConfig[id].name, time: newConfig[id].time };
+    }
+    
+    // Update the global mutable SHIFTS object
+    for (const id in SHIFTS) {
+        SHIFTS[id].name = newConfig[id].name;
+        SHIFTS[id].time = newConfig[id].time;
+    }
+    
+    localStorage.setItem(SHIFT_CONFIG_KEY, JSON.stringify(simplifiedConfig));
+    updateShiftDefinitionDisplay();
+}
+
+
+function updateShiftDefinitionDisplay() {
+    const container = document.getElementById('shift-definitions-display');
+    if (!container) return;
+
+    let content = '';
+    
+    // Clear the container
+    container.innerHTML = '';
+    
+    // Display the updated shift details
+    for (const id in SHIFTS) {
+        const shift = SHIFTS[id];
+        // Ensure requirements are displayed correctly (C1-C5 is just illustrative text)
+        const rolesText = shift.roles.join(', ');
+        const requiredText = shift.required === 'N/A' ? 'Night Staff Rotation' : `${shift.required} Staff (${rolesText})`;
+        
+        content += `
+            <div>
+                <span class="font-semibold text-white">${shift.name} (${id}):</span> ${shift.time}
+                <div class="text-xs text-gray-500">Required: ${requiredText}</div>
+            </div>
+        `;
+    }
+    
+    // Note: The general p tag outside the grid handles the job roles description
+    container.innerHTML = content;
+}
+
+
+function openShiftConfigModal() {
+    if (!window.getAuthStatus || !getAuthStatus()) {
+        showMessage("Please log in to edit shift configuration.", true);
+        return;
+    }
+    
+    const container = document.getElementById('shift-inputs-container');
+    container.innerHTML = '';
+    
+    // Generate inputs for each shift
+    for (const id in SHIFTS) {
+        const shift = SHIFTS[id];
+        const shiftDiv = document.createElement('div');
+        shiftDiv.className = 'p-3 bg-gray-800 rounded-lg border border-gray-700';
+        shiftDiv.innerHTML = `
+            <label class="block text-sm font-medium text-gray-400 mb-1">Shift ${id} Configuration</label>
+            <input type="text" id="shift-name-${id}" value="${shift.name}" placeholder="Shift Name (e.g., Morning)" required 
+                   class="w-full p-2 rounded-lg bg-gray-900 border border-gray-600 text-white focus:border-nixtz-primary mb-2 text-sm">
+            <input type="text" id="shift-time-${id}" value="${shift.time}" placeholder="Time Range (e.g., 07:00-16:00)" required 
+                   class="w-full p-2 rounded-lg bg-gray-900 border border-gray-600 text-white focus:border-nixtz-primary text-sm">
+        `;
+        container.appendChild(shiftDiv);
+    }
+    
+    document.getElementById('shift-config-modal').classList.remove('hidden');
+    document.getElementById('shift-config-modal').classList.add('flex');
+}
+window.openShiftConfigModal = openShiftConfigModal;
+
+
+document.getElementById('shift-config-form')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const submitBtn = document.getElementById('submit-shift-config-btn');
+    submitBtn.disabled = true;
+    
+    const newConfig = {};
+    let isValid = true;
+    
+    for (const id in SHIFTS) {
+        const nameInput = document.getElementById(`shift-name-${id}`);
+        const timeInput = document.getElementById(`shift-time-${id}`);
+        
+        if (!nameInput.value || !timeInput.value) {
+            isValid = false;
+            break;
+        }
+        
+        newConfig[id] = { 
+            name: nameInput.value, 
+            time: timeInput.value,
+            required: SHIFTS[id].required,
+            roles: SHIFTS[id].roles 
+        };
+    }
+    
+    if (!isValid) {
+        showMessage("Shift name and time are required for all shifts.", true, 'shift-config-message');
+        submitBtn.disabled = false;
+        return;
+    }
+    
+    try {
+        saveShiftConfigToLocal(newConfig);
+        showMessage("Shift configuration saved successfully. Regenerate roster to apply changes!", false, 'shift-config-message');
+        setTimeout(() => {
+            document.getElementById('shift-config-modal').classList.add('hidden');
+        }, 1500);
+
+    } catch (error) {
+        showMessage(`Error saving config: ${error.message}`, true, 'shift-config-message');
+    } finally {
+        submitBtn.disabled = false;
+    }
+});
+
 
 // --- CORE ROSTER UTILITIES ---
 
@@ -107,10 +258,13 @@ function getRosterForSave() {
                     const shiftMatch = cellDisplay.match(/^(\d+)\s+([A-Za-z0-9\s()]+)<span/);
                     const timeMatch = cellDisplay.match(/<span[^>]*>([^<]+)<\/span>/);
                     
+                    const timeRangeFromConfig = SHIFTS[shiftMatch ? parseInt(shiftMatch[1]) : 1]?.time || 'N/A';
+
                     if (shiftMatch) {
                         const shiftId = parseInt(shiftMatch[1]);
                         const jobRole = shiftMatch[2].trim();
-                        const timeRange = timeMatch ? timeMatch[1].trim() : SHIFTS[shiftId].time;
+                        // Use time match from cell or fallback to dynamic config
+                        const timeRange = timeMatch ? timeMatch[1].trim() : timeRangeFromConfig; 
                         
                         shifts.push({
                             shiftId: shiftId,
@@ -198,9 +352,10 @@ function createShiftDropdown(cell) {
 
     shiftDropdown.innerHTML += `<button class="dropdown-button bg-red-600 hover:bg-red-500" onclick="setShiftSelection(event, '${day}', null, 'Leave', 'Full Day')">LEAVE (휴가)</button>`;
 
-    [1, 2, 3].forEach(shiftId => {
-        const shiftConfig = SHIFTS[shiftId];
-        if (!shiftConfig) return;
+    for (const id in SHIFTS) {
+        const shiftId = parseInt(id);
+        const shiftConfig = SHIFTS[id];
+        if (!shiftConfig) continue; // Skip if config is missing
 
         shiftDropdown.innerHTML += `<div class="text-xs text-gray-400 mt-2 border-t border-gray-600 pt-1">${shiftConfig.name} (${shiftConfig.time})</div>`;
 
@@ -217,7 +372,8 @@ function createShiftDropdown(cell) {
                 </button>
             `;
         });
-    });
+    }
+
 
     cell.appendChild(shiftDropdown);
     
@@ -244,7 +400,8 @@ function setShiftSelection(event, day, shiftId, jobRole, timeRange) {
         cell.classList.remove('bg-gray-700', 'bg-nixtz-card');
         cell.classList.add('bg-red-800', 'font-bold');
     } else {
-        cell.innerHTML = `${shiftId} ${jobRole}<span class="text-xs text-gray-500 block leading-none">${timeRange}</span>`;
+        // Use the passed timeRange from the dynamic SHIFTS object
+        cell.innerHTML = `${shiftId} ${jobRole}<span class="text-xs text-gray-500 block leading-none">${timeRange}</span>`; 
         cell.classList.remove('bg-red-800', 'bg-nixtz-card', 'font-bold');
         cell.classList.add('bg-gray-700');
     }
@@ -300,7 +457,7 @@ function addStaffRow(initialData = {}) {
             const shift = daySchedule.shifts[0];
             const shiftId = shift.shiftId;
             const jobRole = shift.jobRole;
-            const timeRange = shift.timeRange;
+            const timeRange = shift.timeRange; // Time range is read directly from roster data
             
             if (jobRole && jobRole.includes('Leave')) {
                 cellContent = jobRole;
@@ -391,7 +548,7 @@ async function forceRosterRegeneration() {
             };
         });
 
-        const sortedRoster = sortRosterData(rosterWithPositions);
+        const sortedRoster = sortRosterData(rosterWithPositions); // 3. Apply new sorting
         
         if (sortedRoster.length === 0) {
             showMessage('Roster regenerated, but no active staff profiles were found.', true);
@@ -422,8 +579,9 @@ async function loadRoster(startDateString) {
     showMessage(`Loading roster for week starting ${isoDate}...`, false);
     
     try {
-        // --- STEP 1: Fetch profiles for sorting and caching (always fetch first) ---
-        await fetchStaffProfilesForDropdown();
+        // --- STEP 1: Load dynamic config and profiles ---
+        loadShiftConfig();
+        await fetchStaffProfilesForDropdown(); 
         
         // --- STEP 2: Attempt to Load Existing Roster ---
         let response = await fetch(`${API_URL}/${isoDate}`, {
@@ -584,7 +742,25 @@ async function handleAddStaff(e) {
     }
 }
 
-// --- STAFF LIST MANAGEMENT LOGIC (Updated to remove field and add Delete button) ---
+// --- STAFF LIST MANAGEMENT LOGIC (Updated) ---
+
+/**
+ * @function openStaffListModal (FIXED: Missing function)
+ * Handles the display logic for the staff list modal.
+ */
+function openStaffListModal() {
+    if (!window.getAuthStatus || !getAuthStatus()) {
+        showMessage("Please log in to view the staff list.", true);
+        return;
+    }
+    
+    loadStaffProfiles(); 
+
+    document.getElementById('staff-list-modal').classList.remove('hidden');
+    document.getElementById('staff-list-modal').classList.add('flex');
+}
+window.openStaffListModal = openStaffListModal;
+
 
 async function loadStaffProfiles() {
     const container = document.getElementById('staff-profiles-container');
@@ -681,31 +857,54 @@ async function deleteStaffProfile(profileId, name) {
 window.confirmDeleteStaff = confirmDeleteStaff;
 
 
-function openStaffListModal() {
-    document.getElementById('staff-list-modal').classList.remove('hidden');
-    document.getElementById('staff-list-modal').classList.add('flex');
-    loadStaffProfiles();
+function closeEditProfileModal(event) {
+    // Prevent default form submission or navigation if the button is inside a form
+    event.preventDefault(); 
+    
+    const modal = document.getElementById('single-staff-modal');
+    const currentData = getEditProfileData();
+    
+    if (JSON.stringify(currentData) !== initialEditProfileData) {
+        const confirmDiscard = confirm("You have unsaved changes. Are you sure you want to close and discard changes?");
+        if (!confirmDiscard) {
+            return; // Stay in the modal
+        }
+    }
+    
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
 }
-window.openStaffListModal = openStaffListModal;
+window.closeEditProfileModal = closeEditProfileModal;
+
+
+// Helper to extract current form data for comparison
+function getEditProfileData() {
+    return {
+        name: document.getElementById('edit-staff-name').value,
+        position: document.getElementById('edit-staff-position').value,
+        shiftPreference: document.getElementById('edit-staff-shift-preference').value,
+        fixedDayOff: document.getElementById('edit-staff-fixed-dayoff').value,
+        isNightRotator: document.getElementById('edit-staff-is-rotator').checked,
+    };
+}
 
 
 async function openSingleEditModal(profileId) {
     const token = localStorage.getItem(AUTH_TOKEN_KEY);
     
     try {
-        const response = await fetch(PROFILE_API_URL, {
+        // --- FIXED: Use the efficient single GET route ---
+        const response = await fetch(`${PROFILE_API_URL}/${profileId}`, {
             method: 'GET',
             headers: { 'Authorization': `Bearer ${token}` }
         });
         const result = await response.json();
         
-        if (!response.ok || !result.success) {
+        if (!response.ok || !result.success || !result.data) {
              throw new Error("Error fetching profile data.");
         }
 
-        const staff = staffProfilesCache.find(p => p._id === profileId);
-        if (!staff) return showMessage("Profile not found.", true);
-
+        const staff = result.data; // Use the single profile object directly
         currentStaffData = staff;
 
         // 2. Populate the edit form
@@ -718,11 +917,12 @@ async function openSingleEditModal(profileId) {
         document.getElementById('edit-staff-shift-preference').value = staff.shiftPreference;
         document.getElementById('edit-staff-fixed-dayoff').value = staff.fixedDayOff;
         
-        // **********************************************
-        // CRITICAL: REMOVED POPULATION LOGIC FOR THE DELETED FIELD
-        // **********************************************
+        // CRITICAL: Removed population logic for the deleted Next Week Holiday Request field
         
         document.getElementById('edit-staff-is-rotator').checked = staff.isNightRotator;
+
+        // Store current state for comparison
+        initialEditProfileData = JSON.stringify(getEditProfileData());
 
         // 3. Display the modal and hide the list modal
         document.getElementById('staff-list-modal').classList.add('hidden');
@@ -841,7 +1041,8 @@ async function fetchStaffProfilesForDropdown() {
         });
 
     } catch (error) {
-        console.error("Fetch Staff for Dropdown Error:", error);
+        msgBox.textContent = `Error: ${error.message}`;
+        msgBox.classList.remove('hidden');
     }
 }
 window.fetchStaffProfilesForDropdown = fetchStaffProfilesForDropdown;
@@ -1065,8 +1266,60 @@ document.addEventListener('DOMContentLoaded', () => {
         showMessage("You need to log in to access the Roster Management.", true);
         return;
     }
+    
+    // Load dynamic shift configuration before anything else
+    loadShiftConfig(); 
 
     document.getElementById('add-staff-form')?.addEventListener('submit', handleAddStaff);
+    
+    // Event listener for the Shift Config Form submit is included here.
+    document.getElementById('shift-config-form')?.addEventListener('submit', (e) => {
+        e.preventDefault();
+        
+        const submitBtn = document.getElementById('submit-shift-config-btn');
+        submitBtn.disabled = true;
+        
+        const newConfig = {};
+        let isValid = true;
+        
+        for (const id in SHIFTS) {
+            const nameInput = document.getElementById(`shift-name-${id}`);
+            const timeInput = document.getElementById(`shift-time-${id}`);
+            
+            if (!nameInput.value || !timeInput.value) {
+                isValid = false;
+                break;
+            }
+            
+            newConfig[id] = { 
+                name: nameInput.value, 
+                time: timeInput.value,
+                required: SHIFTS[id].required,
+                roles: SHIFTS[id].roles 
+            };
+        }
+        
+        if (!isValid) {
+            showMessage("Shift name and time are required for all shifts.", true, 'shift-config-message');
+            submitBtn.disabled = false;
+            return;
+        }
+        
+        try {
+            saveShiftConfigToLocal(newConfig);
+            showMessage("Shift configuration saved successfully. Regenerate roster to apply changes!", false, 'shift-config-message');
+            setTimeout(() => {
+                document.getElementById('shift-config-modal').classList.add('hidden');
+            }, 1500);
+
+        } catch (error) {
+            showMessage(`Error saving config: ${error.message}`, true, 'shift-config-message');
+        } finally {
+            submitBtn.disabled = false;
+        }
+
+    });
+    
     document.getElementById('staff-request-form')?.addEventListener('submit', handleStaffRequest);
 
     const today = new Date();
@@ -1086,10 +1339,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const dateInput = document.getElementById('week-start-date');
     if (dateInput) {
         dateInput.value = isoString;
-        // Attach the new handleDateChange function to the onchange event
-        dateInput.onchange = function() {
-            handleDateChange(this);
-        };
+        // The onchange handler is set via HTML now, but ensuring the value is set here is correct.
     }
     
     loadRoster(isoString);
