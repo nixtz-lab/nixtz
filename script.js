@@ -1,32 +1,47 @@
 /**
  * script.js
- * Global functions for Nixtz Core System interactivity and Access Control.
+ * Global functions for Nixtz landing page interactivity and Access Control.
  */
 
 // --- CORE GLOBAL UTILITIES ---
-const API_BASE_URL = window.location.origin;
-// 🚨 CRITICAL FIX: Reading must use 'tmt_auth_token'
-const getAuthStatus = () => localStorage.getItem('tmt_auth_token') !== null;
+// FIX: Expose API_BASE_URL globally via the window object
+window.API_BASE_URL = window.location.origin; 
+
+// --- UPDATED KEY: nixtz_auth_token ---
+const getAuthStatus = () => localStorage.getItem('nixtz_auth_token') !== null;
 const getUserRole = () => localStorage.getItem('tmt_user_role'); 
-const getPageAccess = () => { 
+
+const getPageAccess = () => {
     try {
-        // 🚨 CRITICAL FIX: Reading must use 'tmt_page_access'
-        const access = localStorage.getItem('tmt_page_access');
-        return access ? JSON.parse(access) : [];
+        const access = localStorage.getItem('nixtz_page_access'); // UPDATED KEY
+        
+        if (!access) return [];
+
+        const pageSlugs = access.split(',').map(s => s.trim().toLowerCase()).filter(s => s);
+        
+        if (pageSlugs.length === 0 && access.startsWith('[')) {
+             return JSON.parse(access);
+        }
+
+        return pageSlugs;
+
     } catch (e) {
         console.error("Error parsing page access:", e);
-        return [];
+        try {
+             return access ? JSON.parse(access) : [];
+        } catch (e2) {
+             return [];
+        }
     }
 };
+
 const JOIN_PAGE_URL = "auth.html?mode=join";
-// 🚨 SYNCHRONIZATION: Using tmt_ prefix for cookie key
-const COOKIE_CONSENT_KEY = "tmt_cookie_accepted"; 
+const COOKIE_CONSENT_KEY = "tmt_cookie_accepted";
 let currentUserEmail = null; 
 
 window.getAuthStatus = getAuthStatus;
 window.getUserRole = getUserRole;
 window.getPageAccess = getPageAccess;
-window.API_BASE_URL = API_BASE_URL; // Expose base URL
 
 // Function to display messages in the custom message box
 function showMessage(text, isError = false) {
@@ -40,15 +55,17 @@ function showMessage(text, isError = false) {
 
     msgText.textContent = text;
     
-    // BRAND FIX: Use nixtz-primary/secondary colors
-    msgBox.classList.remove('hidden', 'bg-red-500', 'bg-nixtz-primary', 'opacity-0');
+    // Set colors and visibility
+    msgBox.classList.remove('hidden', 'bg-red-500', 'bg-tmt-primary', 'opacity-0');
     
     if (isError) {
         msgBox.classList.add('bg-red-500'); 
     } else {
+        // MODIFIED: Use Nixtz color class name
         msgBox.classList.add('bg-nixtz-primary'); 
     }
 
+    // Trigger transition by removing opacity-0 and adding opacity-100
     msgBox.classList.add('opacity-100');
 
     // Hide the message after 3 seconds
@@ -83,11 +100,12 @@ function checkAccessAndRedirect(targetUrl, event) {
     
     // 1. Extract the "slug" from the target URL 
     const urlParts = targetUrl.split('/');
-    const fileName = urlParts.pop(); 
+    const fileName = urlParts.pop(); // e.g., 'stock_market.html?mode=search'
+    // FIX: Ensure we only get the base slug, stripping .html and query strings
     const pageSlug = fileName.split('.')[0].split('?')[0]; 
 
     // 2. Define Public Pages
-    const publicPages = ['index', 'auth', 'about', 'contact', 'cookie_policy', 'search_results']; 
+    const publicPages = ['index', 'auth', 'about', 'contact', 'cookie_policy', 'search_results']; // Added search_results
     if (publicPages.includes(pageSlug)) {
         window.location.href = targetUrl;
         return;
@@ -111,14 +129,13 @@ function checkAccessAndRedirect(targetUrl, event) {
         }, 300); 
     } else {
         // If the user is logged in but the slug is missing from their allowedPages
-        // 🚨 FIX: Must read tmt_user_membership
-        const userMembership = localStorage.getItem('tmt_user_membership') || 'none'; 
+        const userMembership = localStorage.getItem('tmt_user_membership') || 'none';
         showMessage(`Access Denied. You are a ${userMembership.toUpperCase()} member. This content is not included in your current subscription.`, true);
         
         // Optional: window.location.href = 'membership_upgrade.html'; 
     }
 }
-window.checkAccessAndRedirect = checkAccessAndRedirect; 
+window.checkAccessAndRedirect = checkAccessAndRedirect; // Explicitly expose checkAccessAndRedirect
 
 // --- FUNCTIONS BELOW HERE ARE FOR UI/AUTH AND CAN REMAIN IN GLOBAL SCOPE ---
 
@@ -189,15 +206,15 @@ function checkCookieConsent() {
 
 function updateAuthUI() {
     const isLoggedIn = getAuthStatus();
-    const role = getUserRole();
+    const role = getUserRole(); // Get role
     
     const authButtonsContainer = document.getElementById('auth-buttons-container');
     const userMenuContainer = document.getElementById('user-menu-container'); 
     const usernameDisplay = document.getElementById('username-display');
-    // 🚨 FIX: Must read tmt_username
     const username = localStorage.getItem('tmt_username'); 
-    const userInitials = document.getElementById('user-initials'); 
+    const userInitials = document.getElementById('user-initials'); // For dropdown
     
+    // NEW: Admin Link
     const adminLinkContainer = document.getElementById('admin-link-container');
     if (adminLinkContainer) {
         if (role === 'admin' || role === 'superadmin') {
@@ -216,6 +233,7 @@ function updateAuthUI() {
             const formattedUsername = username.charAt(0).toUpperCase() + username.slice(1);
             usernameDisplay.textContent = formattedUsername;
             
+            // Update dropdown initials
             if(userInitials) {
                 userInitials.textContent = formattedUsername;
             }
@@ -229,16 +247,15 @@ function updateAuthUI() {
 
 
 function handleLogout() {
-    // 🚨 CRITICAL FIX: Clearing all tmt_ keys
-    localStorage.removeItem('tmt_auth_token'); 
+    localStorage.removeItem('nixtz_auth_token'); // UPDATED KEY
     localStorage.removeItem('tmt_username'); 
-    localStorage.removeItem('tmt_user_role'); 
-    localStorage.removeItem('tmt_user_membership'); 
-    localStorage.removeItem('tmt_page_access'); 
-    localStorage.removeItem('tmt_email'); 
+    localStorage.removeItem('tmt_user_role'); // NEW
+    localStorage.removeItem('tmt_user_membership'); // NEW
+    localStorage.removeItem('nixtz_page_access'); // UPDATED KEY
+    localStorage.removeItem('tmt_email'); // ADDED: Clear email on logout
 
     // Reset global state
-    currentUserEmail = null; 
+    currentUserEmail = null; // ADDED
 
     showMessage("You have been successfully logged out. Updating UI...", false);
 
@@ -262,8 +279,7 @@ async function fetchUserData() {
         const response = await fetch(`${API_BASE_URL}/api/user/profile`, {
             method: 'GET',
             headers: {
-                // 🚨 CRITICAL FIX: Use tmt_auth_token for the API header
-                'Authorization': `Bearer ${localStorage.getItem('tmt_auth_token')}`,
+                'Authorization': `Bearer ${localStorage.getItem('nixtz_auth_token')}`, // UPDATED KEY
                 'Content-Type': 'application/json',
             },
         });
@@ -316,9 +332,8 @@ function showProfileModal() {
     const savePasswordButton = document.getElementById('save-password-button');
 
     // Populate details
-    // 🚨 FIX: Use tmt_ prefix
     if (modalUsernameEl) modalUsernameEl.textContent = localStorage.getItem('tmt_username') || 'N/A';
-    if (modalEmailEl) modalEmailEl.textContent = currentUserEmail || localStorage.getItem('tmt_email') || 'Loading...'; 
+    if (modalEmailEl) modalEmailEl.textContent = currentUserEmail || localStorage.getItem('tmt_email') || 'Loading...'; // Use global or local storage
 
     // Reset password form
     if (passwordForm) passwordForm.reset();
@@ -335,7 +350,6 @@ function showProfileModal() {
         console.error("Profile modal element not found!");
     }
 }
-window.showProfileModal = showProfileModal; // Expose globally
 
 /**
  * Handles changing the user's password.
@@ -385,8 +399,7 @@ async function changePassword(e) {
         const response = await fetch(`${API_BASE_URL}/api/user/change-password`, {
             method: 'PUT',
             headers: {
-                // 🚨 CRITICAL FIX: Use tmt_auth_token for the API header
-                'Authorization': `Bearer ${localStorage.getItem('tmt_auth_token')}`,
+                'Authorization': `Bearer ${localStorage.getItem('nixtz_auth_token')}`, // UPDATED KEY
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({ currentPassword, newPassword }),
@@ -401,7 +414,7 @@ async function changePassword(e) {
 
         // Success
         passwordMessageBox.textContent = result.message || "Password updated successfully!";
-        // BRAND FIX: Use nixtz-primary color
+        // MODIFIED: Use Nixtz color class name
         passwordMessageBox.className = 'p-3 rounded-lg text-white mb-3 bg-nixtz-primary'; 
         document.getElementById('change-password-form').reset();
         
@@ -425,5 +438,119 @@ async function changePassword(e) {
         if (savePasswordButton) savePasswordButton.disabled = false;
     }
 }
-window.changePassword = changePassword;
-// ... (rest of the file listeners) ...
+
+// --- END: ADDED PROFILE MODAL FUNCTIONS ---
+
+// --- START: ADDED TICKER SEARCH SUGGESTION FUNCTIONS (from stock_dashboard.js) ---
+
+/**
+ * Fetches ticker suggestions from the backend API.
+ */
+async function fetchRealSuggestions(query) {
+    // MODIFIED: This function is now irrelevant to Nixtz and will be mocked/removed in the future.
+    // For now, let's keep it mocked to prevent errors if UI elements call it.
+    console.warn("Stock search suggestions are mocked/disabled in Nixtz.");
+    return [];
+}
+
+/**
+ * Handles user input in a search box to show suggestions.
+ */
+function handleSearchInput(event, suggestionsId) {
+    // MODIFIED: Disabled for Nixtz
+    // console.log("Search input disabled.");
+}
+
+/**
+ * Handles selecting a suggestion from the dropdown.
+ */
+function selectSuggestion(ticker) {
+    // MODIFIED: Disabled for Nixtz
+    // console.log("Search selection disabled.");
+}
+// Make accessible globally for onclick attributes
+window.selectSuggestion = selectSuggestion;
+window.handleSearchInput = handleSearchInput;
+
+// --- END: ADDED TICKER SEARCH SUGGESTION FUNCTIONS ---
+
+
+// --- Event Listeners Setup ---
+document.addEventListener('DOMContentLoaded', () => {
+    
+    setupMobileMenuToggle();
+
+    // --- MODIFIED: SITE SEARCH LOGIC (REMOVED) ---
+    // Since we removed the search form from index.html, this is commented out
+    /*
+    const searchForm = document.getElementById('header-search-form'); 
+    if (searchForm) {
+        searchForm.addEventListener('submit', (e) => {
+            e.preventDefault(); 
+            const searchInput = document.getElementById('stock-search-input'); 
+            const query = searchInput.value.trim().toUpperCase(); 
+            
+            if (query) {
+                showMessage(`Search is disabled in Nixtz. Use navigation links.`, true); 
+                // checkAccessAndRedirect(`stock_dashboard.html?ticker=${encodeURIComponent(query)}`); 
+            }
+        });
+    }
+    */
+    // --- END MODIFIED SITE SEARCH LOGIC ---
+
+    // --- START: ADDED LISTENERS FOR TICKER SUGGESTIONS ---
+
+    // document.getElementById('stock-search-input')?.addEventListener('keyup', (e) => handleSearchInput(e, 'stock-search-suggestions'));
+
+    // Global click listener to hide suggestions when clicking outside
+    document.addEventListener('click', (event) => {
+        // Check if the click was outside any search container
+        const isOutside = !event.target.closest('.search-container');
+        if (isOutside) {
+            document.querySelectorAll('.search-suggestions').forEach(s => s.classList.add('hidden'));
+        }
+    });
+
+    // --- END: ADDED LISTENERS FOR TICKER SUGGESTION FUNCTIONS ---
+
+
+    // --- START: ADDED MODAL LISTENERS ---
+    
+    // Get modal elements
+    const profileButton = document.getElementById('profile-button');
+    const profileModal = document.getElementById('profile-modal');
+    const closeModalBtn = document.getElementById('close-profile-modal');
+    const passwordForm = document.getElementById('change-password-form');
+
+    // Attach listeners
+    if (profileButton) {
+        profileButton.addEventListener('click', showProfileModal);
+    }
+    if (closeModalBtn) {
+        closeModalBtn.addEventListener('click', () => {
+            if (profileModal) profileModal.classList.add('hidden');
+        });
+    }
+    if (passwordForm) {
+        passwordForm.addEventListener('submit', changePassword);
+    }
+
+    // --- END: ADDED MODAL LISTENERS ---
+
+
+    checkCookieConsent(); 
+    updateAuthUI(); 
+
+    // Fetch user email if logged in
+    if (getAuthStatus()) {
+        fetchUserData();
+    }
+
+    const logoutBtn = document.getElementById('logout-button');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', handleLogout);
+    }
+    
+    console.log("Authentication status:", getAuthStatus());
+});

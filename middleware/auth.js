@@ -2,20 +2,18 @@
 
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
-// NOTE: We rely on the User model being registered in server.js before this code is executed.
+const User = mongoose.model('User'); // Assumes User model is registered in server.js
 
 // --- CRITICAL CONFIGURATION ---
 const JWT_SECRET = process.env.JWT_SECRET || 'your_default_jwt_secret_please_change_this_for_prod';
 
-// --- Auth Middleware (The core authentication and database check) ---
+// --- Auth Middleware ---
 const authMiddleware = async (req, res, next) => {
-    // ✅ SAFE MODEL ACCESS: We access the model here to prevent application crash
-    const User = mongoose.model('User'); 
-    
     // 1. Extract token safely
     const token = req.header('Authorization')?.replace('Bearer ', '');
 
     if (!token) {
+        // Must return JSON for API calls
         return res.status(401).json({ success: false, message: 'Access denied. No token provided.' });
     }
 
@@ -27,39 +25,26 @@ const authMiddleware = async (req, res, next) => {
             throw new Error('Invalid token structure');
         }
         
-        // 3. Look up user in the database (Ensures user still exists and token fields are current)
+        // 3. Attach decoded user data to req object
+        // This is a performance optimization: we trust the token for basic auth 
+        // instead of fetching the whole user document from the DB on every request.
+        req.user = decoded.user;
         
-        // 🚨 CRITICAL FIX: Changed from findById() to findOne({_id: ...}) 
-        // This ensures the query works whether the ID is a MongoDB ObjectId or a simple string.
-        const user = await User.findOne({ _id: decoded.user.id }).select('username role membership pageAccess');
-
-        if (!user) {
-             // This is the error returned if the ID is wrong or the database query returns null
-             return res.status(401).json({ success: false, message: 'Invalid token: User not found.' });
-        }
-
-        // 4. Attach verified user data to req object
-        req.user = {
-            id: user._id,
-            username: user.username,
-            role: user.role,
-            membership: user.membership,
-            pageAccess: user.pageAccess
-        };
         next();
     } catch (ex) {
         // Centralized error handling for token issues
+        let message = 'Invalid token.';
         if (ex.name === 'TokenExpiredError') {
-             return res.status(401).json({ success: false, message: 'Token expired.' });
+             message = 'Token expired.';
         }
         console.error('Auth Middleware Error:', ex.message);
-        res.status(401).json({ success: false, message: 'Invalid token.' });
+        res.status(401).json({ success: false, message: message });
     }
 };
 
-// --- Admin Auth Middleware (Authorization) ---
+// --- Admin Auth Middleware ---
 const adminAuthMiddleware = (req, res, next) => {
-    // Checks role attached to req.user from authMiddleware
+    // Check role attached to req.user from authMiddleware
     if (req.user && (req.user.role === 'admin' || req.user.role === 'superadmin')) {
         next();
     } else {
@@ -67,9 +52,9 @@ const adminAuthMiddleware = (req, res, next) => {
     }
 };
 
-// --- Super Admin Auth Middleware (Highest Authorization) ---
+// --- Super Admin Auth Middleware ---
 const superAdminAuthMiddleware = (req, res, next) => {
-    // Checks role attached to req.user from authMiddleware
+    // Check role attached to req.user from authMiddleware
     if (req.user && req.user.role === 'superadmin') {
         next();
     } else {
