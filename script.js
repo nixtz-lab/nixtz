@@ -7,7 +7,7 @@
 const API_BASE_URL = window.location.origin;
 // 🚨 BRAND FIX: Use nixtz_ prefix
 const getAuthStatus = () => localStorage.getItem('nixtz_auth_token') !== null;
-const getUserRole = () => localStorage.getItem('tmt_user_role'); 
+const getUserRole = () => localStorage.getItem('nixtz_user_role'); 
 const getPageAccess = () => { 
     try {
         // 🚨 BRAND FIX: Use nixtz_ prefix
