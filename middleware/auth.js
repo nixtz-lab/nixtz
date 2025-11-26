@@ -27,10 +27,14 @@ const authMiddleware = async (req, res, next) => {
             throw new Error('Invalid token structure');
         }
         
-        // 3. Look up user in the database (Using findOne for resilient ID lookup)
+        // 3. Look up user in the database (Ensures user still exists and token fields are current)
+        
+        // 🚨 CRITICAL FIX: Changed from findById() to findOne({_id: ...}) 
+        // This ensures the query works whether the ID is a MongoDB ObjectId or a simple string.
         const user = await User.findOne({ _id: decoded.user.id }).select('username role membership pageAccess');
 
         if (!user) {
+             // This is the error returned if the ID is wrong or the database query returns null
              return res.status(401).json({ success: false, message: 'Invalid token: User not found.' });
         }
 
@@ -53,20 +57,20 @@ const authMiddleware = async (req, res, next) => {
     }
 };
 
-// --- Admin Auth Middleware (TEMPORARILY BYPASSED FOR EMERGENCY ACCESS) ---
+// --- Admin Auth Middleware (Authorization) ---
 const adminAuthMiddleware = (req, res, next) => {
-    // TEMPORARY FIX: Allows any authenticated user to access the Admin Panel.
-    if (req.user) {
+    // Checks role attached to req.user from authMiddleware
+    if (req.user && (req.user.role === 'admin' || req.user.role === 'superadmin')) {
         next();
     } else {
         res.status(403).json({ success: false, message: 'Forbidden: Requires Admin privileges.' });
     }
 };
 
-// --- Super Admin Auth Middleware (TEMPORARILY BYPASSED FOR ADMIN CREATION) ---
+// --- Super Admin Auth Middleware (Highest Authorization) ---
 const superAdminAuthMiddleware = (req, res, next) => {
-    // TEMPORARY FIX: Allows any authenticated user to access the /api/admin/create route.
-    if (req.user) {
+    // Checks role attached to req.user from authMiddleware
+    if (req.user && req.user.role === 'superadmin') {
         next();
     } else {
         res.status(403).json({ success: false, message: 'Forbidden: Requires Super Admin privileges.' });
