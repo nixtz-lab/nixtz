@@ -32,7 +32,6 @@ const DAYS_FULL = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
  */
 function generateWeeklyRoster(staffProfiles, weekStartDate) {
     
-    // NOTE: SHIFT times for output must match the user's config saved on the frontend (staff_roster.js).
     const MORNING_TIME = SHIFTS[1].time || '07:00-16:00';
     const AFTERNOON_TIME = SHIFTS[2].time || '13:30-22:30';
     const NIGHT_TIME = SHIFTS[3].time || '22:00-07:00';
@@ -74,8 +73,12 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
     let manager = staffProfiles.find(s => s.position === 'Manager');
     let supervisors = staffProfiles.filter(s => s.position === 'Supervisor').sort((a, b) => a.shiftPreference.localeCompare(b.shiftPreference));
     let deliveryDrivers = staffProfiles.filter(s => s.position === 'Delivery').sort((a, b) => a.fixedDayOff.localeCompare(b.fixedDayOff));
-    let nightStaffPool = staffProfiles.filter(s => s.position === 'Normal Staff' && s.isNightRotator);
-    let coveragePool = staffProfiles.filter(s => s.position === 'Normal Staff' && !s.isNightRotator);
+    
+    // Split Normal Staff into Rotators (Night) and General Coverage
+    let allNormalStaff = staffProfiles.filter(s => s.position === 'Normal Staff');
+    let nightStaffPool = allNormalStaff.filter(s => s.isNightRotator);
+    let coveragePool = allNormalStaff.filter(s => !s.isNightRotator);
+    
     
     // 1. Initial Assignments and Roster Map: Use employeeId as the map key
     const weeklyRosterMap = new Map(staffProfiles.map(s => [s.employeeId, { ...s, weeklySchedule: new Array(7).fill({ shifts: [] }) }]));
@@ -95,7 +98,6 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
         // ----------------------------------------
         
         // 0. CHECK WEEKLY REQUEST & FIXED DAY OFF OVERRIDE (HIGH PRIORITY)
-        // This MUST be the first step and is the only place Leave/DayOff is assigned.
         staffProfiles.forEach(staff => {
             const staffEntry = weeklyRosterMap.get(staff.employeeId);
             const request = getWeeklyRequest(staff);
@@ -108,8 +110,7 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
                 }
             } 
             
-            // 0b. Fixed Day Off Assignment 
-            // We use the fixedDayOff here and rely on isScheduled to prevent overwrite by requested leave
+            // 0b. Fixed Day Off Assignment (Only assign if not already on requested leave)
             if (staff.fixedDayOff === day && !isScheduled(staffEntry, dayIndex)) {
                  const roleColor = ROLE_COLORS[staff.position] || ROLE_COLORS['Normal Staff'];
                  staffEntry.weeklySchedule[dayIndex].shifts = [{ shiftId: null, jobRole: 'Leave (Fixed)', timeRange: 'Full Day', color: roleColor }];
