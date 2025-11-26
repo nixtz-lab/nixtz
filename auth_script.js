@@ -78,14 +78,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (url.includes('/login')) {
                     // 🚨 CRITICAL FIX APPLIED: Restoring tmt_ prefix for saving session
-                    localStorage.setItem('tmt_auth_token', result.token); 
+                    localStorage.setItem('nixtz_auth_token', result.token); 
                     localStorage.setItem('tmt_username', result.username); 
                     localStorage.setItem('tmt_user_role', result.role);
                     localStorage.setItem('tmt_user_membership', result.membership || 'none');
                     
                     // NOTE: The backend payload now includes 'pageAccess' as an array.
                     if (result.pageAccess) {
-                        localStorage.setItem('tmt_page_access', JSON.stringify(result.pageAccess)); 
+                        localStorage.setItem('nixtz_page_access', JSON.stringify(result.pageAccess)); 
                     }
                     
                     // Redirect to Business Dashboard
