@@ -9,8 +9,7 @@ window.API_BASE_URL = window.location.origin;
 
 // --- UPDATED KEY: nixtz_auth_token ---
 const getAuthStatus = () => localStorage.getItem('nixtz_auth_token') !== null;
-// FIX: Using nixtz_user_role for reading role
-const getUserRole = () => localStorage.getItem('nixtz_user_role'); 
+const getUserRole = () => localStorage.getItem('tmt_user_role'); 
 
 const getPageAccess = () => {
     try {
@@ -130,7 +129,7 @@ function checkAccessAndRedirect(targetUrl, event) {
         }, 300); 
     } else {
         // If the user is logged in but the slug is missing from their allowedPages
-        const userMembership = localStorage.getItem('nixtz_user_membership') || 'none'; // UPDATED KEY
+        const userMembership = localStorage.getItem('tmt_user_membership') || 'none';
         showMessage(`Access Denied. You are a ${userMembership.toUpperCase()} member. This content is not included in your current subscription.`, true);
         
         // Optional: window.location.href = 'membership_upgrade.html'; 
@@ -207,21 +206,18 @@ function checkCookieConsent() {
 
 function updateAuthUI() {
     const isLoggedIn = getAuthStatus();
-    const role = getUserRole(); 
+    const role = getUserRole(); // Get role
     
-    const authButtonsContainer = document.getElementById('auth-buttons-container'); // Login/Signup buttons
-    const userMenuContainer = document.getElementById('user-menu-container'); // The 'User' button/dropdown
-    const usernameDisplay = document.getElementById('username-display'); // Name inside the dropdown
-    const username = localStorage.getItem('nixtz_username'); // UPDATED KEY
-    const userInitials = document.getElementById('user-initials'); 
+    const authButtonsContainer = document.getElementById('auth-buttons-container');
+    const userMenuContainer = document.getElementById('user-menu-container'); 
+    const usernameDisplay = document.getElementById('username-display');
+    const username = localStorage.getItem('tmt_username'); 
+    const userInitials = document.getElementById('user-initials'); // For dropdown
     
     // NEW: Admin Link
     const adminLinkContainer = document.getElementById('admin-link-container');
-
     if (adminLinkContainer) {
-        // FIX: Admin Button Visibility Logic
-        const normalizedRole = role ? role.toLowerCase() : '';
-        if (normalizedRole === 'admin' || normalizedRole === 'superadmin') {
+        if (role === 'admin' || role === 'superadmin') {
             adminLinkContainer.classList.remove('hidden');
         } else {
             adminLinkContainer.classList.add('hidden');
@@ -233,12 +229,8 @@ function updateAuthUI() {
         if (authButtonsContainer) authButtonsContainer.classList.add('hidden');
         if (userMenuContainer) userMenuContainer.classList.remove('hidden');
         
-        if (usernameDisplay) {
-            // FIX 1 (USERNAME/EMAIL DISPLAY): Fallback to email if username is missing or "N/A"
-            const displayValue = (username && username.toUpperCase() !== 'N/A') ? username : (localStorage.getItem('nixtz_email') || 'User');
-            // Ensure first letter is capitalized for clean display
-            const formattedUsername = displayValue.charAt(0).toUpperCase() + displayValue.slice(1); 
-            
+        if (usernameDisplay && username) {
+            const formattedUsername = username.charAt(0).toUpperCase() + username.slice(1);
             usernameDisplay.textContent = formattedUsername;
             
             // Update dropdown initials
@@ -248,30 +240,24 @@ function updateAuthUI() {
         }
 
     } else {
-        // Logged out state
         if (authButtonsContainer) authButtonsContainer.classList.remove('hidden');
         if (userMenuContainer) userMenuContainer.classList.add('hidden');
-        // Hide admin link if logged out
-        if (adminLinkContainer) adminLinkContainer.classList.add('hidden');
     }
 }
 
 
 function handleLogout() {
-    // 1. Clear ALL session data
-    localStorage.removeItem('nixtz_auth_token'); 
+    localStorage.removeItem('nixtz_auth_token'); // UPDATED KEY
     localStorage.removeItem('nixtz_username'); 
-    localStorage.removeItem('nixtz_user_role'); 
-    localStorage.removeItem('nixtz_user_membership'); 
-    localStorage.removeItem('nixtz_page_access'); 
-    localStorage.removeItem('nixtz_email'); 
+    localStorage.removeItem('nixtz_user_role'); // NEW
+    localStorage.removeItem('nixtz_user_membership'); // NEW
+    localStorage.removeItem('nixtz_page_access'); // UPDATED KEY
 
-    // 2. FORCE UI UPDATE before redirection
-    updateAuthUI(); // <-- This fixes the persistent button bug
+    // Reset global state
+    currentUserEmail = null; // ADDED
 
     showMessage("You have been successfully logged out. Updating UI...", false);
 
-    // 3. Wait for the message and transition, then reload
     setTimeout(() => {
         window.location.reload(); 
     }, 500);
@@ -307,28 +293,16 @@ async function fetchUserData() {
         if (result.data) {
             currentUserEmail = result.data.email || null;
             
-            // --- CRITICAL DATA STORAGE FIXES ---
+            // Store email in local storage for persistence
             if (result.data.email) {
-                localStorage.setItem('nixtz_email', result.data.email); // Store email
+                localStorage.setItem('tmt_email', result.data.email);
             }
-            
-            // FIX 3: Ensure username defaults safely if the DB field is null, then store
-            const finalUsername = result.data.username || result.data.email.split('@')[0];
-            localStorage.setItem('nixtz_username', finalUsername);
-            
-            // FIX 4: Ensure the role is explicitly saved
-            if (result.data.role) {
-                 localStorage.setItem('nixtz_user_role', result.data.role); 
-            }
-            // ------------------------------------
             
             // Update modal elements if they exist
             const modalEmailEl = document.getElementById('modal-email');
             if (modalEmailEl) {
                 modalEmailEl.textContent = currentUserEmail || 'N/A';
             }
-            // CRITICAL: Call UI update again to ensure Admin button and username render now that data is saved
-            updateAuthUI();
         } else {
             console.error("Profile Fetch Error: Data missing in response", result);
         }
@@ -357,14 +331,8 @@ function showProfileModal() {
     const savePasswordButton = document.getElementById('save-password-button');
 
     // Populate details
-    const storedUsername = localStorage.getItem('nixtz_username');
-    const storedEmail = localStorage.getItem('nixtz_email');
-
-    // FIX 5: Modal Username Display Logic
-    const displayUsername = (storedUsername && storedUsername.toUpperCase() !== 'N/A') ? storedUsername : storedEmail.split('@')[0];
-    
-    if (modalUsernameEl) modalUsernameEl.textContent = displayUsername || 'N/A';
-    if (modalEmailEl) modalEmailEl.textContent = storedEmail || 'Loading...'; 
+    if (modalUsernameEl) modalUsernameEl.textContent = localStorage.getItem('tmt_username') || 'N/A';
+    if (modalEmailEl) modalEmailEl.textContent = currentUserEmail || localStorage.getItem('tmt_email') || 'Loading...'; // Use global or local storage
 
     // Reset password form
     if (passwordForm) passwordForm.reset();
@@ -571,14 +539,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     checkCookieConsent(); 
-    // Initial UI update is now removed from here.
+    updateAuthUI(); 
 
     // Fetch user email if logged in
     if (getAuthStatus()) {
         fetchUserData();
-    } else {
-        // Run a default UI update if no token exists immediately
-        updateAuthUI();
     }
 
     const logoutBtn = document.getElementById('logout-button');
