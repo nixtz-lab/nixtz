@@ -112,125 +112,62 @@ function openShiftConfigModal() {
         return;
     }
     
-    // Reset form to ADD mode
-    const form = document.getElementById('shift-config-form');
-    form.reset();
-    document.getElementById('edit-shift-id').value = 0;
-    document.getElementById('shift-form-title').textContent = `Add New Shift Configuration`;
-    document.getElementById('submit-shift-config-btn').textContent = `Save Shift Configuration`;
-    document.getElementById('config-shift-select').disabled = false;
+    const container = document.getElementById('shift-inputs-container');
+    container.innerHTML = '';
+    
+    let firstHiddenShiftId = null;
 
-    // Populate the dropdown with available (optional) shift IDs
-    const select = document.getElementById('config-shift-select');
-    select.innerHTML = '<option value="">-- Select Shift ID Slot --</option>';
-    
-    let isSlotAvailable = false;
-    
-    // Determine which slots are available for ADDITION (unused optional slots 5, 6, etc.)
-    Object.entries(SHIFTS).forEach(([id, shift]) => {
+    // Generate inputs for each shift
+    for (const id in SHIFTS) {
+        const shift = SHIFTS[id];
         const shiftId = parseInt(id);
-        const isOptional = shiftId >= 5;
-        const isUnused = isOptional && (shift.time === '00:00-00:00' && (shift.name === 'Optional Shift A' || shift.name === 'Optional Shift B'));
+        const shiftDiv = document.createElement('div');
+        shiftDiv.className = 'p-3 bg-gray-800 rounded-lg border border-gray-700';
+        
+        // Handle optional slots (ID 5 and above)
+        if (shiftId >= 5) {
+             shiftDiv.classList.add('optional-shift-slot');
+             
+             // Check if this slot has a non-default name/time (i.e., it was configured)
+             const isConfigured = shift.time !== '00:00-00:00' || shift.name !== 'Optional Shift A' && shift.name !== 'Optional Shift B';
 
-        if (isUnused) {
-            const option = document.createElement('option');
-            option.value = shiftId;
-            option.textContent = `${shiftId}: ${shift.name} (Unused)`;
-            select.appendChild(option);
-            isSlotAvailable = true;
+             if (!isConfigured) {
+                shiftDiv.style.display = 'none';
+                if (!firstHiddenShiftId) firstHiddenShiftId = shiftId;
+             }
         }
-    });
+
+        shiftDiv.innerHTML = `
+            <label class="block text-sm font-medium text-gray-400 mb-1">Shift ${shiftId} Configuration</label>
+            <input type="text" id="shift-name-${shiftId}" value="${shift.name}" placeholder="Shift Name (e.g., Morning)" required 
+                   class="w-full p-2 rounded-lg bg-gray-900 border border-gray-600 text-white focus:border-nixtz-primary mb-2 text-sm">
+            <input type="text" id="shift-time-${shiftId}" value="${shift.time}" placeholder="Time Range (e.g., 07:00-16:00)" required 
+                   class="w-full p-2 rounded-lg bg-gray-900 border border-gray-600 text-white focus:border-nixtz-primary text-sm">
+        `;
+        container.appendChild(shiftDiv);
+    }
     
-    if (!isSlotAvailable) {
-        select.innerHTML = '<option value="">All optional slots are in use.</option>';
-        select.disabled = true;
+    // Determine the next starting ID for the '+' button
+    const nextStartingShiftId = firstHiddenShiftId || 5; 
+    
+    // Check if there are any hidden slots left to add
+    const hasHiddenSlots = document.querySelectorAll('#shift-inputs-container .optional-shift-slot[style*="display: none"]').length > 0;
+
+    // Add the "+" button logic only if there are hidden slots
+    if (hasHiddenSlots) {
+        container.innerHTML += `
+            <button type="button" onclick="toggleOptionalShift(this, ${nextStartingShiftId})" id="add-shift-btn" 
+                    class="w-full p-3 bg-nixtz-primary text-white rounded-lg font-bold shadow-lg hover:bg-[#3f3bbf] transition duration-300">
+                <i data-lucide="plus" class="w-5 h-5 mr-1 inline"></i> Add Optional Shift Slot
+            </button>
+        `;
     }
 
-
-    // Render the list of currently configured shifts
-    renderConfiguredShiftList();
-    
     document.getElementById('shift-config-modal').classList.remove('hidden');
     document.getElementById('shift-config-modal').classList.add('flex');
+    window.lucide.createIcons();
 }
 window.openShiftConfigModal = openShiftConfigModal;
-
-// --- NEW HELPER FUNCTIONS FOR SHIFT CONFIG FORM ---
-
-/**
- * @function renderConfiguredShiftList
- * Renders the list of configured shifts in the modal.
- */
-function renderConfiguredShiftList() {
-    const listContainer = document.getElementById('configured-shift-list');
-    listContainer.innerHTML = '';
-    
-    // Sort shifts by ID
-    const sortedShifts = Object.entries(SHIFTS)
-        .sort(([idA], [idB]) => parseInt(idA) - parseInt(idB));
-
-    if (sortedShifts.length === 0) {
-        listContainer.innerHTML = '<p class="text-gray-500 text-center py-2">No shifts configured.</p>';
-        return;
-    }
-
-    sortedShifts.forEach(([id, shift]) => {
-        const shiftId = parseInt(id);
-        const isOptional = shiftId >= 5;
-        // Logic to determine if a slot is completely empty/unused
-        const isUnused = isOptional && (shift.time === '00:00-00:00' && (shift.name === 'Optional Shift A' || shift.name === 'Optional Shift B'));
-        
-        // Skip rendering unused optional slots entirely, or show a simple placeholder
-        if (isUnused) {
-             listContainer.innerHTML += `<div class="text-gray-500 text-sm italic">Shift ${shiftId} (Unused Slot)</div>`;
-             return;
-        }
-
-        const bgColor = shiftId === 1 ? 'bg-indigo-600' : shiftId === 2 ? 'bg-green-600' : shiftId === 3 ? 'bg-gray-600' : 'bg-blue-600';
-        
-        listContainer.innerHTML += `
-            <div class="flex justify-between items-center ${bgColor} p-3 rounded-lg shadow-md">
-                <div class="flex-grow">
-                    <p class="font-bold text-white">${shift.name} (${shiftId})</p>
-                    <p class="text-xs text-gray-100">${shift.time}</p>
-                </div>
-                <button type="button" onclick="loadShiftToForm(${shiftId})" class="bg-white/20 hover:bg-white/30 text-white font-semibold py-1 px-3 rounded text-xs transition">
-                    Edit
-                </button>
-            </div>
-        `;
-    });
-}
-window.renderConfiguredShiftList = renderConfiguredShiftList;
-
-
-/**
- * @function loadShiftToForm
- * Loads a selected shift's configuration into the form for editing.
- */
-window.loadShiftToForm = function(shiftId) {
-    const shift = SHIFTS[shiftId];
-    if (!shift) return;
-
-    // Set form mode to EDIT
-    document.getElementById('edit-shift-id').value = shiftId;
-    document.getElementById('shift-form-title').textContent = `Edit Configuration for Shift ${shiftId}`;
-    document.getElementById('submit-shift-config-btn').textContent = `Update Shift ${shiftId}`;
-    
-    // Populate form fields
-    document.getElementById('config-shift-name').value = shift.name;
-    document.getElementById('config-shift-time').value = shift.time;
-    
-    // Lock the dropdown and populate with the current selection
-    const select = document.getElementById('config-shift-select');
-    select.innerHTML = `<option value="${shiftId}">${shiftId}: ${shift.name}</option>`;
-    select.disabled = true;
-    
-    // Hide unnecessary form elements
-    document.getElementById('config-shift-required').value = shift.required;
-    document.getElementById('config-shift-roles').value = shift.roles.join(',');
-}
-
 
 /**
  * @function toggleOptionalShift
@@ -290,56 +227,43 @@ document.getElementById('shift-config-form')?.addEventListener('submit', (e) => 
     const submitBtn = document.getElementById('submit-shift-config-btn');
     submitBtn.disabled = true;
     
-    // Determine the ID to update, either from the hidden edit field or the dropdown
-    const shiftIdToUpdate = parseInt(document.getElementById('edit-shift-id').value) || parseInt(document.getElementById('config-shift-select').value);
+    const newConfig = {};
+    let isValid = true;
     
-    if (!shiftIdToUpdate) {
-        showMessage("Please select a shift slot ID.", true, 'shift-config-message');
+    for (const id in SHIFTS) {
+        const nameInput = document.getElementById(`shift-name-${id}`);
+        const timeInput = document.getElementById(`shift-time-${id}`);
+        
+        if (!nameInput.value || !timeInput.value) {
+            isValid = false;
+            break;
+        }
+        
+        newConfig[id] = { 
+            name: nameInput.value, 
+            time: timeInput.value,
+            required: SHIFTS[id].required,
+            roles: SHIFTS[id].roles 
+        };
+    }
+    
+    if (!isValid) {
+        showMessage("Shift name and time are required for all shifts.", true, 'shift-config-message');
         submitBtn.disabled = false;
         return;
     }
-
-    const newConfig = { ...SHIFTS }; // Clone current shifts
     
-    const shiftName = document.getElementById('config-shift-name').value;
-    const shiftTime = document.getElementById('config-shift-time').value;
+    try {
+        saveShiftConfigToLocal(newConfig);
+        showMessage("Shift configuration saved successfully. Regenerate roster to apply changes!", false, 'shift-config-message');
+        setTimeout(() => {
+            document.getElementById('shift-config-modal').classList.add('hidden');
+        }, 1500);
 
-    // Check if we are modifying an existing slot or a fixed slot (1-4)
-    if (newConfig[shiftIdToUpdate]) {
-        
-        // --- Set default required fields based on slot type ---
-        let requiredCount = newConfig[shiftIdToUpdate].required;
-        let roleList = newConfig[shiftIdToUpdate].roles;
-        
-        // If it's an optional slot being defined for the first time, set a default requirement
-        if (shiftIdToUpdate >= 5 && (requiredCount === 0 || requiredCount === 'N/A')) {
-            requiredCount = 1; // Default to 1 staff required
-            roleList = ['C4']; // Default role
-        }
-
-        newConfig[shiftIdToUpdate] = { 
-            name: shiftName, 
-            time: shiftTime,
-            required: requiredCount,
-            roles: roleList
-        };
-        
-        try {
-            saveShiftConfigToLocal(newConfig);
-            showMessage(`Shift ${shiftIdToUpdate} (${shiftName}) saved successfully.`, false, 'shift-config-message');
-            
-            // Re-render list and reset form to ADD mode
-            openShiftConfigModal(); 
-
-        } catch (error) {
-            showMessage(`Error saving config: ${error.message}`, true, 'shift-config-message');
-        } finally {
-            submitBtn.disabled = false;
-        }
-
-    } else {
-         showMessage(`Error: Shift ID ${shiftIdToUpdate} is invalid.`, true, 'shift-config-message');
-         submitBtn.disabled = false;
+    } catch (error) {
+        showMessage(`Error saving config: ${error.message}`, true, 'shift-config-message');
+    } finally {
+        submitBtn.disabled = false;
     }
 });
 
@@ -641,7 +565,7 @@ function addStaffRow(initialData = {}) {
             let timeRange = shift.timeRange; // Time range is read directly from roster data
             
             // --- FIX: Use SHIFTS cache if time is a placeholder ---
-            if (timeRange && timeRange.startsWith('DYNAMIC_TIME_')) {
+            if (timeRange.startsWith('DYNAMIC_TIME_')) {
                 // If the shiftId is defined, use the real time from the live SHIFTS config
                 const realShiftConfig = SHIFTS[shiftId];
                 if (realShiftConfig) {
@@ -1470,62 +1394,42 @@ document.addEventListener('DOMContentLoaded', () => {
         const submitBtn = document.getElementById('submit-shift-config-btn');
         submitBtn.disabled = true;
         
-        // Determine the ID to update, either from the hidden edit field or the dropdown
-        const shiftIdToUpdate = parseInt(document.getElementById('edit-shift-id').value) || parseInt(document.getElementById('config-shift-select').value);
+        const newConfig = {};
+        let isValid = true;
         
-        if (!shiftIdToUpdate) {
-            showMessage("Please select a shift slot ID.", true, 'shift-config-message');
-            submitBtn.disabled = false;
-            return;
-        }
-
-        const newConfig = { ...SHIFTS }; // Clone current shifts
-        
-        const shiftName = document.getElementById('config-shift-name').value;
-        const shiftTime = document.getElementById('config-shift-time').value;
-
-        // Validation for required fields
-        if (!shiftName || !shiftTime) {
-            showMessage("Shift name and time are required.", true, 'shift-config-message');
-            submitBtn.disabled = false;
-            return;
-        }
-
-        // Check if we are modifying an existing slot or a fixed slot (1-4)
-        if (newConfig[shiftIdToUpdate]) {
+        for (const id in SHIFTS) {
+            const nameInput = document.getElementById(`shift-name-${id}`);
+            const timeInput = document.getElementById(`shift-time-${id}`);
             
-            // --- Set default required fields based on slot type ---
-            let requiredCount = newConfig[shiftIdToUpdate].required;
-            let roleList = newConfig[shiftIdToUpdate].roles;
-            
-            // If it's an optional slot being defined for the first time, set a default requirement
-            if (shiftIdToUpdate >= 5 && (requiredCount === 0 || requiredCount === 'N/A')) {
-                requiredCount = 1; // Default to 1 staff required
-                roleList = ['C4']; // Default role
+            if (!nameInput.value || !timeInput.value) {
+                isValid = false;
+                break;
             }
-
-            newConfig[shiftIdToUpdate] = { 
-                name: shiftName, 
-                time: shiftTime,
-                required: requiredCount,
-                roles: roleList
+            
+            newConfig[id] = { 
+                name: nameInput.value, 
+                time: timeInput.value,
+                required: SHIFTS[id].required,
+                roles: SHIFTS[id].roles 
             };
-            
-            try {
-                saveShiftConfigToLocal(newConfig);
-                showMessage(`Shift ${shiftIdToUpdate} (${shiftName}) saved successfully.`, false, 'shift-config-message');
-                
-                // Re-render list and reset form to ADD mode
-                openShiftConfigModal(); 
+        }
+        
+        if (!isValid) {
+            showMessage("Shift name and time are required for all shifts.", true, 'shift-config-message');
+            submitBtn.disabled = false;
+            return;
+        }
+        
+        try {
+            saveShiftConfigToLocal(newConfig);
+            showMessage("Shift configuration saved successfully. Regenerate roster to apply changes!", false, 'shift-config-message');
+            setTimeout(() => {
+                document.getElementById('shift-config-modal').classList.add('hidden');
+            }, 1500);
 
-            } catch (error) {
-                showMessage(`Error saving config: ${error.message}`, true, 'shift-config-message');
-            } finally {
-                submitBtn.disabled = false;
-            }
-
-        } else {
-            showMessage(`Error: Shift ID ${shiftIdToUpdate} is invalid.`, true, 'shift-config-message');
+        } catch (error) {
+            showMessage(`Error saving config: ${error.message}`, true, 'shift-config-message');
+        } finally {
             submitBtn.disabled = false;
         }
 
