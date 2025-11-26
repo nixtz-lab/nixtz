@@ -183,9 +183,6 @@ const { authMiddleware, adminAuthMiddleware } = require('./middleware/auth');
 const staffRosterRoutes = require('./routes/staff_roster_api.js'); 
 const staffProfileRoutes = require('./routes/staff_profile_api_be.js'); 
 const adminPanelRoutes = require('./routes/admin_panel_be.js'); // Admin Router
-const laundryRoutes = require('./routes/laundry_api_be.js'); // Standard Laundry API
-const laundryAdminRoutes = require('./routes/laundry_admin_api_be.js'); // Laundry Admin API
-const serviceAdminRoutes = require('./routes/service_admin_be.js'); // Service Admin Router
 
 app.use(cors()); 
 app.use(express.json());
