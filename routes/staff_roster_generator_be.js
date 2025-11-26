@@ -103,10 +103,9 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
             const staffEntry = weeklyRosterMap.get(staff.employeeId);
             const request = getWeeklyRequest(staff);
             
-            // --- FIX START: Handle Requested Leave FIRST, then Fixed Day Off ---
-            
             // 0a. Requested Leave Override (Highest Priority)
             if (request.type === 'Leave') {
+                
                 const isRequestedDay = request.day === day || request.day === 'Sick Leave';
                 const isFullWeek = request.day === 'Full Week';
 
@@ -141,7 +140,6 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
                      return;
                 }
             }
-            // --- FIX END ---
         });
         
         // 1. Manager 
@@ -355,7 +353,14 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
             
             // --- C. Assign Day Off if all quotas are met for both shifts ---
             if (!assigned) {
-                staffEntry.weeklySchedule[dayIndex].shifts.push({ shiftId: null, jobRole: 'Leave (Auto Off)', timeRange: 'Full Day' });
+                
+                // --- CRITICAL FIX START: Prevent Auto-Off if a single-day Leave Request is active ---
+                const hasSingleDayLeaveRequest = request.type === 'Leave' && request.day !== 'Full Week';
+
+                if (!hasSingleDayLeaveRequest) {
+                    staffEntry.weeklySchedule[dayIndex].shifts.push({ shiftId: null, jobRole: 'Leave (Auto Off)', timeRange: 'Full Day' });
+                }
+                // FIX END: If hasSingleDayLeaveRequest is true, the day is intentionally left empty.
             }
         });
 
