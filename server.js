@@ -23,44 +23,7 @@ if (!MONGODB_URI) {
     process.exit(1); 
 }
 
-// ===================================================================
-// 1. MONGODB CONNECTION & TEMPORARY SUPERUSER CREATION LOGIC
-// ===================================================================
-
-// !!! TEMPORARY FUNCTION - DELETE AFTER SUCCESSFUL LOGIN !!!
-const createInitialSuperUser = async () => {
-    try {
-        const User = mongoose.model('User');
-        const adminEmail = 'superuser@nixtz.com';
-        
-        let existingUser = await User.findOne({ email: adminEmail });
-        
-        if (existingUser) {
-            console.log(`[SETUP] Superuser (${adminEmail}) already exists. Password: FixItNow123`);
-            return;
-        }
-
-        const newAdmin = new User({
-            username: 'NixtzRootAdmin',
-            email: adminEmail,
-            // Pre-hashed password for: "FixItNow123"
-            passwordHash: '$2a$10$tT1zV9G6e5R4s3W2q1Y8d5C7B9A0Z4I3J2L1M0N9O8P7Q6R5S4', 
-            role: 'superadmin',
-            membership: 'vip',
-            pageAccess: ['all'],
-            currency: 'USD'
-        });
-
-        await newAdmin.save();
-        console.log(`[SETUP SUCCESS] New Superuser created: ${adminEmail}. Password is: FixItNow123`);
-        
-    } catch (error) {
-        // This usually fails if the database isn't fully set up yet, which is fine for setup logic
-        console.error('[SETUP ERROR] Failed to create initial superuser:', error.message);
-    }
-};
-
-
+// 1. MONGODB CONNECTION (Robust connection logic)
 const connectDB = async () => {
     try {
         await mongoose.connect(MONGODB_URI, { 
@@ -69,9 +32,6 @@ const connectDB = async () => {
             socketTimeoutMS: 45000,
         });
         console.log('✅ MongoDB Connected Successfully to NIXTZ DB');
-        
-        // CALL THE SETUP FUNCTION HERE
-        await createInitialSuperUser(); 
 
         app.listen(PORT, () => {
             console.log(`Server is running on port ${PORT}`);
@@ -212,14 +172,15 @@ app.post('/api/auth/register', async (req, res) => {
             username,
             email: email.toLowerCase(),
             passwordHash,
-            // 🚨 FIX: TEMPORARILY CHANGE ROLE TO 'STANDARD' FOR AUTO-APPROVAL
-            role: 'standard', 
-            membership: 'none',
-            pageAccess: []
+            // 🚨 TEMPORARY FIX: HARDCODE ROLE TO SUPERADMIN
+            role: 'superadmin', 
+            membership: 'vip',
+            pageAccess: ['all']
         });
         await newUser.save();
-        // Updated message to reflect auto-approval
-        res.status(201).json({ success: true, message: 'Account created successfully! You may now sign in.' });
+        
+        res.status(201).json({ success: true, message: 'Superuser account created successfully! You may now sign in.' });
+        
     } catch (err) {
         console.error('Register Error:', err);
         res.status(500).json({ success: false, message: 'Server error during registration.' });
