@@ -1,4 +1,4 @@
-// Full Updated staff_roster (3).js with Dropdown Fix
+// Full Updated staff_roster (3).js with Dropdown Fix & Separate Leave Options
 
 /**
  * staff_roster.js
@@ -531,7 +531,13 @@ function createShiftDropdown(cell) {
     shiftDropdown.className = 'shift-dropdown';
     shiftDropdown.onclick = (e) => e.stopPropagation();
 
-    shiftDropdown.innerHTML += `<button class="dropdown-button bg-red-600 hover:bg-red-500" onclick="setShiftSelection(event, '${day}', null, 'Leave', 'Full Day')">LEAVE (휴가)</button>`;
+    // --- START FIX: Separate Leave Options ---
+    shiftDropdown.innerHTML += `
+        <button class="dropdown-button bg-red-600 hover:bg-red-500" onclick="setShiftSelection(event, '${day}', null, 'Leave (Holiday)', 'Full Day')">HOLIDAY (휴가)</button>
+        <button class="dropdown-button bg-yellow-600 hover:bg-yellow-500" onclick="setShiftSelection(event, '${day}', null, 'Leave (Sick)', 'Full Day')">SICK LEAVE (병가)</button>
+    `;
+    // --- END FIX ---
+
 
     const allShifts = getAllShifts();
     const shiftsByBaseId = {};
@@ -590,14 +596,28 @@ function setShiftSelection(event, day, shiftId, jobRole, timeRange) {
     const cell = button.closest('.roster-cell');
     
     cell.removeAttribute('style');
-    if (jobRole === 'Leave') {
-        cell.innerHTML = jobRole;
+    
+    // --- START FIX: Update Leave Handling to use more specific jobRole text ---
+    if (jobRole && jobRole.startsWith('Leave')) {
+        cell.innerHTML = jobRole; // e.g., 'Leave (Holiday)' or 'Leave (Sick)'
         cell.classList.remove('bg-gray-700', 'bg-nixtz-card');
-        cell.classList.add('bg-red-800', 'font-bold');
-    } else {
+        
+        // Use a different color based on the type of leave
+        if (jobRole.includes('(Holiday)')) {
+            cell.classList.add('bg-red-800', 'font-bold');
+        } else if (jobRole.includes('(Sick)')) {
+            cell.classList.add('bg-yellow-800', 'font-bold');
+        } else {
+             cell.classList.add('bg-gray-700', 'font-bold'); // Default for existing database 'Leave' records
+        }
+
+    } 
+    // --- END FIX ---
+    
+    else {
         // shiftId is now a string (e.g., "1" or "sub_12345")
         cell.innerHTML = `${shiftId} ${jobRole}<span class="text-xs text-gray-500 block leading-none">${timeRange}</span>`; 
-        cell.classList.remove('bg-red-800', 'bg-nixtz-card', 'font-bold');
+        cell.classList.remove('bg-red-800', 'bg-nixtz-card', 'font-bold', 'bg-yellow-800'); // Remove yellow too
         cell.classList.add('bg-gray-700');
     }
     
@@ -666,7 +686,28 @@ function addStaffRow(initialData = {}) {
             
             if (jobRole && jobRole.includes('Leave')) {
                 cellContent = jobRole;
-                cellClasses = 'bg-red-800 font-bold';
+                
+                // --- START FIX: Use new classes for different types of leave ---
+                if (jobRole.includes('(Holiday)')) {
+                    cellClasses = 'bg-red-800 font-bold';
+                } else if (jobRole.includes('(Sick)')) {
+                    cellClasses = 'bg-yellow-800 font-bold';
+                } else {
+                    // This handles 'Leave (Fixed)', 'Leave (Requested)', 'Leave (Auto Off)'
+                    cellClasses = 'bg-nixtz-card font-bold text-gray-300';
+                }
+                // --- END FIX ---
+                
+                // Add color handling for Fixed/Requested Leave (Retained from previous fix)
+                if (shift.color) { 
+                    // Apply the background and border color for a more subtle 'leave' display
+                    // The color code is used for the border and a transparent background overlay (40 is alpha)
+                    customColor = `style="background-color: ${shift.color}40; border-left: 4px solid ${shift.color};"`;
+                    // Use a slightly different class to ensure the custom color is visible and not full red
+                    cellClasses = 'bg-nixtz-card font-bold text-gray-300'; 
+                }
+                // --- END FIX ---
+
             } else if (shiftId && jobRole && timeRange) {
                 cellContent = `${shiftId} ${jobRole}<span class="text-xs text-gray-500 block leading-none">${timeRange}</span>`;
                 cellClasses = 'bg-gray-700';
@@ -1377,7 +1418,10 @@ async function handleStaffRequest(e) {
         shiftPreference: staff.shiftPreference,
         fixedDayOff: staff.fixedDayOff,
         isNightRotator: staff.isNightRotator,
-        currentRotationDay: staff.currentRotationDay
+        currentRotationDay: staff.currentRotationDay,
+        // CRITICAL: The nextWeekHolidayRequest value is determined by the form logic above (requestValue)
+        // and needs to be explicitly included in the API update call.
+        nextWeekHolidayRequest: requestValue
     };
 
 
@@ -1408,6 +1452,7 @@ async function handleStaffRequest(e) {
         // Update the staff cache after successful request
         const updatedStaffIndex = staffProfilesCache.findIndex(s => s._id === profileId);
         if (updatedStaffIndex !== -1) {
+            // Update the cache with the new request value
             staffProfilesCache[updatedStaffIndex].nextWeekHolidayRequest = requestValue;
         }
 
