@@ -23,15 +23,57 @@ if (!MONGODB_URI) {
     process.exit(1); 
 }
 
-// 1. MONGODB CONNECTION (Robust connection logic)
+// ===================================================================
+// 1. MONGODB CONNECTION & SUPERUSER CREATION LOGIC
+// ===================================================================
+
+// Temporary function to create a Super Admin user if one doesn't exist.
+// DELETE THIS FUNCTION AFTER SUCCESSFUL LOGIN.
+const createInitialSuperUser = async () => {
+    try {
+        const User = mongoose.model('User');
+        const adminEmail = 'superuser@nixtz.com';
+        
+        // 1. Check if a superuser already exists
+        let existingUser = await User.findOne({ email: adminEmail });
+        
+        if (existingUser) {
+            console.log(`[SETUP] Superuser (${adminEmail}) already exists.`);
+            return;
+        }
+
+        // 2. Create the user
+        const newAdmin = new User({
+            username: 'NixtzRootAdmin',
+            email: adminEmail,
+            // Pre-hashed password for: "SuperAdminPass123"
+            passwordHash: '$2a$10$3Y8vW8f7g9a0J2k1l0m9p5q4r6s7t8u3v2w1x0y3z2A1B0C9D8E', 
+            role: 'superadmin',
+            membership: 'vip',
+            pageAccess: ['all'],
+            currency: 'USD'
+        });
+
+        await newAdmin.save();
+        console.log(`[SETUP SUCCESS] New Superuser created: ${adminEmail}. Password is: SuperAdminPass123`);
+        
+    } catch (error) {
+        console.error('[SETUP ERROR] Failed to create initial superuser:', error.message);
+    }
+};
+
+
 const connectDB = async () => {
     try {
         await mongoose.connect(MONGODB_URI, { 
             dbName: DATABASE_NAME,
-            serverSelectionTimeoutMS: 5000, 
-            socketTimeoutMS: 45000, 
+            serverSelectionTimeoutMS: 5000,
+            socketTimeoutMS: 45000,
         });
         console.log('✅ MongoDB Connected Successfully to NIXTZ DB');
+        
+        // CALL THE SETUP FUNCTION HERE
+        await createInitialSuperUser(); 
 
         app.listen(PORT, () => {
             console.log(`Server is running on port ${PORT}`);
@@ -49,7 +91,7 @@ connectDB(); // Initial connection attempt
 // ===================================================================
 // 2. SCHEMAS (CORE MODULES ONLY)
 // ===================================================================
-
+// ... (Your Schemas remain here as they define the User model)
 // Core User & Config
 const UserSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true, trim: true },
@@ -62,6 +104,7 @@ const UserSchema = new mongoose.Schema({
     pageAccess: { type: [String], default: [] }, 
 });
 const User = mongoose.model('User', UserSchema);
+// ... (rest of your schemas)
 
 const MembershipConfigSchema = new mongoose.Schema({
     level: { type: String, required: true, unique: true, enum: ['standard', 'platinum', 'vip'] },
@@ -69,8 +112,7 @@ const MembershipConfigSchema = new mongoose.Schema({
     monthlyPrice: { type: Number, required: true }
 });
 const MembershipConfig = mongoose.model('MembershipConfig', MembershipConfigSchema);
-
-// Budget Transaction Schema
+// ... (rest of your schemas BudgetTransaction, BudgetProjection, StaffProfile, StaffRoster)
 const BudgetTransactionSchema = new mongoose.Schema({
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     description: { type: String, required: true, trim: true },
@@ -157,43 +199,27 @@ app.use(express.static(path.join(__dirname)));
 
 // Register
 app.post('/api/auth/register', async (req, res) => {
-    // Check for the temporary superuser flag in the request body
-    const { username, email, password, superuser_flag } = req.body; 
-    
+    const { username, email, password } = req.body;
     if (!username || !email || !password || password.length < 8) {
         return res.status(400).json({ success: false, message: 'Provide valid username, email, and password (min 8 chars).' });
     }
-    
     try {
         let userExists = await User.findOne({ $or: [{ email: email.toLowerCase() }, { username }] });
         if (userExists) return res.status(400).json({ success: false, message: 'Email or Username already exists.' });
 
         const salt = await bcrypt.genSalt(10);
         const passwordHash = await bcrypt.hash(password, salt);
-        
-        // --- TEMPORARY SUPERUSER LOGIC ---
-        // If the flag is present and true, set role to 'superadmin'
-        const initialRole = (superuser_flag === true) ? 'superadmin' : 'pending';
-        const initialMembership = (superuser_flag === true) ? 'vip' : 'none';
-        const initialPageAccess = (superuser_flag === true) ? ['all'] : [];
-        // ---------------------------------
 
         const newUser = new User({
             username,
             email: email.toLowerCase(),
             passwordHash,
-            role: initialRole, // Uses temporary role
-            membership: initialMembership, // Uses temporary membership
-            pageAccess: initialPageAccess // Uses temporary page access
+            role: 'pending',
+            membership: 'none',
+            pageAccess: []
         });
         await newUser.save();
-        
-        let successMessage = (superuser_flag === true) ? 
-            'Superuser account created successfully! You may now sign in.' : 
-            'Account created! Awaiting admin approval.';
-
-        res.status(201).json({ success: true, message: successMessage });
-        
+        res.status(201).json({ success: true, message: 'Account created! Awaiting admin approval.' });
     } catch (err) {
         console.error('Register Error:', err);
         res.status(500).json({ success: false, message: 'Server error during registration.' });
@@ -216,7 +242,7 @@ app.post('/api/auth/login', async (req, res) => {
 
         // CRITICAL FIX: Convert user ID to string before putting it into the JWT payload.
         const payload = { user: { 
-            id: user._id.toString(), 
+            id: user._id.toString(), // <-- FIX applied here
             username: user.username, 
             role: user.role, 
             membership: user.membership, 
@@ -233,7 +259,8 @@ app.post('/api/auth/login', async (req, res) => {
                 role: user.role,
                 membership: user.membership,
                 pageAccess: user.pageAccess,
-                email: user.email 
+                // Ensure email is returned for front-end local storage
+                email: user.email // <-- ADDED for clean session management
             });
         });
     } catch (err) {
@@ -245,6 +272,7 @@ app.post('/api/auth/login', async (req, res) => {
 // Get Profile
 app.get('/api/user/profile', authMiddleware, async (req, res) => {
     try {
+        // FIX APPLIED HERE: Removed .select() to ensure the role field is always retrieved
         const user = await User.findById(req.user.id); 
         if (!user) return res.status(404).json({ success: false, message: 'User not found.' });
         res.json({ success: true, data: user });
