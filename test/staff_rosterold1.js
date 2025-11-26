@@ -875,18 +875,19 @@ async function openSingleEditModal(profileId) {
     const token = localStorage.getItem(AUTH_TOKEN_KEY);
     
     try {
-        // --- FIXED: Use the efficient single GET route ---
-        const response = await fetch(`${PROFILE_API_URL}/${profileId}`, {
+        const response = await fetch(PROFILE_API_URL, {
             method: 'GET',
             headers: { 'Authorization': `Bearer ${token}` }
         });
         const result = await response.json();
         
-        if (!response.ok || !result.success || !result.data) {
+        if (!response.ok || !result.success) {
              throw new Error("Error fetching profile data.");
         }
 
-        const staff = result.data; // Use the single profile object directly
+        const staff = result.data.find(p => p._id === profileId);
+        if (!staff) return showMessage("Profile not found.", true);
+
         currentStaffData = staff;
 
         // 2. Populate the edit form

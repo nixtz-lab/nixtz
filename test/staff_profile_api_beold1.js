@@ -63,36 +63,6 @@ router.get('/', async (req, res) => {
     }
 });
 
-/**
- * @route   GET /api/staff/profile/:id
- * @desc    Fetch a single staff profile by ID (NEWLY ADDED)
- * @access  Private
- */
-router.get('/:id', async (req, res) => {
-    try {
-        const userId = req.user.id;
-        const profileId = req.params.id;
-
-        const profile = await StaffProfile.findOne({ 
-            _id: profileId, 
-            user: userId 
-        }).lean();
-
-        if (!profile) {
-            return res.status(404).json({ success: false, message: 'Staff profile not found or unauthorized.' });
-        }
-
-        res.json({ success: true, data: profile });
-        
-    } catch (err) {
-        console.error('Fetch Single Staff Profile Error:', err.message);
-        if (err.name === 'CastError') {
-            return res.status(400).json({ success: false, message: 'Invalid profile ID format.' });
-        }
-        res.status(500).json({ success: false, message: 'Server error fetching staff profile.' });
-    }
-});
-
 
 /**
  * @route   PUT /api/staff/profile/:id
