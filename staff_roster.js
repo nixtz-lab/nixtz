@@ -1,3 +1,5 @@
+// Full Updated staff_roster (3).js with Dropdown Fix
+
 /**
  * staff_roster.js
  * Custom logic for the 7-Eleven Staff Roster page.
@@ -171,7 +173,16 @@ function openShiftConfigModal() {
     Object.entries(CORE_SHIFTS).forEach(([id, shift]) => {
         const option = document.createElement('option');
         option.value = id;
-        option.textContent = `${shift.name} (${id})`;
+        
+        // --- FIX APPLIED HERE: Force display name to avoid M1/M2 corruption ---
+        let display_name = shift.name;
+        if (id === '1') { display_name = 'Morning'; }
+        else if (id === '2') { display_name = 'Afternoon'; }
+        else if (id === '3') { display_name = 'Night'; }
+        
+        option.textContent = `${display_name} (${id})`;
+        // --- END FIX ---
+
         select.appendChild(option);
     });
     
@@ -240,7 +251,9 @@ window.loadSubShiftToForm = function(subShiftId) {
     // Select the Base Shift (lock it for editing)
     const select = document.getElementById('config-shift-select');
     const baseShiftName = CORE_SHIFTS[sub.baseShiftId]?.name || 'N/A';
-    select.innerHTML = `<option value="${sub.baseShiftId}">${CORE_SHIFTS[sub.baseShiftId].name} (${sub.baseShiftId})</option>`;
+    
+    // Use the actual CORE_SHIFT name in the option text
+    select.innerHTML = `<option value="${sub.baseShiftId}">${baseShiftName} (${sub.baseShiftId})</option>`;
     select.value = sub.baseShiftId;
     select.disabled = true; 
 }
