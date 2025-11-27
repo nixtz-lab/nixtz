@@ -202,7 +202,7 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
             }
         });
         
-        // 1. Manager Assignment (Must run after all Fixed/Requested Leave checks)
+        // 1. Manager Assignment
         if (manager) {
             const pae = weeklyRosterMap.get(manager.employeeId);
             
@@ -312,9 +312,9 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
         let neededAfternoonC5 = dutyTracker.hasExtendedDeliveryCover ? 0 : 1; 
 
         // Deficit calculation for Night Staff duties
-        // --- FIX: Normal Staff must fill both C1 and C2 duties if quotas allow, ignoring S1/Z1 presence for NS quotas ---
-        let neededNightC1_NS_Pool = requiredNightC1_NS - dutyTracker.rolesAssigned.Night.C1; // Check Normal Staff C1 deficit
-        let neededNightC2_NS_Pool = requiredNightC2_NS - dutyTracker.rolesAssigned.Night.C2; // Check Normal Staff C2 deficit
+        // FIX: We need 1 C1 and 1 C2 Normal Staff, irrespective of S1/Z1 presence.
+        let neededNightC1_NS_Pool = requiredNightC1_NS - dutyTracker.rolesAssigned.Night.C1; 
+        let neededNightC2_NS_Pool = requiredNightC2_NS - dutyTracker.rolesAssigned.Night.C2; 
         // --- END FIX ---
         
         
