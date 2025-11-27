@@ -137,7 +137,9 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
     
     // --- NIGHT ROTATION REMOVAL FIX ---
     let allNormalStaff = staffProfiles.filter(s => s.position === 'Normal Staff');
-    let coveragePool = allNormalStaff; 
+    let nightPreferencePool = allNormalStaff.filter(s => s.shiftPreference === 'Night');
+    let dayPreferencePool = allNormalStaff.filter(s => s.shiftPreference !== 'Night');
+    let coveragePool = dayPreferencePool; 
     // --- END FIX ---
     
     
@@ -176,12 +178,12 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
                 if (isRequestedDay || isFullWeek) {
                     const leaveType = isFullWeek ? 'Week Off' : (request.day === 'Sick Leave' ? 'Sick' : 'Requested');
                     
-                    staffEntry.weeklySchedule[dayIndex].shifts = [{ 
+                    staffEntry.weeklySchedule[dayIndex].shifts.push({ 
                         shiftId: null, 
                         jobRole: `Leave (${leaveType})`, 
                         timeRange: 'Full Day', 
                         color: '#B91C1C' 
-                    }];
+                    });
                     return; 
                 }
             } 
@@ -191,12 +193,12 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
                 
                 if (staff.fixedDayOff === day) {
                      const roleColor = ROLE_COLORS[staff.position] || ROLE_COLORS['Normal Staff'];
-                     staffEntry.weeklySchedule[dayIndex].shifts = [{ 
+                     staffEntry.weeklySchedule[dayIndex].shifts.push({ 
                          shiftId: null, 
                          jobRole: 'Day Off', // Renamed from Leave (Fixed)
                          timeRange: 'Full Day', 
                          color: roleColor 
-                     }];
+                     });
                      return;
                 }
             }
@@ -312,10 +314,9 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
         let neededAfternoonC5 = dutyTracker.hasExtendedDeliveryCover ? 0 : 1; 
 
         // Deficit calculation for Night Staff duties
-        // FIX: We rely ONLY on Normal Staff quotas (C1/C2) being met. 
-        // We do NOT subtract S1/Z1 presence from these needed pools.
-        let neededNightC1_NS_Pool = requiredNightC1_NS - dutyTracker.rolesAssigned.Night.C1; // Check Normal Staff C1 deficit
-        let neededNightC2_NS_Pool = requiredNightC2_NS - dutyTracker.rolesAssigned.Night.C2; // Check Normal Staff C2 deficit
+        // FIX: We rely ONLY on Normal Staff quotas (C1/C2) being met, irrespective of S1/Z1 presence.
+        let neededNightC1_NS_Pool = requiredNightC1_NS - dutyTracker.rolesAssigned.Night.C1; 
+        let neededNightC2_NS_Pool = requiredNightC2_NS - dutyTracker.rolesAssigned.Night.C2; 
         // --- END FIX ---
         
         
