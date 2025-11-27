@@ -13,6 +13,7 @@ const StaffProfile = mongoose.model('StaffProfile');
  */
 router.post('/add', async (req, res) => {
     try {
+        // REMOVED: isNightRotator, currentRotationDay
         const { name, position, shiftPreference, fixedDayOff, employeeId, nextWeekHolidayRequest } = req.body;
         const userId = req.user.id;
         
@@ -27,6 +28,8 @@ router.post('/add', async (req, res) => {
             shiftPreference: shiftPreference || 'Morning',
             fixedDayOff: fixedDayOff || 'None',
             nextWeekHolidayRequest: nextWeekHolidayRequest || 'None', 
+            // isNightRotator: isNightRotator || false, // REMOVED
+            // currentRotationDay: currentRotationDay || 0, // REMOVED
             user: userId
         });
 
@@ -51,6 +54,7 @@ router.post('/add', async (req, res) => {
 router.get('/', async (req, res) => {
     try {
         const userId = req.user.id;
+        // Fetches all fields, excluding the removed ones (assuming schema updated)
         const profiles = await StaffProfile.find({ user: userId }).sort({ name: 1 }).lean();
         res.json({ success: true, data: profiles });
     } catch (err) {
@@ -97,6 +101,7 @@ router.get('/:id', async (req, res) => {
  */
 router.put('/:id', async (req, res) => {
     try {
+        // REMOVED: isNightRotator, currentRotationDay
         const { name, position, shiftPreference, fixedDayOff, employeeId, nextWeekHolidayRequest } = req.body;
         const userId = req.user.id;
         const profileId = req.params.id;
@@ -107,6 +112,8 @@ router.put('/:id', async (req, res) => {
             shiftPreference,
             fixedDayOff,
             nextWeekHolidayRequest,
+            // isNightRotator, // REMOVED
+            // currentRotationDay, // REMOVED
             employeeId 
         };
 

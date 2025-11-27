@@ -164,6 +164,9 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
         
         // --- A. Priority Scheduling & Fixed Day Off ---
         
+        // We use a separate loop to calculate Fixed Day Offs and Requested Leave first,
+        // and then assign the Manager/Supervisor shifts immediately after.
+        
         staffProfiles.forEach(staff => {
             const staffEntry = weeklyRosterMap.get(staff.employeeId);
             const request = getWeeklyRequest(staff);
@@ -268,17 +271,17 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
             if (isScheduled(staffEntry, dayIndex)) {
                 const shift = staffEntry.weeklySchedule[dayIndex].shifts[0];
                 if (!shift.jobRole.includes('Leave') && !shift.jobRole.includes('Day Off')) {
-                    if (shift.shiftId === 1) { // Morning
+                    if (shift.shiftId === 1) { 
                         if (shift.jobRole.includes('C1')) dutyTracker.rolesAssigned.Morning.C1++;
                         if (shift.jobRole.includes('C3')) dutyTracker.rolesAssigned.Morning.C3++;
                         if (shift.jobRole.includes('C4')) dutyTracker.rolesAssigned.Morning.C4++;
                         if (shift.jobRole.includes('C5')) dutyTracker.rolesAssigned.Morning.C5++;
-                    } else if (shift.shiftId === 2) { // Afternoon
+                    } else if (shift.shiftId === 2) { 
                         if (shift.jobRole.includes('C1')) dutyTracker.rolesAssigned.Afternoon.C1++;
                         if (shift.jobRole.includes('C3')) dutyTracker.rolesAssigned.Afternoon.C3++;
                         if (shift.jobRole.includes('C4')) dutyTracker.rolesAssigned.Afternoon.C4++;
                         if (shift.jobRole.includes('C5')) dutyTracker.rolesAssigned.Afternoon.C5++;
-                    } else if (shift.shiftId === 3) { // Night
+                    } else if (shift.shiftId === 3) { 
                         if (shift.jobRole.includes('C1')) dutyTracker.rolesAssigned.Night.C1++;
                         if (shift.jobRole.includes('C2')) dutyTracker.rolesAssigned.Night.C2++;
                     }
