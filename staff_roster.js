@@ -1,4 +1,4 @@
-// Full Updated staff_roster (3).js with Dropdown Fix & Separate Leave Options & Final Roster Display Fix
+// Full Updated staff_roster (3).js with Duty Rotation, Leave History Saving, and Night Rotator Removal
 
 /**
  * staff_roster.js
@@ -8,6 +8,7 @@
 
 const API_URL = `${window.API_BASE_URL}/api/staff/roster`;
 const PROFILE_API_URL = `${window.API_BASE_URL}/api/staff/profile`;
+const LEAVE_HISTORY_API_URL = `${window.API_BASE_URL}/api/staff/leave/history`; // New API URL for permanent logging
 
 // --- CORE SHIFTS: FIXED & USED FOR QUOTAS/SUMMARIES ---
 // These are the three main categories. We use a baseShiftId property to link sub-shifts back.
@@ -1389,7 +1390,7 @@ function openStaffRequestModal() {
             document.getElementById('request-new-shift').value = requestValue;
             toggleRequestFields('shift_change');
         } 
-        // FIX: Check for the new explicit sick leave request string
+        // Check for the explicit sick leave request string
         else if (requestValue === 'Sick Leave') {
              requestTypeInput.value = 'sick_leave';
              toggleRequestFields('sick_leave');
@@ -1428,6 +1429,9 @@ async function handleStaffRequest(e) {
     let requestValue = 'None';
     let weekStartIso = '';
     
+    let leaveDateToLog = null; // New variable for historical logging
+    let leaveTypeToLog = null; // New variable for historical logging
+
     if (requestType === 'holiday' || requestType === 'sick_leave') {
         const requestedDate = document.getElementById('request-single-date').value;
         if (!requestedDate) {
@@ -1437,17 +1441,19 @@ async function handleStaffRequest(e) {
         
         // 1. Calculate the Mon start date from the user's requested date
         weekStartIso = snapToMonday(requestedDate);
-        
+        leaveDateToLog = requestedDate; // Use the specific day for logging
+
         // 2. Determine the day of the week or type of leave requested
         let requestedDayOffOrType;
         if (requestType === 'sick_leave') {
-            // FIX: Set a specific request value for sick leave
             requestedDayOffOrType = 'Sick Leave';
+            leaveTypeToLog = 'Sick Leave';
             messageText = `Sick Leave request for week starting ${weekStartIso} submitted for ${staff.name}.`;
         } else {
             const dateObj = new Date(requestedDate);
             const dayIndex = dateObj.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
             requestedDayOffOrType = DAYS[dayIndex === 0 ? 6 : dayIndex - 1]; // Convert 0 to Sun, 1 to Mon, etc.
+            leaveTypeToLog = 'Holiday';
             messageText = `Holiday/Leave request (${requestedDayOffOrType}) for week starting ${weekStartIso} submitted for ${staff.name}.`;
         }
         
@@ -1473,14 +1479,13 @@ async function handleStaffRequest(e) {
         messageText = `All temporary requests for ${staff.name} have been cleared.`;
     }
     
-    // Prepare the PUT body
+    // Prepare the PUT body for StaffProfile update
     const apiUpdateBody = {
         name: staff.name,
         employeeId: staff.employeeId,
         position: staff.position,
         shiftPreference: staff.shiftPreference,
         fixedDayOff: staff.fixedDayOff,
-        // isNightRotator and currentRotationDay removed from the payload
         nextWeekHolidayRequest: requestValue
     };
 
@@ -1488,31 +1493,43 @@ async function handleStaffRequest(e) {
     const token = localStorage.getItem(AUTH_TOKEN_KEY);
     
     try {
-        const response = await fetch(`${PROFILE_API_URL}/${profileId}`, {
+        // --- STEP 1: Update the Staff Profile (The Override Flag) ---
+        const profileResponse = await fetch(`${PROFILE_API_URL}/${profileId}`, {
             method: 'PUT',
-            headers: { 
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify(apiUpdateBody)
         });
 
-        const result = await response.json();
+        const profileResult = await profileResponse.json();
         
-        if (!response.ok || !result.success) {
-            throw new Error(result.message || 'Update failed.');
+        if (!profileResponse.ok || !profileResult.success) {
+            throw new Error(profileResult.message || 'Profile update failed.');
         }
 
-        const reloadMessage = requestType === 'none_clear' 
-            ? `${messageText} **Please reload the roster to see their standard default schedule.**`
-            : `${messageText} **Please reload the roster to see changes for the week starting ${weekStartIso}.**`;
+        // --- STEP 2: Log Historical Leave (Only for Holiday/Sick Leave types) ---
+        if (leaveTypeToLog && leaveDateToLog) {
+            const historyResponse = await fetch(LEAVE_HISTORY_API_URL, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    employeeId: staff.employeeId,
+                    employeeName: staff.name,
+                    leaveDate: leaveDateToLog,
+                    leaveType: leaveTypeToLog
+                })
+            });
+            
+            // NOTE: We don't throw an error if history save fails (to protect roster submission)
+            if (!historyResponse.ok) {
+                 console.warn("Failed to save leave history. Might be a duplicate or API error.");
+            }
+        }
         
-        showMessage(reloadMessage, false);
+        showMessage(messageText + ` **Please regenerate the roster for the week starting ${weekStartIso}.**`, false);
         
         // Update the staff cache after successful request
         const updatedStaffIndex = staffProfilesCache.findIndex(s => s._id === profileId);
         if (updatedStaffIndex !== -1) {
-            // Update the cache with the new request value
             staffProfilesCache[updatedStaffIndex].nextWeekHolidayRequest = requestValue;
         }
 

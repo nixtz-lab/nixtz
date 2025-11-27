@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nixtz | Staff Leave Report</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+    theme: {
+        extend: {
+            colors: {
+                'nixtz-primary': '#4F46E5', // Indigo/Blue
+                'nixtz-secondary': '#10B981', // Emerald/Green
+                'nixtz-bg': '#0F172A', // Very dark background (Slate 900)
+                'nixtz-card': '#1E293B', // Dark card background (Slate 800)
+            },
+            fontFamily: {
+                sans: ['Inter', 'sans-serif'],
+            },
+        }
+    }
+}
+</script>
+<link rel="stylesheet" href="style.css">
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="script.js"></script> 
+<style>
+    /* Basic table styling for readability */
+    .report-table th, .report-table td {
+        padding: 10px;
+        text-align: center;
+        border-bottom: 1px solid #334155;
+    }
+</style>
+</head>
+<body class="bg-nixtz-bg font-sans antialiased">
+    <div id="message-box" class="fixed top-4 right-4 p-4 rounded-lg shadow-2xl z-[9999] hidden text-white bg-nixtz-primary transition duration-300 opacity-0">
+        <p id="message-text" class="font-semibold"></p>
+    </div>
+    
+    <header class="bg-nixtz-bg shadow-2xl sticky top-0 z-50 border-b border-gray-800">
+        </header>
+
+<main class="py-10">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <h1 class="text-3xl font-extrabold text-white mb-6 border-b border-gray-700 pb-3">
+            Staff Leave and Absence Report
+        </h1>
+        
+        <div class="bg-nixtz-card p-4 rounded-xl shadow-lg mb-6 border border-gray-700/50 flex items-center space-x-4">
+            <label for="report-year" class="text-gray-300 font-medium">Select Year:</label>
+            <select id="report-year" onchange="loadLeaveReport()"
+                    class="p-2 rounded-lg bg-gray-800 border border-gray-600 text-white focus:border-nixtz-secondary transition duration-200">
+            </select>
+            <button onclick="loadLeaveReport()" class="bg-nixtz-secondary hover:bg-[#0da070] text-white font-bold py-2 px-4 rounded-full shadow-md transition duration-200 flex items-center">
+                <i data-lucide="refresh-cw" class="w-5 h-5 mr-1"></i> Refresh Report
+            </button>
+        </div>
+
+        <div class="overflow-x-auto bg-nixtz-card rounded-xl shadow-2xl border border-gray-700/50">
+            <table id="leave-report-table" class="min-w-full divide-y divide-gray-700 text-gray-300 report-table">
+                <thead>
+                    <tr class="bg-gray-800 text-sm uppercase tracking-wider">
+                        <th class="p-3 text-left w-64">Staff Name / ID</th>
+                        <th class="p-3">Total Annual/Holiday (Days)</th>
+                        <th class="p-3">Total Sick Leave (Days)</th>
+                        <th class="p-3">Total Other Leave (Days)</th>
+                        <th class="p-3">Total Days Absent</th>
+                    </tr>
+                </thead>
+                <tbody id="report-body" class="divide-y divide-gray-800">
+                    <tr><td colspan="5" class="py-6 text-gray-500">Select a year to load the historical leave report.</td></tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="mt-8 p-4 bg-nixtz-card rounded-xl border border-gray-700/50 text-gray-400">
+             <h3 class="text-lg font-bold text-nixtz-secondary mb-3">Report Details</h3>
+             <p class="text-sm">This report aggregates all permanent leave records logged via the Roster Request system for the selected year. **Note:** Fixed Day Offs are excluded unless specifically requested otherwise.</p>
+        </div>
+
+    </div>
+</main>
+
+<script>
+// Dummy function for navigation, replace with actual script.js logic
+window.checkAccessAndRedirect = function(url) { window.location.href = url; }
+window.getAuthStatus = function() { return localStorage.getItem('nixtz_auth_token'); }
+window.showMessage = function(message, isError) {
+    const box = document.getElementById('message-box');
+    const text = document.getElementById('message-text');
+    text.textContent = message;
+    box.className = isError ? 'fixed top-4 right-4 p-4 rounded-lg shadow-2xl z-[9999] text-white bg-red-600 transition duration-300 opacity-100' : 'fixed top-4 right-4 p-4 rounded-lg shadow-2xl z-[9999] text-white bg-nixtz-secondary transition duration-300 opacity-100';
+    box.classList.remove('hidden');
+    setTimeout(() => { box.classList.add('opacity-0'); }, 5000);
+}
+// Initialize the year selector and load report function (defined below)
+</script>
+<script src="staff_report.js" defer></script>
+</body>
+</html>
