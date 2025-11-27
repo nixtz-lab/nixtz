@@ -298,9 +298,9 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
         const requiredMorning = SHIFTS[1].required; // 6
         const requiredAfternoon = SHIFTS[2].required; // 5
         
-        // --- QUOTA REQUIREMENTS ---
-        const requiredNightC1_NS = 1; // Required Normal Staff C1 duty
-        const requiredNightC2_NS = 1; // Required Normal Staff C2 duty
+        // --- QUOTA REQUIREMENTS: Normal Staff must fill 1 C1 duty and 1 C2 duty ---
+        const requiredNightC1_NS = 1; 
+        const requiredNightC2_NS = 1; 
         
         // --- Initialize mutable quota tracking variables ---
         let neededMorningC3 = 1 - dutyTracker.rolesAssigned.Morning.C3; 
@@ -312,11 +312,9 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
         let neededAfternoonC5 = dutyTracker.hasExtendedDeliveryCover ? 0 : 1; 
 
         // Deficit calculation for Night Staff duties
-        // --- FIX: Normal Staff must fill both C1 and C2 duties if quotas allow ---
+        // FIX: The Normal Staff C1 duty pool is SEPARATE from the S1/Z1 leadership coverage pool.
         let neededNightC1_NS_Pool = requiredNightC1_NS - dutyTracker.rolesAssigned.Night.C1; // Check Normal Staff C1 deficit
         let neededNightC2_NS_Pool = requiredNightC2_NS - dutyTracker.rolesAssigned.Night.C2; // Check Normal Staff C2 deficit
-        // --- END FIX ---
-        
         
         // Recalculate current staff counts for the loop
         let currentMorningCount = staffProfiles.filter(s => isScheduled(weeklyRosterMap.get(s.employeeId), dayIndex) && weeklyRosterMap.get(s.employeeId).weeklySchedule[dayIndex].shifts[0].shiftId === 1).length;
