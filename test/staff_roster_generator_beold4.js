@@ -27,56 +27,63 @@ const DAYS_FULL = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 // Define roles for rotation
 const DAY_SHIFT_ROLES = ['C4', 'C5', 'C3']; // Roles for Morning/Afternoon Normal Staff
-const NIGHT_SHIFT_ROLES = ['C2', 'C1']; // Roles for Night Normal Staff
+const NIGHT_SHIFT_ROLES = ['C2', 'C1']; // Roles for Night Normal Staff (C2 then C1, for simpler rotation logic)
 
 /**
- * Utility function to find the next duty based purely on rotational rules and history.
- * Logic:
- * 1. Day Shifts (C4/C5/C3): Rotate daily (C4 -> C5 -> C3 -> C4). Shortage handled by next steps.
- * 2. Night Shifts (C2/C1): Rotate every two consecutive working days.
- * * NOTE: This function does NOT check quota availability; it only determines the staff's *intended* role based on history.
+ * Utility function to find the next available duty for rotation based on the previous day.
+ * Implements: Daily rotation for Day Shifts (C4/C5/C3) and 2-day rotation swap for Night Shifts (C1/C2).
  */
-function getNextDuty(staff, dayIndex, shiftId, weeklyRosterMap) {
+function getNextDuty(staff, dayIndex, shiftId, dutyTracker, weeklyRosterMap) {
     const isNightShift = shiftId === 3;
     const availableRoles = isNightShift ? NIGHT_SHIFT_ROLES : DAY_SHIFT_ROLES;
     const employeeId = staff.employeeId;
     
-    // Default role assignment if no history exists
-    let suggestedRole = availableRoles[0]; 
+    // Default role assignment if no history exists (C4/C2)
+    let suggestedRole = isNightShift ? 'C2' : 'C4'; 
 
     if (dayIndex > 0) {
         const prevDayEntry = weeklyRosterMap.get(employeeId).weeklySchedule[dayIndex - 1];
         
-        // Check if staff worked the day before and it wasn't a leave day
-        if (prevDayEntry.shifts.length > 0 && !prevDayEntry.shifts[0].jobRole.includes('Leave')) {
+        if (prevDayEntry.shifts.length > 0) {
             const prevShift = prevDayEntry.shifts[0];
             const prevShiftId = prevShift.shiftId;
-            const prevRole = prevShift.jobRole.split(' ')[0].trim();
+            const prevRole = prevShift.jobRole.split(' ')[0].trim(); // Get 'C1', 'C4', etc.
 
-            // Only consider rotation if the staff is assigned the SAME shift type
+            // Only rotate if the staff is assigned the same shift type (Morning/Afternoon/Night)
             if (prevShiftId === shiftId && availableRoles.includes(prevRole)) {
                 
-                // --- Night Shift: 2-Day Rotation (C2, C2, C1, C1, C2, C2...) ---
+                // --- Night Shift: Swap every 2 days (C2 <-> C1) ---
                 if (isNightShift) {
-                    const dayBeforePrevEntry = (dayIndex > 1) ? weeklyRosterMap.get(employeeId).weeklySchedule[dayIndex - 2] : null;
+                    const currentIndex = availableRoles.indexOf(prevRole);
+                    const nextIndex = (currentIndex + 1) % availableRoles.length;
+                    const nextRole = availableRoles[nextIndex];
                     
-                    // Check if the role 2 days ago was the SAME as the role 1 day ago.
-                    const isSecondDayOfRotation = (dayBeforePrevEntry && dayBeforePrevEntry.shifts.length > 0 && dayBeforePrevEntry.shifts[0].shiftId === shiftId && dayBeforePrevEntry.shifts[0].jobRole.split(' ')[0].trim() === prevRole);
-
-                    if (isSecondDayOfRotation) {
-                         // It's the 3rd day of the block (or 2 consecutive workdays), time to swap (C2 -> C1 or C1 -> C2)
-                         const currentIndex = availableRoles.indexOf(prevRole);
-                         suggestedRole = availableRoles[(currentIndex + 1) % availableRoles.length];
+                    // Check if the previous day was the same role. If so, swap.
+                    const dayBeforePrevEntry = (dayIndex > 1) ? weeklyRosterMap.get(employeeId).weeklySchedule[dayIndex - 2] : null;
+                    const prevRoleIsDifferent = !dayBeforePrevEntry || dayBeforePrevEntry.shifts.length === 0 || dayBeforePrevEntry.shifts[0].jobRole.split(' ')[0].trim() !== prevRole;
+                    
+                    if (prevRoleIsDifferent) {
+                         // Day 2 of the 2-day sequence, so swap duty
+                         suggestedRole = nextRole;
                     } else {
-                         // It's the 2nd day of the block (or first day), keep the same role
+                         // Day 1 of the 2-day sequence, or shortage retention: stick to previous role.
                          suggestedRole = prevRole;
                     }
                 } 
                 
-                // --- Day Shift: Daily Rotation (C4 -> C5 -> C3 -> C4) ---
+                // --- Day Shift: Rotate daily (C4 -> C5 -> C3 -> C4) ---
                 else {
                     const currentIndex = availableRoles.indexOf(prevRole);
-                    suggestedRole = availableRoles[(currentIndex + 1) % availableRoles.length];
+                    const nextIndex = (currentIndex + 1) % availableRoles.length;
+                    const nextRole = availableRoles[nextIndex];
+                    
+                    // Simple Daily Rotation (If the next role is free, take it)
+                    if (dutyTracker.rolesAssigned.Day[nextRole] === undefined || dutyTracker.rolesAssigned.Day[nextRole] < 1) {
+                        suggestedRole = nextRole;
+                    } else {
+                        // Shortage: Stick to the previous role for a second day
+                        suggestedRole = prevRole;
+                    }
                 }
             }
         }
@@ -138,12 +145,12 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
     
     // --- NIGHT ROTATION REMOVAL FIX ---
     let allNormalStaff = staffProfiles.filter(s => s.position === 'Normal Staff');
+    // All normal staff are now in the coverage pool.
     let coveragePool = allNormalStaff; 
     // --- END FIX ---
     
     
     // 1. Initial Assignments and Roster Map: Use employeeId as the map key
-    // This map stores the accumulating schedule day-by-day (crucial for rotation)
     const weeklyRosterMap = new Map(staffProfiles.map(s => [s.employeeId, { ...s, weeklySchedule: new Array(7).fill({ shifts: [] }) }]));
     
     // --- Utility to check if a staff member is already assigned a shift or leave ---
@@ -151,14 +158,15 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
         return staffEntry.weeklySchedule[dayIndex].shifts.length > 0;
     }
 
-    // --- Main Daily Scheduling Loop (DAY-BY-DAY EXECUTION) ---
+    // --- Main Daily Scheduling Loop ---
     DAYS_FULL.forEach((day, dayIndex) => {
         
         // --- Duty tracking for the current day ---
+        // Track the specific roles assigned for the current day across M/A/N shifts.
         const dutyTracker = {
             rolesAssigned: {
-                Morning: { C3: 0, C4: 0, C5: 0, C1: 0 },
-                Afternoon: { C3: 0, C4: 0, C5: 0, C1: 0 },
+                Morning: { C3: 0, C4: 0, C5: 0, C1: 0 }, // C1 added for clarity
+                Afternoon: { C3: 0, C4: 0, C5: 0, C1: 0 }, // C1 added for clarity
                 Night: { C1: 0, C2: 0 }
             },
             hasExtendedDeliveryCover: false
@@ -204,42 +212,87 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
             }
         });
         
-        // --- Re-establish Duty Tracker Counts from Priority Assignments (0, 1, 2, 3) ---
-        staffProfiles.forEach(staff => {
-            const staffEntry = weeklyRosterMap.get(staff.employeeId);
-            if (isScheduled(staffEntry, dayIndex)) {
-                const shift = staffEntry.weeklySchedule[dayIndex].shifts[0];
-                if (!shift.jobRole.includes('Leave')) {
-                    if (shift.shiftId === 1) { // Morning
-                        if (shift.jobRole.includes('C1')) dutyTracker.rolesAssigned.Morning.C1++;
-                        if (shift.jobRole.includes('C3')) dutyTracker.rolesAssigned.Morning.C3++;
-                        if (shift.jobRole.includes('C4')) dutyTracker.rolesAssigned.Morning.C4++;
-                        if (shift.jobRole.includes('C5')) dutyTracker.rolesAssigned.Morning.C5++;
-                    } else if (shift.shiftId === 2) { // Afternoon
-                        if (shift.jobRole.includes('C1')) dutyTracker.rolesAssigned.Afternoon.C1++;
-                        if (shift.jobRole.includes('C3')) dutyTracker.rolesAssigned.Afternoon.C3++;
-                        if (shift.jobRole.includes('C4')) dutyTracker.rolesAssigned.Afternoon.C4++;
-                        if (shift.jobRole.includes('C5')) dutyTracker.rolesAssigned.Afternoon.C5++;
-                    } else if (shift.shiftId === 3) { // Night
-                        if (shift.jobRole.includes('C1')) dutyTracker.rolesAssigned.Night.C1++;
-                        if (shift.jobRole.includes('C2')) dutyTracker.rolesAssigned.Night.C2++;
+        // 1. Manager 
+        if (manager) {
+            const pae = weeklyRosterMap.get(manager.employeeId);
+            
+            if (isScheduled(pae, dayIndex)) { /* Skip assignment */ }
+            else {
+                pae.weeklySchedule[dayIndex].shifts.push({ shiftId: 1, jobRole: 'C1 (Mgr)', timeRange: MORNING_TIME, color: ROLE_COLORS['Manager'] });
+                dutyTracker.rolesAssigned.Morning.C1++; 
+            }
+        }
+
+        // 2. Delivery Drivers
+        deliveryDrivers.forEach((driver, index) => {
+            const driverEntry = weeklyRosterMap.get(driver.employeeId);
+            const otherDriver = deliveryDrivers[1 - index];
+            const request = getWeeklyRequest(driver);
+
+            if (isScheduled(driverEntry, dayIndex)) { 
+                if (driverEntry.weeklySchedule[dayIndex].shifts.length > 0) {
+                    const shift = driverEntry.weeklySchedule[dayIndex].shifts[0];
+                    if (shift.jobRole.includes('C3')) {
+                        if (shift.shiftId === 1) dutyTracker.rolesAssigned.Morning.C3++;
+                        if (shift.shiftId === 2) dutyTracker.rolesAssigned.Afternoon.C3++;
                     }
                 }
+                return; 
             }
+
+            const tempShiftPref = (request.type === 'ShiftChange') ? request.shift : driver.shiftPreference; 
+            
+            let shiftDetails;
+            let jobRole = 'C3 (Del)';
+
+            if (tempShiftPref.includes('Morning')) {
+                shiftDetails = { id: 1, time: MORNING_TIME };
+            } else {
+                shiftDetails = { id: 2, time: AFTERNOON_TIME };
+            }
+
+            if (otherDriver && otherDriver.fixedDayOff === day) {
+                jobRole = 'C3 (Del Cov)';
+                driverEntry.weeklySchedule[dayIndex].shifts.push({ shiftId: 1, jobRole: jobRole, timeRange: '07:00-21:00', color: ROLE_COLORS['Delivery'] });
+                dutyTracker.hasExtendedDeliveryCover = true; 
+            } else {
+                driverEntry.weeklySchedule[dayIndex].shifts.push({ shiftId: shiftDetails.id, jobRole: jobRole, timeRange: shiftDetails.time, color: ROLE_COLORS['Delivery'] });
+            }
+        
+            const shiftId = driverEntry.weeklySchedule[dayIndex].shifts[0].shiftId;
+            if (shiftId === 1) dutyTracker.rolesAssigned.Morning.C3++;
+            if (shiftId === 2) dutyTracker.rolesAssigned.Afternoon.C3++;
         });
-        
-        // 1. Manager - Implicitly C1 Morning in dutyTracker
-        // 2. Delivery Drivers - Implicitly C3 Day in dutyTracker
-        // 3. Supervisors - Implicitly C1 in dutyTracker
-        
+
+        // 3. Supervisors
+        supervisors.forEach(sup => {
+            const supEntry = weeklyRosterMap.get(sup.employeeId);
+            const request = getWeeklyRequest(sup);
+
+            if (isScheduled(supEntry, dayIndex)) { return; }
+            
+            const tempShiftPref = (request.type === 'ShiftChange') ? request.shift : sup.shiftPreference;
+            
+            let shiftId;
+            let timeRange;
+            
+            if (tempShiftPref === 'Morning') { shiftId = 1; timeRange = MORNING_TIME; dutyTracker.rolesAssigned.Morning.C1++; }
+            else if (tempShiftPref === 'Afternoon') { shiftId = 2; timeRange = AFTERNOON_TIME; dutyTracker.rolesAssigned.Afternoon.C1++; }
+            else { shiftId = 3; timeRange = NIGHT_TIME; dutyTracker.rolesAssigned.Night.C1++; } 
+
+            supEntry.weeklySchedule[dayIndex].shifts.push({ shiftId: shiftId, jobRole: 'C1 (Sup)', timeRange: timeRange, color: ROLE_COLORS['Supervisor'] });
+        });
+
+        // --- STEP 4 REMOVED ---
         
         // 5. Normal Staff Assignment (Morning/Afternoon/Night) with DUTY ROTATION
         
+        // Define quotas for Normal Staff roles that need to be filled.
         const requiredMorning = SHIFTS[1].required; // 6
         const requiredAfternoon = SHIFTS[2].required; // 5
-        const requiredNight = 2; // Fixed requirement of 2 Night staff (C1+C2)
+        const requiredNight = 2; // Fixed requirement of 2 Night staff
 
-        // --- Initialize mutable quota tracking variables (Total required minus C1 roles) ---
+        // --- FIX: Initialize mutable quota tracking variables ---
         let neededMorningC3 = 1 - dutyTracker.rolesAssigned.Morning.C3; 
         let neededMorningC4 = 1; 
         let neededMorningC5 = 1; 
@@ -248,8 +301,7 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
         let neededAfternoonC4 = 1;
         let neededAfternoonC5 = dutyTracker.hasExtendedDeliveryCover ? 0 : 1; 
 
-        // Needed C2 is based on total night staff required (2) minus those already assigned (C1/C2).
-        let neededNightC2 = requiredNight - (dutyTracker.rolesAssigned.Night.C1 + dutyTracker.rolesAssigned.Night.C2); 
+        let neededNightC2 = requiredNight - (dutyTracker.rolesAssigned.Night.C1 + dutyTracker.rolesAssigned.Night.C2); // Total night spots minus C1 already covered
         // --- END FIX ---
         
         
@@ -279,9 +331,9 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
             if (tempShiftPref === 'Night' && neededNightC2 > 0) { 
                 
                 // Determine duty using rotation logic
-                const duty = getNextDuty(staff, dayIndex, 3, weeklyRosterMap);
+                const duty = getNextDuty(staff, dayIndex, 3, dutyTracker, weeklyRosterMap);
                 
-                // Only assign if the duty is C2 and quota is available
+                // Only assign C2 duty to normal staff
                 if (duty === 'C2') { 
                     staffEntry.weeklySchedule[dayIndex].shifts.push({ 
                         shiftId: 3, 
@@ -313,7 +365,7 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
                 }
                 
                 if (targetShiftId !== null) {
-                    let jobRole = getNextDuty(staff, dayIndex, targetShiftId, weeklyRosterMap);
+                    let jobRole = getNextDuty(staff, dayIndex, targetShiftId, dutyTracker, weeklyRosterMap);
                     
                     let targetRolesAssigned = (targetShiftId === 1) ? dutyTracker.rolesAssigned.Morning : dutyTracker.rolesAssigned.Afternoon;
 
