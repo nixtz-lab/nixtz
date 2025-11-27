@@ -1,4 +1,4 @@
-// Full Updated staff_roster (5).js with Final Logic: Duty Rotation, Leave History Saving, and Night Quota Fix
+// Full Updated staff_roster (3).js with Duty Rotation, Leave History Saving, and Night Rotator Removal
 
 /**
  * staff_roster.js
@@ -13,8 +13,8 @@ const LEAVE_HISTORY_API_URL = `${window.API_BASE_URL}/api/staff/leave/history`; 
 // --- CORE SHIFTS: FIXED & USED FOR QUOTAS/SUMMARIES ---
 // These are the three main categories. We use a baseShiftId property to link sub-shifts back.
 let CORE_SHIFTS = { 
-    1: { name: 'Morning', time: '07:00-16:00', baseShiftId: 1, required: 6 }, // Increased M required to 6 to match image standard
-    2: { name: 'Afternoon', time: '13:30-22:30', baseShiftId: 2, required: 5 }, // A required stays at 5
+    1: { name: 'Morning', time: '07:00-16:00', baseShiftId: 1, required: 4, roles: ['C1', 'C4', 'C3'] }, 
+    2: { name: 'Afternoon', time: '13:30-22:30', baseShiftId: 2, required: 5, roles: ['C1', 'C5', 'C3'] },
     3: { name: 'Night', time: '22:00-07:00', baseShiftId: 3, required: 'N/A', roles: ['C1', 'C2'] },
 };
 // --- SUB SHIFTS: Configurable variations (M1, M2, A1, etc.) ---
@@ -42,14 +42,9 @@ let staffProfilesCache = []; // Global cache for profiles
 let initialEditProfileData = ''; // To store original data for warning check
 const AUTH_TOKEN_KEY = localStorage.getItem('nixtz_auth_token') ? 'nixtz_auth_token' : 'tmt_auth_token'; // Use the correct key
 
-// Define roles for rotation (Needed for frontend functions like getRosterForSave/createShiftDropdown)
-const DAY_SHIFT_ROLES = ['C4', 'C5', 'C3']; // Roles for Morning/Afternoon Normal Staff
-const NIGHT_SHIFT_ROLES = ['C2', 'C1']; // Roles for Night Normal Staff
+// --- SHIFT CONFIGURATION LOGIC ---
 
-
-// --- SHIFT CONFIGURATION LOGIC (Unchanged) ---
-
-const SHIFT_CONFIG_KEY = 'nixtz_shift_config'; 
+const SHIFT_CONFIG_KEY = 'nixtz_shift_config'; // Key for localStorage
 const SUB_SHIFT_KEY = 'nixtz_sub_shifts';
 
 function loadShiftConfig() {
@@ -200,7 +195,7 @@ function openShiftConfigModal() {
 }
 window.openShiftConfigModal = openShiftConfigModal;
 
-// --- SUB-SHIFT LIST & EDIT LOGIC (Unchanged) ---
+// --- SUB-SHIFT LIST & EDIT LOGIC ---
 
 /**
  * @function renderSubShiftEditList
@@ -339,10 +334,11 @@ document.getElementById('shift-config-form')?.addEventListener('submit', (e) => 
 });
 
 
-// --- CORE ROSTER UTILITIES (Unchanged) ---
+// --- CORE ROSTER UTILITIES ---
 
 /**
  * Helper function to calculate and format dates for the table headers.
+ * @param {string} startDateString - The ISO date string of Monday (week start).
  */
 function updateDateHeaders(startDateString) {
     if (!startDateString) return;
@@ -372,6 +368,8 @@ function updateDateHeaders(startDateString) {
 
 /**
  * Custom sorting logic: Manager -> Supervisors -> Normal Staff -> Delivery.
+ * @param {Array} rosterData - The roster array to be sorted.
+ * @returns {Array} Sorted roster data.
  */
 function sortRosterData(rosterData) {
     const positionOrder = {
@@ -712,7 +710,7 @@ function addStaffRow(initialData = {}) {
             }
             // --- END FIX ---
             
-            if (jobRole && (jobRole.includes('Leave') || jobRole.includes('Day Off'))) {
+            if (jobRole && jobRole.includes('Leave')) {
                 cellContent = jobRole;
                 
                 // Set color based on generator output (Requested, Week Off)
@@ -720,9 +718,6 @@ function addStaffRow(initialData = {}) {
                     cellClasses = 'bg-red-800 font-bold';
                 } else if (jobRole.includes('(Sick)')) {
                     cellClasses = 'bg-yellow-800 font-bold';
-                } else if (jobRole.includes('Day Off')) {
-                    // Set Day Off to look less aggressive
-                    cellClasses = 'bg-gray-900 font-bold text-gray-400';
                 } else {
                      // This covers 'Leave (Fixed)' and 'Leave (Auto Off)'
                     cellClasses = 'bg-nixtz-card font-bold text-gray-300';
@@ -735,17 +730,7 @@ function addStaffRow(initialData = {}) {
                 }
 
             } else if (shiftId && jobRole && timeRange) {
-                
-                // --- FIX: Hide Z1/S1 duties for display, keep shift color ---
-                let displayJobRole = jobRole;
-                if (jobRole.startsWith('Z1') || jobRole.startsWith('S1')) {
-                    displayJobRole = jobRole.endsWith('(Mgr)') ? 'Mgr' : 'Sup'; // Display simple title
-                    cellContent = `${shiftId} ${displayJobRole}<span class="text-xs text-gray-500 block leading-none">${timeRange}</span>`;
-                } else {
-                    // Normal C-roles assignment
-                    cellContent = `${shiftId} ${jobRole}<span class="text-xs text-gray-500 block leading-none">${timeRange}</span>`;
-                }
-                
+                cellContent = `${shiftId} ${jobRole}<span class="text-xs text-gray-500 block leading-none">${timeRange}</span>`;
                 cellClasses = 'bg-gray-700';
 
                 if (shift.color) {
@@ -871,7 +856,7 @@ async function forceRosterRegeneration() {
 window.forceRosterRegeneration = forceRosterRegeneration;
 
 
-// --- API CALLS (Unchanged) ---
+// --- API CALLS ---
 async function loadRoster(startDateString) {
     if (!startDateString) return;
     if (!window.getAuthStatus || !getAuthStatus()) return showMessage("Please log in to load the roster.", true);
@@ -996,7 +981,7 @@ async function saveRoster() {
 }
 window.saveRoster = saveRoster;
 
-// --- STAFF PROFILE ADD/EDIT LOGIC (Unchanged) ---
+// --- STAFF PROFILE ADD/EDIT LOGIC ---
 
 function showAddStaffModal() {
     document.getElementById('add-staff-modal').classList.remove('hidden');
@@ -1048,7 +1033,7 @@ async function handleAddStaff(e) {
     }
 }
 
-// --- STAFF LIST MANAGEMENT LOGIC (Unchanged) ---
+// --- STAFF LIST MANAGEMENT LOGIC (Updated) ---
 
 /**
  * @function openStaffListModal (FIXED: Missing function)
@@ -1125,7 +1110,7 @@ async function loadStaffProfiles() {
 }
 window.loadStaffProfiles = loadStaffProfiles;
 
-// --- NEW FUNCTION: DELETE STAFF PROFILE (Unchanged) ---
+// --- NEW FUNCTION: DELETE STAFF PROFILE ---
 function confirmDeleteStaff(profileId, name) {
     // Note: window.confirm is used here as per guidelines
     if (confirm(`WARNING: Are you sure you want to permanently delete the profile for ${name}?\n\nThis cannot be undone.`)) {
