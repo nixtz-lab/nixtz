@@ -13,8 +13,8 @@ const StaffProfile = mongoose.model('StaffProfile');
  */
 router.post('/add', async (req, res) => {
     try {
-        // REMOVED: isNightRotator, currentRotationDay
-        const { name, position, shiftPreference, fixedDayOff, employeeId, nextWeekHolidayRequest } = req.body;
+        // NOTE: nextWeekHolidayRequest added here
+        const { name, position, shiftPreference, fixedDayOff, isNightRotator, currentRotationDay, employeeId, nextWeekHolidayRequest } = req.body;
         const userId = req.user.id;
         
         if (!name || !position || !employeeId) {
@@ -27,9 +27,9 @@ router.post('/add', async (req, res) => {
             position,
             shiftPreference: shiftPreference || 'Morning',
             fixedDayOff: fixedDayOff || 'None',
-            nextWeekHolidayRequest: nextWeekHolidayRequest || 'None', 
-            // isNightRotator: isNightRotator || false, // REMOVED
-            // currentRotationDay: currentRotationDay || 0, // REMOVED
+            nextWeekHolidayRequest: nextWeekHolidayRequest || 'None', // NEW FIELD SAVED
+            isNightRotator: isNightRotator || false,
+            currentRotationDay: currentRotationDay || 0,
             user: userId
         });
 
@@ -54,7 +54,7 @@ router.post('/add', async (req, res) => {
 router.get('/', async (req, res) => {
     try {
         const userId = req.user.id;
-        // Fetches all fields, excluding the removed ones (assuming schema updated)
+        // Fetches all fields, including the new one
         const profiles = await StaffProfile.find({ user: userId }).sort({ name: 1 }).lean();
         res.json({ success: true, data: profiles });
     } catch (err) {
@@ -101,8 +101,8 @@ router.get('/:id', async (req, res) => {
  */
 router.put('/:id', async (req, res) => {
     try {
-        // REMOVED: isNightRotator, currentRotationDay
-        const { name, position, shiftPreference, fixedDayOff, employeeId, nextWeekHolidayRequest } = req.body;
+        // NOTE: nextWeekHolidayRequest added here
+        const { name, position, shiftPreference, fixedDayOff, isNightRotator, currentRotationDay, employeeId, nextWeekHolidayRequest } = req.body;
         const userId = req.user.id;
         const profileId = req.params.id;
 
@@ -111,9 +111,9 @@ router.put('/:id', async (req, res) => {
             position,
             shiftPreference,
             fixedDayOff,
-            nextWeekHolidayRequest,
-            // isNightRotator, // REMOVED
-            // currentRotationDay, // REMOVED
+            nextWeekHolidayRequest, // NEW FIELD UPDATED
+            isNightRotator,
+            currentRotationDay,
             employeeId 
         };
 

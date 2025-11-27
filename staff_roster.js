@@ -1003,7 +1003,7 @@ async function handleAddStaff(e) {
         shiftPreference: document.getElementById('new-staff-shift-preference').value,
         fixedDayOff: document.getElementById('new-staff-fixed-dayoff').value,
         nextWeekHolidayRequest: 'None', // Initialized to None
-        isNightRotator: document.getElementById('new-staff-is-rotator').checked
+        // isNightRotator removed from input/data model
     };
     
     showMessage("Saving new staff profile...", false);
@@ -1174,7 +1174,7 @@ function getEditProfileData() {
         position: document.getElementById('edit-staff-position').value,
         shiftPreference: document.getElementById('edit-staff-shift-preference').value,
         fixedDayOff: document.getElementById('edit-staff-fixed-dayoff').value,
-        isNightRotator: document.getElementById('edit-staff-is-rotator').checked,
+        // isNightRotator removed from data model
     };
 }
 
@@ -1209,7 +1209,7 @@ async function openSingleEditModal(profileId) {
         
         // CRITICAL: Removed population logic for the deleted Next Week Holiday Request field
         
-        document.getElementById('edit-staff-is-rotator').checked = staff.isNightRotator;
+        // Removed: document.getElementById('edit-staff-is-rotator').checked = staff.isNightRotator;
 
         // Store current state for comparison
         initialEditProfileData = JSON.stringify(getEditProfileData());
@@ -1238,8 +1238,7 @@ document.getElementById('edit-staff-form')?.addEventListener('submit', async (e)
         shiftPreference: document.getElementById('edit-staff-shift-preference').value,
         fixedDayOff: document.getElementById('edit-staff-fixed-dayoff').value,
         nextWeekHolidayRequest: currentStaffData.nextWeekHolidayRequest || 'None', // Retain existing request data
-        isNightRotator: document.getElementById('edit-staff-is-rotator').checked,
-        currentRotationDay: currentStaffData.currentRotationDay
+        // isNightRotator and currentRotationDay removed from the update payload
     };
 
     const token = localStorage.getItem(AUTH_TOKEN_KEY);
@@ -1291,7 +1290,6 @@ window.toggleRequestFields = function(type) {
 
 
     // Show selected section
-    // FIX: Add 'sick_leave' to display the holiday fields
     if (type === 'holiday' || type === 'sick_leave') {
         holidayFields.classList.remove('hidden');
         document.getElementById('request-single-date').required = true;
@@ -1482,10 +1480,7 @@ async function handleStaffRequest(e) {
         position: staff.position,
         shiftPreference: staff.shiftPreference,
         fixedDayOff: staff.fixedDayOff,
-        isNightRotator: staff.isNightRotator,
-        currentRotationDay: staff.currentRotationDay,
-        // CRITICAL: The nextWeekHolidayRequest value is determined by the form logic above (requestValue)
-        // and needs to be explicitly included in the API update call.
+        // isNightRotator and currentRotationDay removed from the payload
         nextWeekHolidayRequest: requestValue
     };
 
