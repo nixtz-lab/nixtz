@@ -1,5 +1,3 @@
-// Full Updated staff_roster (7).js 
-
 /**
  * staff_roster.js
  * Custom logic for the 7-Eleven Staff Roster page.
@@ -605,15 +603,24 @@ function setShiftSelection(event, day, shiftId, jobRole, timeRange) {
         cell.classList.remove('bg-gray-700', 'bg-nixtz-card', 'bg-red-800', 'bg-yellow-800');
         
         // Use a different color based on the type of leave
-        if (jobRole.includes('(Holiday)') || jobRole.includes('(Requested)') || jobRole.includes('(Week Off)')) {
+        if (jobRole.includes('(Holiday)') || jobRole.includes('(Requested)') || jobRole.includes('(Week Off)') || jobRole.includes('(Fixed)')) {
             cell.classList.add('bg-red-800', 'font-bold', 'text-white');
         } else if (jobRole.includes('(Sick)')) {
             cell.classList.add('bg-yellow-800', 'font-bold', 'text-white');
         } else {
-             // Fallback for types like 'Leave (Fixed)' or 'Leave (Auto Off)' - these rely on shift.color from generator
-             cell.classList.add('bg-nixtz-card', 'font-bold', 'text-gray-300');
+             // Fallback for Auto Off
+            cellClasses = 'bg-nixtz-card font-bold text-gray-300';
         }
 
+        // Apply custom color if present (e.g., for Delivery fixed day off)
+        const allShifts = getAllShifts();
+        const shiftConfig = allShifts[shiftId];
+        if (shiftConfig && shiftConfig.color) { 
+            // In case the generator passed a color, we respect it
+            // This path is usually not hit for manual assignments (shiftId=null)
+            cell.style.backgroundColor = `${shiftConfig.color}40`;
+            cell.style.borderLeft = `4px solid ${shiftConfig.color}`;
+        }
     } 
     // --- END FIX ---
     
@@ -700,7 +707,7 @@ function addStaffRow(initialData = {}) {
                     cellClasses = 'bg-nixtz-card font-bold text-gray-300';
                 }
 
-                if (shift.color) { // Use custom color if present (e.g., for Delivery fixed day off)
+                if (shift.color) {
                     customColor = `style="background-color: ${shift.color}40; border-left: 4px solid ${shift.color};"`;
                     cellClasses = 'bg-nixtz-card font-bold text-gray-300'; 
                 }

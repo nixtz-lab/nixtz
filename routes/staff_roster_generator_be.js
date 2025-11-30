@@ -77,7 +77,7 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
     // Helper to check if scheduled (uses employee ID string)
     const isScheduled = (employeeId, dayIndex) => weeklyRosterMap.get(employeeId)?.weeklySchedule[dayIndex]?.shifts?.length > 0;
 
-    // 3. Helper to get requests 
+    // 3. Helper to get requests (no change)
     function getWeeklyRequest(profile) {
         if (!profile.nextWeekHolidayRequest || profile.nextWeekHolidayRequest === 'None') return { type: 'None' };
         const parts = profile.nextWeekHolidayRequest.split(':');
@@ -212,13 +212,12 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
             if (countN_Normal >= REQUIRED_NIGHT_NS) return;
 
             const staffEntry = weeklyRosterMap.get(staff.employeeId);
-            const isRotator = staff.isNightRotator || false; // Use safety check
             const request = getWeeklyRequest(staff);
             const pref = (request.type === 'ShiftChange') ? request.shift : staff.shiftPreference;
             
-            // Assign Night only if preference is night or they are a rotator (if that field was still used)
-            if (pref === 'Night' || isRotator) { 
-            
+            // Assign Night only if preference is night
+            if (pref === 'Night') { 
+                
                 let duty = (rolesUsed.N.C2 === 0) ? 'C2' : 'C1'; 
                 let jobRole = duty;
                 
@@ -240,12 +239,12 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
         const requiredMorningC5 = 1;
         const requiredAfternoonC3 = 1;
         const requiredAfternoonC4 = 1;
-        const requiredAfternoonC5 = hasExtendedDeliveryCover ? 0 : 1; 
+        const requiredAfternoonC5 = hasDelCover ? 0 : 1; 
 
         const requiredMorning = SHIFTS[1].required; 
         const requiredAfternoon = SHIFTS[2].required; 
 
-        // Re-filter to get staff not assigned a Night shift
+        // Filter staff who were not assigned Night shift
         let remainingDayStaff = availableNormalStaff.filter(s => 
             !isScheduled(s.employeeId, dayIndex)
         );
