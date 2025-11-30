@@ -95,9 +95,9 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
     let supervisors = staffProfiles.filter(s => s.position === 'Supervisor').sort((a, b) => a.shiftPreference.localeCompare(b.shiftPreference));
     let deliveryDrivers = staffProfiles.filter(s => s.position === 'Delivery').sort((a, b) => a.fixedDayOff.localeCompare(b.fixedDayOff));
     
-    // Use one list for Normal Staff, filter for assignment based on current status
     let allNormalStaff = staffProfiles.filter(s => s.position === 'Normal Staff');
-    
+    // NOTE: isNightRotator usage is removed/simplified in subsequent loops
+
     // 4. Main Loop: Day by Day
     DAYS_FULL.forEach((day, dayIndex) => {
 
@@ -138,6 +138,7 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
         if (manager) {
             const pae = weeklyRosterMap.get(manager.employeeId);
             
+            // CRITICAL CHECK: Skip if Manager is already scheduled (Leave/Fixed Day Off)
             if (isScheduled(manager.employeeId, dayIndex)) { /* Skip assignment */ }
             else {
                 staffEntry = pae;
@@ -211,13 +212,12 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
             if (countN_Normal >= REQUIRED_NIGHT_NS) return;
 
             const staffEntry = weeklyRosterMap.get(staff.employeeId);
-            const isRotator = staff.isNightRotator || false;
             const request = getWeeklyRequest(staff);
             const pref = (request.type === 'ShiftChange') ? request.shift : staff.shiftPreference;
             
-            // Only assign night if preference is night, or if they are a dedicated rotator (if Rotator flag was still in use)
-            if (pref === 'Night' || (isRotator && pref !== 'Morning' && pref !== 'Afternoon')) { 
-            
+            // Assign Night only if preference is night
+            if (pref === 'Night') { 
+                
                 let duty = (rolesUsed.N.C2 === 0) ? 'C2' : 'C1'; 
                 let jobRole = duty;
                 
@@ -244,8 +244,8 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
         const requiredMorning = SHIFTS[1].required; 
         const requiredAfternoon = SHIFTS[2].required; 
 
-        let remainingDayStaff = staffProfiles.filter(s => 
-            s.position === 'Normal Staff' && 
+        // Filter staff who were not assigned Night shift
+        let remainingDayStaff = normalStaff.filter(s => 
             !isScheduled(s.employeeId, dayIndex)
         );
 
