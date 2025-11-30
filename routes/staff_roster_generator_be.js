@@ -77,7 +77,7 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
     // Helper to check if scheduled (uses employee ID string)
     const isScheduled = (employeeId, dayIndex) => weeklyRosterMap.get(employeeId)?.weeklySchedule[dayIndex]?.shifts?.length > 0;
 
-    // 3. Helper to get requests (no change)
+    // 3. Helper to get requests 
     function getWeeklyRequest(profile) {
         if (!profile.nextWeekHolidayRequest || profile.nextWeekHolidayRequest === 'None') return { type: 'None' };
         const parts = profile.nextWeekHolidayRequest.split(':');
