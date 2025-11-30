@@ -1,3 +1,4 @@
+// routes/staff_profile_api_be.js
 const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
@@ -12,8 +13,7 @@ const StaffProfile = mongoose.model('StaffProfile');
  */
 router.post('/add', async (req, res) => {
     try {
-        // NOTE: nextWeekHolidayRequest added here
-        const { name, position, shiftPreference, fixedDayOff, isNightRotator, currentRotationDay, employeeId, nextWeekHolidayRequest } = req.body;
+        const { name, position, shiftPreference, fixedDayOff, employeeId, nextWeekHolidayRequest } = req.body;
         const userId = req.user.id;
         
         if (!name || !position || !employeeId) {
@@ -26,9 +26,7 @@ router.post('/add', async (req, res) => {
             position,
             shiftPreference: shiftPreference || 'Morning',
             fixedDayOff: fixedDayOff || 'None',
-            nextWeekHolidayRequest: nextWeekHolidayRequest || 'None', // NEW FIELD SAVED
-            isNightRotator: isNightRotator || false,
-            currentRotationDay: currentRotationDay || 0,
+            nextWeekHolidayRequest: nextWeekHolidayRequest || 'None', 
             user: userId
         });
 
@@ -61,6 +59,36 @@ router.get('/', async (req, res) => {
     }
 });
 
+/**
+ * @route   GET /api/staff/profile/:id
+ * @desc    Fetch a single staff profile by ID (NEWLY ADDED)
+ * @access  Private
+ */
+router.get('/:id', async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const profileId = req.params.id;
+
+        const profile = await StaffProfile.findOne({ 
+            _id: profileId, 
+            user: userId 
+        }).lean();
+
+        if (!profile) {
+            return res.status(404).json({ success: false, message: 'Staff profile not found or unauthorized.' });
+        }
+
+        res.json({ success: true, data: profile });
+        
+    } catch (err) {
+        console.error('Fetch Single Staff Profile Error:', err.message);
+        if (err.name === 'CastError') {
+            return res.status(400).json({ success: false, message: 'Invalid profile ID format.' });
+        }
+        res.status(500).json({ success: false, message: 'Server error fetching staff profile.' });
+    }
+});
+
 
 /**
  * @route   PUT /api/staff/profile/:id
@@ -69,8 +97,7 @@ router.get('/', async (req, res) => {
  */
 router.put('/:id', async (req, res) => {
     try {
-        // NOTE: nextWeekHolidayRequest included here
-        const { name, position, shiftPreference, fixedDayOff, isNightRotator, currentRotationDay, employeeId, nextWeekHolidayRequest } = req.body;
+        const { name, position, shiftPreference, fixedDayOff, employeeId, nextWeekHolidayRequest } = req.body;
         const userId = req.user.id;
         const profileId = req.params.id;
 
@@ -79,9 +106,7 @@ router.put('/:id', async (req, res) => {
             position,
             shiftPreference,
             fixedDayOff,
-            nextWeekHolidayRequest, // NEW FIELD UPDATED
-            isNightRotator,
-            currentRotationDay,
+            nextWeekHolidayRequest,
             employeeId 
         };
 
@@ -105,5 +130,35 @@ router.put('/:id', async (req, res) => {
         res.status(500).json({ success: false, message: 'Server error updating staff profile.' });
     }
 });
+
+
+/**
+ * @route   DELETE /api/staff/profile/:id
+ * @desc    Delete a staff member's profile
+ * @access  Private
+ * // --- NEW DELETE ROUTE ADDED HERE ---
+ */
+router.delete('/:id', async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const profileId = req.params.id;
+
+        const deletedProfile = await StaffProfile.findOneAndDelete({ 
+            _id: profileId, 
+            user: userId 
+        });
+
+        if (!deletedProfile) {
+            return res.status(404).json({ success: false, message: 'Staff profile not found or unauthorized.' });
+        }
+
+        res.json({ success: true, message: `${deletedProfile.name}'s profile deleted successfully.` });
+
+    } catch (err) {
+        console.error('Delete Staff Profile Error:', err.message);
+        res.status(500).json({ success: false, message: 'Server error deleting staff profile.' });
+    }
+});
+
 
 module.exports = router;

@@ -1,4 +1,4 @@
-// Full Updated staff_roster (3).js with Duty Rotation, Leave History Saving, and Night Rotator Removal
+// Full Updated staff_roster (7).js 
 
 /**
  * staff_roster.js
@@ -605,7 +605,7 @@ function setShiftSelection(event, day, shiftId, jobRole, timeRange) {
         cell.classList.remove('bg-gray-700', 'bg-nixtz-card', 'bg-red-800', 'bg-yellow-800');
         
         // Use a different color based on the type of leave
-        if (jobRole.includes('(Holiday)')) {
+        if (jobRole.includes('(Holiday)') || jobRole.includes('(Requested)') || jobRole.includes('(Week Off)')) {
             cell.classList.add('bg-red-800', 'font-bold', 'text-white');
         } else if (jobRole.includes('(Sick)')) {
             cell.classList.add('bg-yellow-800', 'font-bold', 'text-white');
@@ -658,27 +658,6 @@ function addStaffRow(initialData = {}) {
     
     const position = initialData.position || 'Normal Staff';
 
-    // --- START FIX: Extract Requested Day of the Week from profile cache ---
-    let requestedDayOfWeek = null;
-    let isRequestedWeek = false;
-    const staffProfile = staffProfilesCache.find(s => s.employeeId === staffId);
-    
-    if (staffProfile && staffProfile.nextWeekHolidayRequest && staffProfile.nextWeekHolidayRequest !== 'None' && currentWeekStartDate) {
-        const [requestWeek, requestValue] = staffProfile.nextWeekHolidayRequest.split(':');
-        
-        // Only consider the request if the week matches the currently viewed roster week
-        if (requestWeek === currentWeekStartDate) {
-            isRequestedWeek = true;
-            if (DAYS.includes(requestValue) || requestValue === 'Sick Leave') {
-                requestedDayOfWeek = requestValue;
-            } else if (requestValue === 'Full Week') {
-                requestedDayOfWeek = 'Full Week'; // Use a flag for Full Week
-            }
-        }
-    }
-    // --- END FIX ---
-
-
     let rowHTML = `
         <td class="p-2 bg-gray-900 sticky left-0 z-10 border-r border-gray-700">
             <input type="text" value="${staffName}" placeholder="Staff Name" class="staff-name-input bg-transparent font-semibold w-full" data-key="name">
@@ -692,9 +671,7 @@ function addStaffRow(initialData = {}) {
         let cellClasses = 'bg-nixtz-card';
         let customColor = '';
         
-        const isScheduledByGenerator = daySchedule && daySchedule.shifts.length > 0;
-        
-        if (isScheduledByGenerator) {
+        if (daySchedule && daySchedule.shifts.length > 0) {
             const shift = daySchedule.shifts[0];
             const shiftId = shift.shiftId; // This can be "1" or "sub_12345"
             const jobRole = shift.jobRole;
@@ -713,18 +690,17 @@ function addStaffRow(initialData = {}) {
             if (jobRole && jobRole.includes('Leave')) {
                 cellContent = jobRole;
                 
-                // Set color based on generator output (Requested, Week Off)
-                if (jobRole.includes('(Holiday)') || jobRole.includes('(Requested)') || jobRole.includes('(Week Off)')) {
+                // Set color based on generator output (Requested, Week Off, Fixed)
+                if (jobRole.includes('(Holiday)') || jobRole.includes('(Requested)') || jobRole.includes('(Week Off)') || jobRole.includes('(Fixed)')) {
                     cellClasses = 'bg-red-800 font-bold';
                 } else if (jobRole.includes('(Sick)')) {
                     cellClasses = 'bg-yellow-800 font-bold';
                 } else {
-                     // This covers 'Leave (Fixed)' and 'Leave (Auto Off)'
+                     // Fallback for Auto Off
                     cellClasses = 'bg-nixtz-card font-bold text-gray-300';
                 }
 
-                // Add color handling for Fixed/Requested Leave (Retained for generator output)
-                if (shift.color) { 
+                if (shift.color) { // Use custom color if present (e.g., for Delivery fixed day off)
                     customColor = `style="background-color: ${shift.color}40; border-left: 4px solid ${shift.color};"`;
                     cellClasses = 'bg-nixtz-card font-bold text-gray-300'; 
                 }
@@ -737,31 +713,7 @@ function addStaffRow(initialData = {}) {
                     customColor = `style="background-color: ${shift.color}40; border-left: 4px solid ${shift.color};"`;
                 }
             }
-        } 
-        
-        // --- FINAL CRITICAL FIX: If the generator left the cell empty, and a request is active, assign the leave label only if the day matches ---
-        else if (!isScheduledByGenerator && isRequestedWeek) {
-            
-            const isSingleDayRequest = DAYS.includes(requestedDayOfWeek) && requestedDayOfWeek === day;
-            const isFullWeekRequest = requestedDayOfWeek === 'Full Week';
-            const isSickLeaveRequest = requestedDayOfWeek === 'Sick Leave';
-
-            if (isFullWeekRequest || isSickLeaveRequest || isSingleDayRequest) {
-                // If the generator left it empty, but the profile says there is a request here:
-                
-                let leaveLabel = `Leave (Requested)`;
-                cellClasses = 'bg-red-800 font-bold';
-
-                if (isSickLeaveRequest) {
-                    leaveLabel = `Leave (Sick)`;
-                    cellClasses = 'bg-yellow-800 font-bold';
-                }
-
-                cellContent = leaveLabel;
-            }
-            // If the cell is empty but the request doesn't apply to this day, it remains blank/bg-nixtz-card (correct for non-leave workdays).
         }
-        // --- END FINAL CRITICAL FIX ---
         
         rowHTML += `
             <td class="roster-cell p-2 border-r border-gray-700 ${cellClasses}" 
@@ -1429,8 +1381,8 @@ async function handleStaffRequest(e) {
     let requestValue = 'None';
     let weekStartIso = '';
     
-    let leaveDateToLog = null; // New variable for historical logging
-    let leaveTypeToLog = null; // New variable for historical logging
+    let leaveDateToLog = null; 
+    let leaveTypeToLog = null; 
 
     if (requestType === 'holiday' || requestType === 'sick_leave') {
         const requestedDate = document.getElementById('request-single-date').value;
@@ -1441,7 +1393,7 @@ async function handleStaffRequest(e) {
         
         // 1. Calculate the Mon start date from the user's requested date
         weekStartIso = snapToMonday(requestedDate);
-        leaveDateToLog = requestedDate; // Use the specific day for logging
+        leaveDateToLog = requestedDate; 
 
         // 2. Determine the day of the week or type of leave requested
         let requestedDayOffOrType;
@@ -1451,8 +1403,8 @@ async function handleStaffRequest(e) {
             messageText = `Sick Leave request for week starting ${weekStartIso} submitted for ${staff.name}.`;
         } else {
             const dateObj = new Date(requestedDate);
-            const dayIndex = dateObj.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
-            requestedDayOffOrType = DAYS[dayIndex === 0 ? 6 : dayIndex - 1]; // Convert 0 to Sun, 1 to Mon, etc.
+            const dayIndex = dateObj.getDay(); 
+            requestedDayOffOrType = DAYS[dayIndex === 0 ? 6 : dayIndex - 1]; 
             leaveTypeToLog = 'Holiday';
             messageText = `Holiday/Leave request (${requestedDayOffOrType}) for week starting ${weekStartIso} submitted for ${staff.name}.`;
         }

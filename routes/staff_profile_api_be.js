@@ -13,6 +13,7 @@ const StaffProfile = mongoose.model('StaffProfile');
  */
 router.post('/add', async (req, res) => {
     try {
+        // Removed: isNightRotator and currentRotationDay
         const { name, position, shiftPreference, fixedDayOff, employeeId, nextWeekHolidayRequest } = req.body;
         const userId = req.user.id;
         
@@ -97,6 +98,7 @@ router.get('/:id', async (req, res) => {
  */
 router.put('/:id', async (req, res) => {
     try {
+        // Removed: isNightRotator and currentRotationDay
         const { name, position, shiftPreference, fixedDayOff, employeeId, nextWeekHolidayRequest } = req.body;
         const userId = req.user.id;
         const profileId = req.params.id;
