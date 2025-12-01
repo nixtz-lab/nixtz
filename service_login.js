@@ -3,6 +3,8 @@
  * Handles the authentication process exclusively for service staff using the dedicated service_auth.html page.
  */
 
+const SERVICE_TOKEN_KEY = 'nixtz_service_auth_token'; // New dedicated service token key
+
 document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.getElementById('login-form'); // Assumes HTML ID changed to 'login-form'
     
@@ -47,27 +49,32 @@ async function handleServiceLogin(e) {
 
         if (response.ok && data.success) {
             
-            // --- UPDATED LOCAL STORAGE KEYS FOR CONSISTENCY ---
-            localStorage.setItem('nixtz_auth_token', data.token); 
-            localStorage.setItem('nixtz_username', data.username); // Changed tmt_ to nixtz_
-            localStorage.setItem('nixtz_user_role', data.role);    // Changed tmt_ to nixtz_
-            localStorage.setItem('nixtz_user_membership', data.membership || 'none'); // Changed tmt_ to nixtz_
-            localStorage.setItem('nixtz_page_access', data.pageAccess);
+            // --- CRITICAL FIX: Use the dedicated service key and prefixed profile data ---
             
-            // Check if the user has access to the service pages (standard, admin, superadmin)
+            // 1. Save dedicated service token
+            localStorage.setItem(SERVICE_TOKEN_KEY, data.token); 
+            
+            // 2. ISOLATE PROFILE DATA (using nixtz_service_ prefix)
+            localStorage.setItem('nixtz_service_username', data.username); 
+            localStorage.setItem('nixtz_service_user_role', data.role);
+            localStorage.setItem('nixtz_service_user_membership', data.membership || 'none');
+            
+            // (Optional: If main site needs access to this token, it would need custom logic to check the service key.)
+            
+            // 3. Check access roles
             const serviceRoles = ['standard', 'admin', 'superadmin'];
             if (serviceRoles.includes(data.role)) {
                 window.showMessage("Service login successful! Redirecting to Staff Panel.", false);
                 setTimeout(() => {
                     // Redirect to the specific Staff Panel
-                    window.location.href = 'laundry_staff.html'; // Changed redirect target
+                    window.location.href = 'laundry_staff.html'; 
                 }, 500);
             } else {
                 // Deny access if the user is only 'pending' or a restricted role
                 if (typeof window.handleLogout === 'function') {
-                    window.handleLogout(); // Clear token immediately
-                } else {
-                    localStorage.removeItem('nixtz_auth_token'); // Manual clear
+                    // Note: If handleLogout clears ALL nixtz_ keys, it's safer.
+                    // Here we ensure the new service key is cleared if access is denied.
+                    localStorage.removeItem(SERVICE_TOKEN_KEY); 
                 }
                 window.showMessage("Access Denied: Your account role does not permit service access.", true);
             }

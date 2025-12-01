@@ -8,6 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
     initLaundryStaffPage();
 });
 
+const SERVICE_TOKEN_KEY = 'nixtz_service_auth_token'; // Define key locally for API calls
+
 // --- Core Application Logic ---
 
 function getStatusColor(status) {
@@ -36,10 +38,10 @@ function getNextStatus(currentStatus) {
 // 1. STATUS UPDATE
 // ------------------------------------
 async function updateRequestStatus(requestId, newStatus) {
-    const token = localStorage.getItem('nixtz_auth_token');
+    const token = localStorage.getItem(SERVICE_TOKEN_KEY); // Use SERVICE KEY
     if (!token) {
          window.showMessage("Authentication failed. Redirecting to login.", true);
-         setTimeout(() => window.location.href = 'service_auth.html', 100);
+         window.checkServiceAccessAndRedirect('laundry_staff.html');
          return;
     }
 
@@ -67,9 +69,9 @@ async function updateRequestStatus(requestId, newStatus) {
         } else {
             if (response.status === 401 || response.status === 403) {
                  window.showMessage("Session expired or access denied. Redirecting to login.", true);
-                 // CRITICAL: Clear potentially stale token and redirect
+                 // CRITICAL: Clear potentially stale token and use service redirect
                  if (typeof window.handleLogout === 'function') window.handleLogout(); 
-                 setTimeout(() => window.location.href = 'service_auth.html', 500); 
+                 window.checkServiceAccessAndRedirect('laundry_staff.html');
                  return;
             }
             window.showMessage(result.message || 'Failed to update request status.', true);
@@ -152,14 +154,15 @@ function renderRequestCard(request) {
 // ------------------------------------
 async function loadOutstandingRequests() {
     const listContainer = document.getElementById('requests-list');
-    const token = localStorage.getItem('nixtz_auth_token');
+    const token = localStorage.getItem(SERVICE_TOKEN_KEY); // Use SERVICE KEY
     
     if (!listContainer) return;
 
     if (!token) {
+        // Use the new service check and exit
         listContainer.innerHTML = '<p class="text-red-400 text-center py-8">Authentication token missing. Redirecting...</p>';
-        setTimeout(() => window.location.href = 'service_auth.html', 100); 
-        return;
+        window.checkServiceAccessAndRedirect('laundry_staff.html');
+        return; 
     }
 
     listContainer.innerHTML = '<p class="text-gray-500 text-center py-8">Fetching latest requests...</p>';
@@ -179,7 +182,7 @@ async function loadOutstandingRequests() {
              if (response.status === 401 || response.status === 403) {
                  window.showMessage("Session expired or access denied. Redirecting to login.", true);
                  if (typeof window.handleLogout === 'function') window.handleLogout(); 
-                 setTimeout(() => window.location.href = 'service_auth.html', 500); 
+                 window.checkServiceAccessAndRedirect('laundry_staff.html');
                  return;
             }
             window.showMessage(result.message || 'Failed to load requests.', true);
@@ -243,10 +246,9 @@ function showCustomConfirm(message) {
 // 5. INITIALIZATION
 // ------------------------------------
 function initLaundryStaffPage() {
-    // We rely 100% on script (6).js for the initial unauthorized redirect.
-    // Safety check: if global auth fails, redirect immediately.
-    if (!window.getAuthStatus()) {
-        window.checkAccessAndRedirect('laundry_staff.html');
+    // Rely on the new service-specific access check
+    if (!window.getServiceAuthStatus()) {
+        window.checkServiceAccessAndRedirect('laundry_staff.html');
         return; 
     }
     

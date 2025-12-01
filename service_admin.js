@@ -6,8 +6,6 @@
 
 document.addEventListener('DOMContentLoaded', () => {
     if (typeof lucide !== 'undefined') lucide.createIcons();
-    // 🚨 INIT CALL REMOVED: Initial data loading is now called directly here, 
-    // as initServiceAdminPage() contained auth checks.
     
     // Load initial data (assuming a token or access method is active)
     fetchAnalytics();
@@ -19,6 +17,8 @@ document.addEventListener('DOMContentLoaded', () => {
         createStaffForm.addEventListener('submit', handleCreateStaffFormSubmit);
     }
 });
+
+const SERVICE_TOKEN_KEY = 'nixtz_service_auth_token'; // CRITICAL: Define the isolated key
 
 const statusMap = {
     'PendingPickup': { label: 'Pending Pickup', color: 'bg-status-pending text-nixtz-bg', icon: 'hourglass' },
@@ -34,8 +34,8 @@ const statusMap = {
 // ------------------------------------
 
 async function fetchAnalytics() {
-    // 🚨 TOKEN LOGIC KEPT: Authentication (token check) is necessary for API calls
-    const token = localStorage.getItem('nixtz_auth_token');
+    // 🚨 FIX: Use the dedicated service token key
+    const token = localStorage.getItem(SERVICE_TOKEN_KEY);
     if (!token) return;
 
     try {
@@ -57,8 +57,8 @@ async function fetchAnalytics() {
 
 async function fetchAllRequests() {
     const tableBody = document.getElementById('all-requests-body');
-    // 🚨 TOKEN LOGIC KEPT: Authentication (token check) is necessary for API calls
-    const token = localStorage.getItem('nixtz_auth_token');
+    // 🚨 FIX: Use the dedicated service token key
+    const token = localStorage.getItem(SERVICE_TOKEN_KEY);
     if (!tableBody || !token) return;
 
     tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-500">Loading all requests...</td></tr>';
@@ -158,8 +158,8 @@ function renderRequestRow(request) {
 // ------------------------------------
 
 async function deleteRequest(id, department) {
-    // 🚨 TOKEN LOGIC KEPT: Authentication (token check) is necessary for API calls
-    const token = localStorage.getItem('nixtz_auth_token');
+    // 🚨 FIX: Use the dedicated service token key
+    const token = localStorage.getItem(SERVICE_TOKEN_KEY);
     if (!token) return;
 
     const confirmationMessage = `Are you sure you want to PERMANENTLY delete the request from ${department}? This cannot be undone.`;
@@ -221,8 +221,8 @@ async function handleCreateStaffFormSubmit(e) {
         sdepartment: department, 
         srole: role              
     }; 
-    // 🚨 TOKEN LOGIC KEPT: Authentication (token check) is necessary for API calls
-    const token = localStorage.getItem('nixtz_auth_token');
+    // 🚨 FIX: Use the dedicated service token key
+    const token = localStorage.getItem(SERVICE_TOKEN_KEY);
 
     try {
         // Calling the new backend route

@@ -9,6 +9,9 @@ document.addEventListener('DOMContentLoaded', () => {
     initLaundryRequestPage();
 });
 
+const SERVICE_TOKEN_KEY = 'nixtz_service_auth_token'; // Define key locally for API calls
+const itemsContainer = document.getElementById('items-container');
+
 // Helper function to create Lucide icons if they exist globally
 function createLucideIcons() {
     if (typeof lucide !== 'undefined' && typeof lucide.createIcons === 'function') {
@@ -35,7 +38,6 @@ function getStatusColor(status) {
 // 1. DYNAMIC ITEM INPUT MANAGEMENT
 // ------------------------------------
 let itemCounter = 0;
-const itemsContainer = document.getElementById('items-container');
 
 function createItemInput() {
     const idCounter = itemCounter++;
@@ -115,12 +117,12 @@ async function handleFormSubmit(e) {
     }
 
     const payload = { department, contactExt, notes, items };
-    const token = localStorage.getItem('nixtz_auth_token');
+    const token = localStorage.getItem(SERVICE_TOKEN_KEY); // Use SERVICE KEY
     
     if (!token) {
         window.showMessage("Authentication failed. Please log in.", true);
-        // Force redirect in case global script was bypassed
-        setTimeout(() => window.location.href = 'service_auth.html', 100);
+        // Force redirect using the service check
+        window.checkServiceAccessAndRedirect('laundry_request.html');
         return;
     }
 
@@ -154,7 +156,7 @@ async function handleFormSubmit(e) {
                  window.showMessage("Session expired or access denied. Please log in again.", true);
                  // CRITICAL: Clear potentially stale token and redirect
                  if (typeof window.handleLogout === 'function') window.handleLogout(); 
-                 setTimeout(() => window.location.href = 'service_auth.html', 500); 
+                 window.checkServiceAccessAndRedirect('laundry_request.html'); 
                  return;
             }
             window.showMessage(result.message || 'Failed to submit request.', true);
@@ -205,13 +207,14 @@ function renderRequestCard(request) {
 
 async function loadRequestHistory() {
     const historyList = document.getElementById('request-history-list');
-    const token = localStorage.getItem('nixtz_auth_token');
+    const token = localStorage.getItem(SERVICE_TOKEN_KEY); // Use SERVICE KEY
     
     if (!historyList) return; // Exit if history container is missing
 
     if (!token) {
-        // If token is explicitly missing, relies on the global script redirecting before we reach here.
-        historyList.innerHTML = '<p class="text-gray-400 text-center py-8">Awaiting authentication check...</p>';
+        // If token is explicitly missing, uses the new service check and exits
+        historyList.innerHTML = '<p class="text-red-400 text-center py-8">Authentication token missing. Redirecting...</p>';
+        window.checkServiceAccessAndRedirect('laundry_request.html');
         return; 
     }
 
@@ -226,11 +229,9 @@ async function loadRequestHistory() {
         
         if (response.status === 401 || response.status === 403) {
             // Token is invalid/expired or user lacks permission
-            historyList.innerHTML = '<p class="text-red-400 text-center py-8">Session expired. Please sign in again.</p>';
             window.showMessage("Session expired. Redirecting to login.", true);
-            // CRITICAL: Clear potentially stale token and redirect
             if (typeof window.handleLogout === 'function') window.handleLogout(); 
-            setTimeout(() => window.location.href = 'service_auth.html', 500); 
+            window.checkServiceAccessAndRedirect('laundry_request.html');
             return;
         }
 
@@ -258,12 +259,9 @@ async function loadRequestHistory() {
 // 4. INITIALIZATION
 // ------------------------------------
 function initLaundryRequestPage() {
-    // We rely 100% on script (6).js for the initial unauthorized redirect.
-    // We only execute functionality if the user is presumed authenticated.
-    
-    // Safety check: if global auth fails, redirect immediately.
-    if (!window.getAuthStatus()) {
-        window.checkAccessAndRedirect('laundry_request.html');
+    // Safety check: if service auth fails, redirect immediately.
+    if (!window.getServiceAuthStatus()) {
+        window.checkServiceAccessAndRedirect('laundry_request.html');
         return; 
     }
 

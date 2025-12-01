@@ -9,21 +9,20 @@ const PROFILE_API_URL = `${window.API_BASE_URL}/api/staff/profile`;
 const LEAVE_HISTORY_API_URL = `${window.API_BASE_URL}/api/staff/leave/history`; // New API URL for permanent logging
 
 // --- CORE SHIFTS: FIXED & USED FOR QUOTAS/SUMMARIES ---
-// These are the three main categories. We use a baseShiftId property to link sub-shifts back.
+// These are the three main categories. 
 let CORE_SHIFTS = { 
     1: { name: 'Morning', time: '07:00-16:00', baseShiftId: 1, required: 4, roles: ['C1', 'C4', 'C3'] }, 
     2: { name: 'Afternoon', time: '13:30-22:30', baseShiftId: 2, required: 5, roles: ['C1', 'C5', 'C3'] },
     3: { name: 'Night', time: '22:00-07:00', baseShiftId: 3, required: 'N/A', roles: ['C1', 'C2'] },
 };
 // --- SUB SHIFTS: Configurable variations (M1, M2, A1, etc.) ---
-// These are saved as an array of objects to allow truly dynamic additions.
 let SUB_SHIFTS = []; 
 
 // Merge function to use in places that need all shifts (dropdown, loading)
 function getAllShifts() {
     const all = { ...CORE_SHIFTS };
     SUB_SHIFTS.forEach(sub => {
-        // Use a high ID (1000+) or unique identifier string for sub-shifts 
+        // Use unique identifier string for sub-shifts 
         const uniqueId = sub.id; 
         all[uniqueId] = sub;
     });
@@ -521,9 +520,9 @@ function createShiftDropdown(cell) {
     if (cell.querySelector('.shift-dropdown')) return;
     
     const existingText = cell.textContent.trim();
-    // Match the Shift ID which can be a number or a string (e.g., 'sub_123')
+    // CRITICAL FIX: Match the Shift ID which can be a number or a string (e.g., 'sub_123')
     const shiftMatch = existingText.match(/^(\w+)\s+([A-Za-z0-9\s()]+)/);
-    const initialShiftId = shiftMatch ? shiftMatch[1] : null;
+    const initialShiftId = shiftMatch ? shiftMatch[1] : null; // Keep ID as string/null
     const initialJobRole = shiftMatch ? shiftMatch[2].trim() : null;
 
     const day = cell.dataset.day;
@@ -531,7 +530,7 @@ function createShiftDropdown(cell) {
     shiftDropdown.className = 'shift-dropdown';
     shiftDropdown.onclick = (e) => e.stopPropagation();
 
-    // --- FIX: Separate Holiday and Sick Leave for Manual Assignment ---
+    // --- Separate Holiday and Sick Leave for Manual Assignment ---
     shiftDropdown.innerHTML += `
         <button class="dropdown-button bg-red-600 hover:bg-red-500" onclick="setShiftSelection(event, '${day}', null, 'Leave (Holiday)', 'Full Day')">HOLIDAY (휴가)</button>
         <button class="dropdown-button bg-yellow-600 hover:bg-yellow-500" onclick="setShiftSelection(event, '${day}', null, 'Leave (Sick)', 'Full Day')">SICK LEAVE (병가)</button>
@@ -561,6 +560,7 @@ function createShiftDropdown(cell) {
 
             shiftConfig.roles.forEach(role => {
                 const fullRole = (role === 'C1' && baseId !== 3) ? `${role} (Sup/Mgr)` : role;
+                // CRITICAL: Compare initialShiftId (string) to shiftId (string)
                 const isSelected = (initialShiftId === shiftId && initialJobRole === fullRole);
                 
                 shiftDropdown.innerHTML += `
@@ -568,7 +568,7 @@ function createShiftDropdown(cell) {
                         class="dropdown-button ${isSelected ? 'bg-nixtz-secondary' : ''}" 
                         onclick="setShiftSelection(event, '${day}', '${shiftId}', '${fullRole}', '${shiftConfig.time}')"
                     >
-                        ${shiftName} (${shiftId}) ${fullRole.replace(` (${shiftConfig.baseShiftId})`, '')}
+                        ${shiftName} (${shiftId}) ${fullRole.replace(` (${baseId})`, '')}
                     </button>
                 `;
             });
@@ -609,17 +609,7 @@ function setShiftSelection(event, day, shiftId, jobRole, timeRange) {
             cell.classList.add('bg-yellow-800', 'font-bold', 'text-white');
         } else {
              // Fallback for Auto Off
-            cellClasses = 'bg-nixtz-card font-bold text-gray-300';
-        }
-
-        // Apply custom color if present (e.g., for Delivery fixed day off)
-        const allShifts = getAllShifts();
-        const shiftConfig = allShifts[shiftId];
-        if (shiftConfig && shiftConfig.color) { 
-            // In case the generator passed a color, we respect it
-            // This path is usually not hit for manual assignments (shiftId=null)
-            cell.style.backgroundColor = `${shiftConfig.color}40`;
-            cell.style.borderLeft = `4px solid ${shiftConfig.color}`;
+            cell.classList.add('bg-nixtz-card', 'font-bold', 'text-gray-300');
         }
     } 
     // --- END FIX ---
@@ -963,7 +953,6 @@ async function handleAddStaff(e) {
         shiftPreference: document.getElementById('new-staff-shift-preference').value,
         fixedDayOff: document.getElementById('new-staff-fixed-dayoff').value,
         nextWeekHolidayRequest: 'None', // Initialized to None
-        // isNightRotator removed from input/data model
     };
     
     showMessage("Saving new staff profile...", false);
@@ -1134,7 +1123,6 @@ function getEditProfileData() {
         position: document.getElementById('edit-staff-position').value,
         shiftPreference: document.getElementById('edit-staff-shift-preference').value,
         fixedDayOff: document.getElementById('edit-staff-fixed-dayoff').value,
-        // isNightRotator removed from data model
     };
 }
 
@@ -1167,10 +1155,6 @@ async function openSingleEditModal(profileId) {
         document.getElementById('edit-staff-shift-preference').value = staff.shiftPreference;
         document.getElementById('edit-staff-fixed-dayoff').value = staff.fixedDayOff;
         
-        // CRITICAL: Removed population logic for the deleted Next Week Holiday Request field
-        
-        // Removed: document.getElementById('edit-staff-is-rotator').checked = staff.isNightRotator;
-
         // Store current state for comparison
         initialEditProfileData = JSON.stringify(getEditProfileData());
 
@@ -1198,7 +1182,6 @@ document.getElementById('edit-staff-form')?.addEventListener('submit', async (e)
         shiftPreference: document.getElementById('edit-staff-shift-preference').value,
         fixedDayOff: document.getElementById('edit-staff-fixed-dayoff').value,
         nextWeekHolidayRequest: currentStaffData.nextWeekHolidayRequest || 'None', // Retain existing request data
-        // isNightRotator and currentRotationDay removed from the update payload
     };
 
     const token = localStorage.getItem(AUTH_TOKEN_KEY);
@@ -1576,7 +1559,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const shiftName = document.getElementById('config-shift-name').value;
         const shiftTime = document.getElementById('config-shift-time').value;
 
-        // Validation for required fields
+        // Validation
         if (!shiftName || !shiftTime) {
             showMessage("Shift name and time are required.", true, 'shift-config-message');
             submitBtn.disabled = false;

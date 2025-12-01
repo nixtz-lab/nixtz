@@ -1,23 +1,15 @@
 // routes/laundry_api_be.js - Router for Laundry Service Requests
 const express = require('express');
 const router = express.Router();
-const mongoose = require('mongoose'); // Ensure Mongoose is imported
+const mongoose = require('mongoose'); 
 
-// --- NEW MODEL IMPORT METHOD (Breaks Circular Dependency) ---
+// --- MODEL IMPORT METHOD ---
 const LaundryRequest = mongoose.model('LaundryRequest'); 
 const User = mongoose.model('User'); 
-// --- END NEW MODEL IMPORT METHOD ---
+// --- END MODEL IMPORT METHOD ---
 
-// Helper to check if the user is authorized for staff actions (e.g., admin or a specific staff role)
-// For this example, we will allow anyone with 'standard', 'admin', or 'superadmin' to view the staff page.
-const staffAuthMiddleware = (req, res, next) => {
-    const role = req.user.role;
-    if (role === 'admin' || role === 'superadmin' || role === 'standard') {
-        next();
-    } else {
-        return res.status(403).json({ success: false, message: 'Access denied. Staff role required.' });
-    }
-};
+// NOTE: The separate staffAuthMiddleware definition has been removed as requested.
+// The role check is now performed directly within the staff endpoints.
 
 // --- USER ENDPOINTS (Request Submission) ---
 
@@ -68,7 +60,13 @@ router.get('/user-requests', async (req, res) => {
 // --- STAFF ENDPOINTS (Management) ---
 
 // GET /api/laundry/staff-view - Get all outstanding requests for staff processing
-router.get('/staff-view', staffAuthMiddleware, async (req, res) => {
+router.get('/staff-view', async (req, res) => {
+    // 🚨 FIX: Role-Based Access Control check is performed here directly.
+    const role = req.user.role;
+    if (role !== 'admin' && role !== 'superadmin' && role !== 'standard') {
+        return res.status(403).json({ success: false, message: 'Access denied. Staff role required.' });
+    }
+    
     try {
         // Find requests that are not yet marked 'Completed' or 'Cancelled'
         const outstandingRequests = await LaundryRequest.find({
@@ -85,7 +83,13 @@ router.get('/staff-view', staffAuthMiddleware, async (req, res) => {
 });
 
 // PUT /api/laundry/update-status/:id - Update the status of a request
-router.put('/update-status/:id', staffAuthMiddleware, async (req, res) => {
+router.put('/update-status/:id', async (req, res) => {
+    // 🚨 FIX: Role-Based Access Control check is performed here directly.
+    const role = req.user.role;
+    if (role !== 'admin' && role !== 'superadmin' && role !== 'standard') {
+        return res.status(403).json({ success: false, message: 'Access denied. Staff role required.' });
+    }
+    
     const { status } = req.body;
     const requestId = req.params.id;
 
@@ -102,7 +106,7 @@ router.put('/update-status/:id', staffAuthMiddleware, async (req, res) => {
         
         if (status === 'Picked Up') {
             updateFields.pickedUpAt = new Date();
-            updateFields.staffAssigned = req.user.id; // Assign the staff member who marks it picked up
+            updateFields.processedBy = req.user.id; // Log staff member who marks it picked up
         }
         if (status === 'Completed') {
             updateFields.completedAt = new Date();
