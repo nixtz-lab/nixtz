@@ -69,24 +69,14 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
             const staffEntry = weeklyRosterMap.get(staff.employeeId);
             const request = getWeeklyRequest(staff);
             
-            let onLeave = false;
-            
             // 0a. Requested Leave Override 
             if (request.type === 'Leave') {
                 const isReqDay = request.day === day || request.day === 'Sick Leave' || request.day === 'Full Week';
                 if (isReqDay) {
                     staffEntry.weeklySchedule[dayIndex].shifts = [{ shiftId: null, jobRole: `Leave (Requested)`, timeRange: 'Full Day', color: '#B91C1C' }];
-                    onLeave = true;
                 }
             }
-            
-            // 0b. Fixed Day Off Assignment (Assign only if not already on requested leave)
-            if (!onLeave && staff.fixedDayOff === day) {
-                const roleColor = ROLE_COLORS[staff.position] || '#FFF';
-                staffEntry.weeklySchedule[dayIndex].shifts = [{ shiftId: null, jobRole: 'Day Off (Fixed)', timeRange: 'Full Day', color: roleColor }];
-            }
         });
-
 
         // --- Step A: Priority Assignments (Mgr, Sup, Del) ---
         
@@ -94,8 +84,11 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
         if (manager) {
             const paeId = manager.employeeId;
             
-            // CRITICAL CHECK: Skip if Pae is already scheduled (Day Off/Leave)
-            if (!isScheduled(paeId, dayIndex)) { 
+            // NEW CHECK: Assign Manager shift ONLY if it is NOT their Fixed Day Off AND NOT requested leave.
+            const isFixedDayOff = manager.fixedDayOff === day;
+            const isRequestedLeave = isScheduled(paeId, dayIndex); // Checks if leave was already assigned in Step 0a
+            
+            if (!isFixedDayOff && !isRequestedLeave) { 
                 // Assign Morning Shift (ID 1)
                 weeklyRosterMap.get(paeId).weeklySchedule[dayIndex].shifts.push({ 
                     shiftId: 1, 
@@ -150,8 +143,21 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
             else { countA++; rolesAssigned.A.C3++; }
         });
 
+        
+        // --- Step B: Secondary Day Off Assignment (AFTER priority roles are scheduled) ---
+        // This ensures Managers and Supervisors only get a Day Off if it's their FIXED day off AND they were not scheduled above.
+        staffProfiles.forEach(staff => {
+            const staffEntry = weeklyRosterMap.get(staff.employeeId);
+            
+            // 0b. Fixed Day Off Assignment (Assign only if NOT already scheduled by Leave or Priority Shift)
+            if (!isScheduled(staff.employeeId, dayIndex) && staff.fixedDayOff === day) {
+                const roleColor = ROLE_COLORS[staff.position] || '#FFF';
+                staffEntry.weeklySchedule[dayIndex].shifts = [{ shiftId: null, jobRole: 'Day Off (Fixed)', timeRange: 'Full Day', color: roleColor }];
+            }
+        });
 
-        // --- Step B: Normal Staff Assignment (Night/Day Fill-in) ---
+
+        // --- Step C: Normal Staff Assignment (Night/Day Fill-in) ---
         
         // Filter staff who are not yet scheduled (this list is clean)
         let availableNormalStaff = allNormalStaff.filter(s => !isScheduled(s.employeeId, dayIndex));

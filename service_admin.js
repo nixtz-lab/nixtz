@@ -2,9 +2,11 @@
  * service_admin.js
  * Handles the logic for the dedicated Service Management Admin Panel (Analytics and Full Data View).
  * This page currently manages the Laundry Service data but is structured for future service additions.
+ * NOTE: Relies on SERVICE_TOKEN_KEY being defined in service_script.js.
  */
 
 document.addEventListener('DOMContentLoaded', () => {
+    // We must rely on window.SERVICE_TOKEN_KEY being available after service_script.js loads.
     if (typeof lucide !== 'undefined') lucide.createIcons();
     
     // Load initial data (assuming a token or access method is active)
@@ -18,7 +20,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-const SERVICE_TOKEN_KEY = 'nixtz_service_auth_token'; // CRITICAL: Define the isolated key
+// NOTE: SERVICE_TOKEN_KEY definition removed here to avoid SyntaxError.
+// We access it globally as window.SERVICE_TOKEN_KEY
 
 const statusMap = {
     'PendingPickup': { label: 'Pending Pickup', color: 'bg-status-pending text-nixtz-bg', icon: 'hourglass' },
@@ -34,8 +37,8 @@ const statusMap = {
 // ------------------------------------
 
 async function fetchAnalytics() {
-    // 🚨 FIX: Use the dedicated service token key
-    const token = localStorage.getItem(SERVICE_TOKEN_KEY);
+    // Access token via the global key
+    const token = localStorage.getItem(window.SERVICE_TOKEN_KEY);
     if (!token) return;
 
     try {
@@ -57,8 +60,8 @@ async function fetchAnalytics() {
 
 async function fetchAllRequests() {
     const tableBody = document.getElementById('all-requests-body');
-    // 🚨 FIX: Use the dedicated service token key
-    const token = localStorage.getItem(SERVICE_TOKEN_KEY);
+    // Access token via the global key
+    const token = localStorage.getItem(window.SERVICE_TOKEN_KEY);
     if (!tableBody || !token) return;
 
     tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-500">Loading all requests...</td></tr>';
@@ -131,8 +134,8 @@ function renderRequestRow(request) {
 
     return `
         <tr class="bg-gray-900 border-b border-gray-800 hover:bg-gray-800 transition duration-150">
-            <td class="px-4 py-3 text-sm text-gray-300 font-medium">${request.department}</td>
-            <td class="px-4 py-3 text-sm text-gray-400">${request.requesterUsername} / ${request.contactExt}</td>
+            <td class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Department</td>
+            <td class="px-4 py-3 text-left text-xs font-medium text-gray-400">${request.requesterUsername} / ${request.contactExt}</td>
             <td class="px-4 py-3 text-sm text-gray-400 hidden sm:table-cell">${itemsSummary}</td>
             <td class="px-4 py-3 text-sm">
                 <span class="px-3 py-1 text-xs font-semibold rounded-full ${statusInfo.color}">
@@ -159,7 +162,7 @@ function renderRequestRow(request) {
 
 async function deleteRequest(id, department) {
     // 🚨 FIX: Use the dedicated service token key
-    const token = localStorage.getItem(SERVICE_TOKEN_KEY);
+    const token = localStorage.getItem(window.SERVICE_TOKEN_KEY);
     if (!token) return;
 
     const confirmationMessage = `Are you sure you want to PERMANENTLY delete the request from ${department}? This cannot be undone.`;
@@ -222,7 +225,7 @@ async function handleCreateStaffFormSubmit(e) {
         srole: role              
     }; 
     // 🚨 FIX: Use the dedicated service token key
-    const token = localStorage.getItem(SERVICE_TOKEN_KEY);
+    const token = localStorage.getItem(window.SERVICE_TOKEN_KEY);
 
     try {
         // Calling the new backend route
@@ -295,9 +298,3 @@ function showCustomConfirm(message) {
         };
     });
 }
-
-// ------------------------------------
-// 5. INITIALIZATION (REMOVED AUTH CHECKS)
-// ------------------------------------
-// 🚨 initServiceAdminPage function was removed entirely and replaced by direct calls 
-// in DOMContentLoaded.
