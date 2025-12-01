@@ -69,7 +69,8 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
             const staffEntry = weeklyRosterMap.get(staff.employeeId);
             const request = getWeeklyRequest(staff);
             
-            let jobRole, color = ROLE_COLORS[staff.position];
+            let jobRole = null;
+            let color = ROLE_COLORS[staff.position] || '#FFF';
 
             // 0a. Requested Leave Override 
             if (request.type === 'Leave') {
@@ -80,9 +81,8 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
                 }
             }
             
-            // 0b. FIXED DAY OFF ASSIGNMENT (Highest Priority next to Requested Leave)
-            // This MUST be assigned before the Manager priority shift below (Step A.1)
-            if (!jobRole && staff.fixedDayOff === day) {
+            // 0b. FIXED DAY OFF ASSIGNMENT (Only apply if a day is explicitly set and not 'None')
+            if (!jobRole && staff.fixedDayOff !== 'None' && staff.fixedDayOff === day) {
                 jobRole = 'Day Off (Fixed)';
             }
             
@@ -254,7 +254,6 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
         employeeName: staff.name,
         employeeId: staff.employeeId,
         position: staff.position,
-        // The generator MUST return the whole week (7 days) because that is how the front-end renders the table structure.
         weeklySchedule: staff.weeklySchedule.map((ds, i) => ({ dayOfWeek: DAYS_FULL[i], shifts: ds.shifts || [] }))
     }));
 }

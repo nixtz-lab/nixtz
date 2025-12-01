@@ -37,9 +37,8 @@ async function handleServiceLogin(e) {
     }
 
     try {
-        // We must send the value as 'email' because the backend /api/auth/login 
-        // expects that key, and the backend is assumed to check (email OR username).
-        const response = await fetch(`${window.API_BASE_URL}/api/auth/login`, {
+        // CRITICAL FIX: Calling the new, dedicated service login endpoint
+        const response = await fetch(`${window.API_BASE_URL}/api/serviceauth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: loginValue, password })
@@ -92,6 +91,7 @@ async function handleServiceLogin(e) {
  * Handles the forgot password prompt (reused from auth_script.js logic).
  */
 async function handleForgotPassword() {
+    // Note: This is left calling the core reset route, as password reset functionality is usually universal.
     const email = prompt("Enter your email to receive a reset link:");
     if (!email) return;
 

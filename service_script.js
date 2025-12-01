@@ -22,8 +22,8 @@ window.checkServiceAccessAndRedirect = (targetPage) => {
     if (!window.getServiceAuthStatus()) {
         window.showMessage("Access Denied. Please sign in to the service panel.", true);
         setTimeout(() => {
-            // Redirect to the service login page, ensuring the service flag is present
-            window.location.href = `service_auth.html?service=true`; 
+            // Redirect to the service login page
+            window.location.href = `service_auth.html?service=true`;
         }, 500);
         return false;
     }
@@ -50,16 +50,18 @@ async function handleServiceLogin(e) {
     e.preventDefault();
     
     // Assumes the HTML uses IDs: login-email (for ID/Username) and login-password
-    const loginValue = document.getElementById('login-email')?.value.trim(); 
+    const loginValue = document.getElementById('login-email')?.value.trim();
     const password = document.getElementById('login-password')?.value.trim();
 
     if (!loginValue || !password) {
         return showMsg("Please enter your Employee ID/Username and password.", true);
     }
     
-    // Prepare Payload: Send Employee ID as 'email' field (Backend expectation)
-    const data = { email: loginValue, password: password }; 
-    const url = `${window.API_BASE_URL}/api/auth/login`; 
+    // Prepare Payload
+    const data = { email: loginValue, password: password };
+    
+    // CRITICAL FIX: Use the dedicated service login route
+    const url = `${window.API_BASE_URL}/api/serviceauth/login`; 
     
     try {
         const response = await fetch(url, {
@@ -73,10 +75,10 @@ async function handleServiceLogin(e) {
         if (response.ok && result.success) {
             
             // 1. Save session data using the dedicated SERVICE TOKEN KEY
-            localStorage.setItem(SERVICE_TOKEN_KEY, result.token); 
+            localStorage.setItem(SERVICE_TOKEN_KEY, result.token);
             
             // 2. ISOLATE PROFILE DATA using nixtz_service_ prefix
-            localStorage.setItem('nixtz_service_username', result.username); 
+            localStorage.setItem('nixtz_service_username', result.username);
             localStorage.setItem('nixtz_service_user_role', result.role);
             localStorage.setItem('nixtz_service_user_membership', result.membership || 'none');
             
@@ -84,7 +86,7 @@ async function handleServiceLogin(e) {
             
             // 3. Redirect to the Staff Panel
             setTimeout(() => {
-                window.location.href = 'laundry_staff.html'; 
+                window.location.href = 'laundry_staff.html';
             }, 1000);
 
         } else {
@@ -96,12 +98,12 @@ async function handleServiceLogin(e) {
         showMsg('Network error. Check server status.', true);
     }
 }
-window.handleServiceLogin = handleServiceLogin; // Expose globally for form submission
+window.handleServiceLogin = handleServiceLogin;
 
 
 // --- INITIAL SETUP ---
 document.addEventListener('DOMContentLoaded', () => {
-    const loginForm = document.getElementById('login-form'); 
+    const loginForm = document.getElementById('login-form');
     
     if (loginForm) {
         // --- Logic specific to service_auth.html ---
