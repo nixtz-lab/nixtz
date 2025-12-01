@@ -8,7 +8,7 @@ const LaundryRequest = mongoose.model('LaundryRequest');
 const User = mongoose.model('User'); 
 // --- END MODEL IMPORT METHOD ---
 
-// NOTE: The separate staffAuthMiddleware definition has been removed as requested.
+// NOTE: The separate staffAuthMiddleware definition has been removed.
 // The role check is now performed directly within the staff endpoints.
 
 // --- USER ENDPOINTS (Request Submission) ---
