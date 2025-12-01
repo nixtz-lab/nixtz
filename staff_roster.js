@@ -409,17 +409,18 @@ function getRosterForSave() {
         DAYS.forEach((day, dayIndex) => {
             const shiftCell = row.querySelector(`[data-day="${day}"]`);
             if (shiftCell) {
-                // To save, we rely on the rendered content (which is set by setShiftSelection)
-                // We must use the content inside the inner <div> if it exists
+                
+                // Get content from the inner structure (div.text-white) if it exists
                 const cellDisplayDiv = shiftCell.querySelector('div.text-white');
                 const textContent = cellDisplayDiv ? cellDisplayDiv.textContent.trim() : shiftCell.textContent.trim();
                 
                 const shifts = [];
                 
-                if (textContent.includes('Leave') || textContent.includes('Day Off')) {
-                    // Save the specific Leave type (Holiday, Sick, Fixed, Auto, Requested)
-                    shifts.push({ shiftId: null, jobRole: textContent.trim(), timeRange: 'Full Day' });
+                if (textContent.includes('Day Off') || textContent.includes('Leave')) {
+                    // Save the specific Leave type 
+                    shifts.push({ shiftId: null, jobRole: textContent, timeRange: 'Full Day' });
                 } else if (textContent) {
+                    
                     const shiftMatch = textContent.match(/^(\w+)\s+([A-Za-z0-9\s()]+)/);
                     const timeMatch = shiftCell.querySelector('.shift-summary');
                     
@@ -474,7 +475,9 @@ function updateShiftSummaries() {
 
     DAYS.forEach(day => {
         document.querySelectorAll(`#roster-body [data-day="${day}"]`).forEach(cell => {
-            const cellText = cell.textContent.trim();
+             const cellDisplayDiv = cell.querySelector('div.text-white');
+             const cellText = cellDisplayDiv ? cellDisplayDiv.textContent.trim() : '';
+
             if (!cellText || cellText.includes('Leave') || cellText.includes('Day Off')) return;
 
             // Extract the unique Shift ID (which might be "1" or "sub_12345")
@@ -521,14 +524,22 @@ function updateShiftSummaries() {
 function createShiftDropdown(cell) {
     if (cell.querySelector('.shift-dropdown')) return;
     
-    // We need to look inside the <div> for the initial text if it's a working shift
+    // --- FIX: Safely read the content structure ---
     const cellDisplayDiv = cell.querySelector('div.text-white');
     const existingText = cellDisplayDiv ? cellDisplayDiv.textContent.trim() : cell.textContent.trim();
     
-    // CRITICAL FIX: Match the Shift ID which can be a number or a string (e.g., 'sub_123')
-    const shiftMatch = existingText.match(/^(\w+)\s+([A-Za-z0-9\s()]+)/);
-    const initialShiftId = shiftMatch ? shiftMatch[1] : null; // Keep ID as string/null
-    const initialJobRole = shiftMatch ? shiftMatch[2].trim() : null;
+    let initialShiftId = null;
+    let initialJobRole = null;
+    
+    // CRITICAL FIX: Only attempt to parse shift details if it's NOT a leave entry
+    if (!existingText.includes('Day Off') && !existingText.includes('Leave')) {
+        // We need to match the Shift ID (which can be a number or a string like 'sub_123')
+        const shiftMatch = existingText.match(/^(\w+)\s+([A-Za-z0-9\s()]+)/);
+        initialShiftId = shiftMatch ? shiftMatch[1] : null; 
+        initialJobRole = shiftMatch ? shiftMatch[2].trim() : null;
+    }
+    // --- END FIX ---
+
 
     const day = cell.dataset.day;
     const shiftDropdown = document.createElement('div');
@@ -602,32 +613,32 @@ function setShiftSelection(event, day, shiftId, jobRole, timeRange) {
     
     cell.removeAttribute('style');
     
-    // --- START FIX: Update Leave Handling to apply correct colors/classes ---
+    // --- START FIX: Use robust inner div structure for all assignments ---
     if (jobRole && (jobRole.startsWith('Leave') || jobRole.startsWith('Day Off'))) {
         
-        // Remove existing content and classes
+        // 1. Clean up classes
         cell.innerHTML = ''; 
         cell.classList.remove('bg-gray-700', 'bg-nixtz-card', 'bg-red-800', 'bg-yellow-800', 'font-bold', 'text-white', 'text-gray-300');
         
-        // Use a different color based on the type of leave
+        // 2. Set style based on leave type
         if (jobRole.includes('(Holiday)') || jobRole.includes('(Requested)') || jobRole.includes('(Week Off)') || jobRole.includes('(Fixed)')) {
             cell.classList.add('bg-red-800', 'font-bold', 'text-white');
         } else if (jobRole.includes('(Sick)')) {
             cell.classList.add('bg-yellow-800', 'font-bold', 'text-white');
         } else {
-             // Fallback for Auto Off/General Leave
             cell.classList.add('bg-nixtz-card', 'font-bold', 'text-gray-300');
         }
         
-        // Add the leave text directly to the cell
-        cell.innerHTML = `<div class="p-1 text-sm font-bold text-center text-white">${jobRole}</div>`;
+        // 3. Add the leave text inside the new structure (div.text-white)
+        cell.innerHTML = `
+            <div class="p-1 text-sm font-bold text-center text-white">
+                ${jobRole}
+            </div>`;
     } 
     // --- END FIX ---
     
     else {
         // Shift Assignment
-        // shiftId is now a string (e.g., "1" or "sub_12345")
-        
         // Remove all non-working classes
         cell.classList.remove('bg-red-800', 'bg-nixtz-card', 'font-bold', 'bg-yellow-800', 'text-gray-300'); 
         cell.classList.add('bg-gray-700'); // Default working shift background
@@ -719,17 +730,19 @@ function addStaffRow(initialData = {}) {
                 // If a shift color is provided (like the red for Mgr/Sup fixed day off) use it for the border/background
                 if (shift.color) {
                     customColor = `style="border-left: 4px solid ${shift.color};"`;
-                    // Do not override the entire cellClasses background for leave/day off
                     cellClasses += ' text-white';
                 }
                 
-                // Wrap leave text in a consistent div
-                cellContent = `<div class="p-1 text-sm font-bold text-center">${cellContent}</div>`;
+                // CRITICAL: Use robust inner div structure for Day Off/Leave
+                cellContent = `
+                    <div class="p-1 text-sm font-bold text-center text-white">
+                        ${cellContent}
+                    </div>`;
                 cellClasses += ' text-white';
 
             } else if (shiftId && jobRole) {
-                // --- FIX APPLIED HERE: Ensure working shift content is generated correctly ---
-                // This covers Pae (Z1 Mgr) and Supervisors (S1 Sup)
+                // Working Shift
+                
                 cellContent = `
                     <div class="p-1 text-sm font-bold text-white text-center">
                         ${shiftId} ${jobRole}
@@ -741,7 +754,6 @@ function addStaffRow(initialData = {}) {
                 if (shift.color) {
                     customColor = `style="border-left: 4px solid ${shift.color};"`;
                 }
-                // --- END FIX ---
             }
         }
         
