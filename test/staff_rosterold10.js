@@ -1,5 +1,3 @@
-// Full Updated staff_roster (3).js with Dropdown Fix
-
 /**
  * staff_roster.js
  * Custom logic for the 7-Eleven Staff Roster page.
@@ -8,23 +6,23 @@
 
 const API_URL = `${window.API_BASE_URL}/api/staff/roster`;
 const PROFILE_API_URL = `${window.API_BASE_URL}/api/staff/profile`;
+const LEAVE_HISTORY_API_URL = `${window.API_BASE_URL}/api/staff/leave/history`; // New API URL for permanent logging
 
 // --- CORE SHIFTS: FIXED & USED FOR QUOTAS/SUMMARIES ---
-// These are the three main categories. We use a baseShiftId property to link sub-shifts back.
+// These are the three main categories. 
 let CORE_SHIFTS = { 
     1: { name: 'Morning', time: '07:00-16:00', baseShiftId: 1, required: 4, roles: ['C1', 'C4', 'C3'] }, 
     2: { name: 'Afternoon', time: '13:30-22:30', baseShiftId: 2, required: 5, roles: ['C1', 'C5', 'C3'] },
     3: { name: 'Night', time: '22:00-07:00', baseShiftId: 3, required: 'N/A', roles: ['C1', 'C2'] },
 };
 // --- SUB SHIFTS: Configurable variations (M1, M2, A1, etc.) ---
-// These are saved as an array of objects to allow truly dynamic additions.
 let SUB_SHIFTS = []; 
 
 // Merge function to use in places that need all shifts (dropdown, loading)
 function getAllShifts() {
     const all = { ...CORE_SHIFTS };
     SUB_SHIFTS.forEach(sub => {
-        // Use a high ID (1000+) or unique identifier string for sub-shifts 
+        // Use unique identifier string for sub-shifts 
         const uniqueId = sub.id; 
         all[uniqueId] = sub;
     });
@@ -415,6 +413,7 @@ function getRosterForSave() {
                 const shifts = [];
                 
                 if (textContent.includes('Leave')) {
+                    // Save the specific Leave type (Holiday, Sick, Fixed, Auto, Requested)
                     shifts.push({ shiftId: null, jobRole: textContent, timeRange: 'Full Day' });
                 } else if (textContent) {
                     const cellDisplay = shiftCell.innerHTML;
@@ -521,9 +520,9 @@ function createShiftDropdown(cell) {
     if (cell.querySelector('.shift-dropdown')) return;
     
     const existingText = cell.textContent.trim();
-    // Match the Shift ID which can be a number or a string (e.g., 'sub_123')
+    // CRITICAL FIX: Match the Shift ID which can be a number or a string (e.g., 'sub_123')
     const shiftMatch = existingText.match(/^(\w+)\s+([A-Za-z0-9\s()]+)/);
-    const initialShiftId = shiftMatch ? shiftMatch[1] : null;
+    const initialShiftId = shiftMatch ? shiftMatch[1] : null; // Keep ID as string/null
     const initialJobRole = shiftMatch ? shiftMatch[2].trim() : null;
 
     const day = cell.dataset.day;
@@ -531,7 +530,13 @@ function createShiftDropdown(cell) {
     shiftDropdown.className = 'shift-dropdown';
     shiftDropdown.onclick = (e) => e.stopPropagation();
 
-    shiftDropdown.innerHTML += `<button class="dropdown-button bg-red-600 hover:bg-red-500" onclick="setShiftSelection(event, '${day}', null, 'Leave', 'Full Day')">LEAVE (휴가)</button>`;
+    // --- Separate Holiday and Sick Leave for Manual Assignment ---
+    shiftDropdown.innerHTML += `
+        <button class="dropdown-button bg-red-600 hover:bg-red-500" onclick="setShiftSelection(event, '${day}', null, 'Leave (Holiday)', 'Full Day')">HOLIDAY (휴가)</button>
+        <button class="dropdown-button bg-yellow-600 hover:bg-yellow-500" onclick="setShiftSelection(event, '${day}', null, 'Leave (Sick)', 'Full Day')">SICK LEAVE (병가)</button>
+    `;
+    // --- END FIX ---
+
 
     const allShifts = getAllShifts();
     const shiftsByBaseId = {};
@@ -555,6 +560,7 @@ function createShiftDropdown(cell) {
 
             shiftConfig.roles.forEach(role => {
                 const fullRole = (role === 'C1' && baseId !== 3) ? `${role} (Sup/Mgr)` : role;
+                // CRITICAL: Compare initialShiftId (string) to shiftId (string)
                 const isSelected = (initialShiftId === shiftId && initialJobRole === fullRole);
                 
                 shiftDropdown.innerHTML += `
@@ -562,7 +568,7 @@ function createShiftDropdown(cell) {
                         class="dropdown-button ${isSelected ? 'bg-nixtz-secondary' : ''}" 
                         onclick="setShiftSelection(event, '${day}', '${shiftId}', '${fullRole}', '${shiftConfig.time}')"
                     >
-                        ${shiftName} (${shiftId}) ${fullRole.replace(` (${shiftConfig.baseShiftId})`, '')}
+                        ${shiftName} (${shiftId}) ${fullRole.replace(` (${baseId})`, '')}
                     </button>
                 `;
             });
@@ -590,14 +596,28 @@ function setShiftSelection(event, day, shiftId, jobRole, timeRange) {
     const cell = button.closest('.roster-cell');
     
     cell.removeAttribute('style');
-    if (jobRole === 'Leave') {
-        cell.innerHTML = jobRole;
-        cell.classList.remove('bg-gray-700', 'bg-nixtz-card');
-        cell.classList.add('bg-red-800', 'font-bold');
-    } else {
+    
+    // --- START FIX: Update Leave Handling to apply correct colors/classes ---
+    if (jobRole && jobRole.startsWith('Leave')) {
+        cell.innerHTML = jobRole; // e.g., 'Leave (Holiday)' or 'Leave (Sick)'
+        cell.classList.remove('bg-gray-700', 'bg-nixtz-card', 'bg-red-800', 'bg-yellow-800');
+        
+        // Use a different color based on the type of leave
+        if (jobRole.includes('(Holiday)') || jobRole.includes('(Requested)') || jobRole.includes('(Week Off)') || jobRole.includes('(Fixed)')) {
+            cell.classList.add('bg-red-800', 'font-bold', 'text-white');
+        } else if (jobRole.includes('(Sick)')) {
+            cell.classList.add('bg-yellow-800', 'font-bold', 'text-white');
+        } else {
+             // Fallback for Auto Off
+            cell.classList.add('bg-nixtz-card', 'font-bold', 'text-gray-300');
+        }
+    } 
+    // --- END FIX ---
+    
+    else {
         // shiftId is now a string (e.g., "1" or "sub_12345")
         cell.innerHTML = `${shiftId} ${jobRole}<span class="text-xs text-gray-500 block leading-none">${timeRange}</span>`; 
-        cell.classList.remove('bg-red-800', 'bg-nixtz-card', 'font-bold');
+        cell.classList.remove('bg-red-800', 'bg-nixtz-card', 'font-bold', 'bg-yellow-800'); // Clean up all leave colors
         cell.classList.add('bg-gray-700');
     }
     
@@ -666,7 +686,22 @@ function addStaffRow(initialData = {}) {
             
             if (jobRole && jobRole.includes('Leave')) {
                 cellContent = jobRole;
-                cellClasses = 'bg-red-800 font-bold';
+                
+                // Set color based on generator output (Requested, Week Off, Fixed)
+                if (jobRole.includes('(Holiday)') || jobRole.includes('(Requested)') || jobRole.includes('(Week Off)') || jobRole.includes('(Fixed)')) {
+                    cellClasses = 'bg-red-800 font-bold';
+                } else if (jobRole.includes('(Sick)')) {
+                    cellClasses = 'bg-yellow-800 font-bold';
+                } else {
+                     // Fallback for Auto Off
+                    cellClasses = 'bg-nixtz-card font-bold text-gray-300';
+                }
+
+                if (shift.color) {
+                    customColor = `style="background-color: ${shift.color}40; border-left: 4px solid ${shift.color};"`;
+                    cellClasses = 'bg-nixtz-card font-bold text-gray-300'; 
+                }
+
             } else if (shiftId && jobRole && timeRange) {
                 cellContent = `${shiftId} ${jobRole}<span class="text-xs text-gray-500 block leading-none">${timeRange}</span>`;
                 cellClasses = 'bg-gray-700';
@@ -884,7 +919,7 @@ async function saveRoster() {
         }
 
         const result = await response.json();
-        showMessage(`Roster saved successfully! Total entries: ${result.totalEntries}.`, false);
+        showMessage(`Roster for week ${currentWeekStartDate} saved successfully! Total entries: ${result.totalEntries}.`, false);
 
     } catch (error) {
         console.error("Save Roster Error:", error);
@@ -918,7 +953,6 @@ async function handleAddStaff(e) {
         shiftPreference: document.getElementById('new-staff-shift-preference').value,
         fixedDayOff: document.getElementById('new-staff-fixed-dayoff').value,
         nextWeekHolidayRequest: 'None', // Initialized to None
-        isNightRotator: document.getElementById('new-staff-is-rotator').checked
     };
     
     showMessage("Saving new staff profile...", false);
@@ -1089,7 +1123,6 @@ function getEditProfileData() {
         position: document.getElementById('edit-staff-position').value,
         shiftPreference: document.getElementById('edit-staff-shift-preference').value,
         fixedDayOff: document.getElementById('edit-staff-fixed-dayoff').value,
-        isNightRotator: document.getElementById('edit-staff-is-rotator').checked,
     };
 }
 
@@ -1122,10 +1155,6 @@ async function openSingleEditModal(profileId) {
         document.getElementById('edit-staff-shift-preference').value = staff.shiftPreference;
         document.getElementById('edit-staff-fixed-dayoff').value = staff.fixedDayOff;
         
-        // CRITICAL: Removed population logic for the deleted Next Week Holiday Request field
-        
-        document.getElementById('edit-staff-is-rotator').checked = staff.isNightRotator;
-
         // Store current state for comparison
         initialEditProfileData = JSON.stringify(getEditProfileData());
 
@@ -1153,8 +1182,6 @@ document.getElementById('edit-staff-form')?.addEventListener('submit', async (e)
         shiftPreference: document.getElementById('edit-staff-shift-preference').value,
         fixedDayOff: document.getElementById('edit-staff-fixed-dayoff').value,
         nextWeekHolidayRequest: currentStaffData.nextWeekHolidayRequest || 'None', // Retain existing request data
-        isNightRotator: document.getElementById('edit-staff-is-rotator').checked,
-        currentRotationDay: currentStaffData.currentRotationDay
     };
 
     const token = localStorage.getItem(AUTH_TOKEN_KEY);
@@ -1206,7 +1233,7 @@ window.toggleRequestFields = function(type) {
 
 
     // Show selected section
-    if (type === 'holiday') {
+    if (type === 'holiday' || type === 'sick_leave') {
         holidayFields.classList.remove('hidden');
         document.getElementById('request-single-date').required = true;
     } else if (type === 'shift_change') {
@@ -1269,7 +1296,10 @@ function openStaffRequestModal() {
     document.getElementById('request-single-date').value = currentRosterWeek; 
     document.getElementById('shift-change-week-start').value = currentRosterWeek; 
     
+    // Default to 'holiday' to show date fields
+    document.getElementById('request-type').value = 'holiday'; 
     toggleRequestFields('holiday');
+    
     fetchStaffProfilesForDropdown();
     
     const staffSelect = document.getElementById('request-staff-select');
@@ -1300,11 +1330,21 @@ function openStaffRequestModal() {
         if (['Morning', 'Afternoon', 'Night'].includes(requestValue)) {
             requestTypeInput.value = 'shift_change';
             document.getElementById('request-new-shift').value = requestValue;
-        } else if (['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun', 'Full Week', 'None'].includes(requestValue)) {
+            toggleRequestFields('shift_change');
+        } 
+        // Check for the explicit sick leave request string
+        else if (requestValue === 'Sick Leave') {
+             requestTypeInput.value = 'sick_leave';
+             toggleRequestFields('sick_leave');
+        }
+        else if (['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun', 'Full Week'].includes(requestValue)) {
              requestTypeInput.value = 'holiday';
+             toggleRequestFields('holiday');
+        } else if (requestValue === 'None') {
+             requestTypeInput.value = 'none_clear';
+             toggleRequestFields('none_clear');
         }
 
-        toggleRequestFields(requestTypeInput.value);
         showMessage(`Existing request (${requestValue}) for week ${requestWeek} loaded.`, false);
     };
 
@@ -1331,24 +1371,36 @@ async function handleStaffRequest(e) {
     let requestValue = 'None';
     let weekStartIso = '';
     
-    if (requestType === 'holiday') {
+    let leaveDateToLog = null; 
+    let leaveTypeToLog = null; 
+
+    if (requestType === 'holiday' || requestType === 'sick_leave') {
         const requestedDate = document.getElementById('request-single-date').value;
         if (!requestedDate) {
             submitBtn.disabled = false;
-            return showMessage("Please select a date for the holiday request.", true, 'request-message-box');
+            return showMessage("Please select a date for the leave request.", true, 'request-message-box');
         }
         
         // 1. Calculate the Mon start date from the user's requested date
         weekStartIso = snapToMonday(requestedDate);
+        leaveDateToLog = requestedDate; 
+
+        // 2. Determine the day of the week or type of leave requested
+        let requestedDayOffOrType;
+        if (requestType === 'sick_leave') {
+            requestedDayOffOrType = 'Sick Leave';
+            leaveTypeToLog = 'Sick Leave';
+            messageText = `Sick Leave request for week starting ${weekStartIso} submitted for ${staff.name}.`;
+        } else {
+            const dateObj = new Date(requestedDate);
+            const dayIndex = dateObj.getDay(); 
+            requestedDayOffOrType = DAYS[dayIndex === 0 ? 6 : dayIndex - 1]; 
+            leaveTypeToLog = 'Holiday';
+            messageText = `Holiday/Leave request (${requestedDayOffOrType}) for week starting ${weekStartIso} submitted for ${staff.name}.`;
+        }
         
-        // 2. Determine the day of the week requested
-        const dateObj = new Date(requestedDate);
-        const dayIndex = dateObj.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
-        const requestedDayOff = DAYS[dayIndex === 0 ? 6 : dayIndex - 1]; // Convert 0 to Sun, 1 to Mon, etc.
-        
-        // 3. Format the request value: [MONDAY_ISO]:[DAY_OF_WEEK_NAME]
-        requestValue = `${weekStartIso}:${requestedDayOff}`;
-        messageText = `Holiday/Leave request (${requestedDayOff}) for week starting ${weekStartIso} submitted for ${staff.name}.`;
+        // 3. Format the request value: [MONDAY_ISO]:[DAY_OF_WEEK_NAME or TYPE]
+        requestValue = `${weekStartIso}:${requestedDayOffOrType}`;
 
     } else if (requestType === 'shift_change') {
         const requestedDate = document.getElementById('shift-change-week-start').value;
@@ -1369,41 +1421,53 @@ async function handleStaffRequest(e) {
         messageText = `All temporary requests for ${staff.name} have been cleared.`;
     }
     
-    // Prepare the PUT body
+    // Prepare the PUT body for StaffProfile update
     const apiUpdateBody = {
         name: staff.name,
         employeeId: staff.employeeId,
         position: staff.position,
         shiftPreference: staff.shiftPreference,
         fixedDayOff: staff.fixedDayOff,
-        isNightRotator: staff.isNightRotator,
-        currentRotationDay: staff.currentRotationDay
+        nextWeekHolidayRequest: requestValue
     };
 
 
     const token = localStorage.getItem(AUTH_TOKEN_KEY);
     
     try {
-        const response = await fetch(`${PROFILE_API_URL}/${profileId}`, {
+        // --- STEP 1: Update the Staff Profile (The Override Flag) ---
+        const profileResponse = await fetch(`${PROFILE_API_URL}/${profileId}`, {
             method: 'PUT',
-            headers: { 
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify(apiUpdateBody)
         });
 
-        const result = await response.json();
+        const profileResult = await profileResponse.json();
         
-        if (!response.ok || !result.success) {
-            throw new Error(result.message || 'Update failed.');
+        if (!profileResponse.ok || !profileResult.success) {
+            throw new Error(profileResult.message || 'Profile update failed.');
         }
 
-        const reloadMessage = requestType === 'none_clear' 
-            ? `${messageText} **Please reload the roster to see their standard default schedule.**`
-            : `${messageText} **Please reload the roster to see changes for the week starting ${weekStartIso}.**`;
+        // --- STEP 2: Log Historical Leave (Only for Holiday/Sick Leave types) ---
+        if (leaveTypeToLog && leaveDateToLog) {
+            const historyResponse = await fetch(LEAVE_HISTORY_API_URL, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    employeeId: staff.employeeId,
+                    employeeName: staff.name,
+                    leaveDate: leaveDateToLog,
+                    leaveType: leaveTypeToLog
+                })
+            });
+            
+            // NOTE: We don't throw an error if history save fails (to protect roster submission)
+            if (!historyResponse.ok) {
+                 console.warn("Failed to save leave history. Might be a duplicate or API error.");
+            }
+        }
         
-        showMessage(reloadMessage, false);
+        showMessage(messageText + ` **Please regenerate the roster for the week starting ${weekStartIso}.**`, false);
         
         // Update the staff cache after successful request
         const updatedStaffIndex = staffProfilesCache.findIndex(s => s._id === profileId);
@@ -1495,7 +1559,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const shiftName = document.getElementById('config-shift-name').value;
         const shiftTime = document.getElementById('config-shift-time').value;
 
-        // Validation for required fields
+        // Validation
         if (!shiftName || !shiftTime) {
             showMessage("Shift name and time are required.", true, 'shift-config-message');
             submitBtn.disabled = false;

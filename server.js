@@ -197,7 +197,7 @@ const ServiceStaffAccessSchema = new mongoose.Schema({
     serviceScope: { type: String, default: 'laundry' }
 });
 // Index on suser for fast lookups
-ServiceStaffAccessSchema.index({ semployeeId: 1 }, { unique: true });
+// ServiceStaffAccessSchema.index({ semployeeId: 1 }, { unique: true });
 const ServiceStaffAccess = mongoose.model('ServiceStaffAccess', ServiceStaffAccessSchema);
 
 
