@@ -33,8 +33,8 @@ router.post('/create-staff-v2', async (req, res) => {
         const susername = semployeeId; // Using unique Employee ID as username for login
         const semail = `${semployeeId.toLowerCase()}@nixtz.service.temp`; // Placeholder email
         
-        // Check for conflicts in the core User collection using the NEW SCHEMA FIELD NAMES
-        let userExists = await SUser.findOne({ $or: [{ semail: semail }, { susername: susername }] });
+        // Check for conflicts in the core User collection using the ORIGINAL NON-PREFIXED FIELD NAMES
+        let userExists = await SUser.findOne({ $or: [{ email: semail }, { username: susername }] }); 
         if (userExists) return res.status(400).json({ success: false, message: 'Employee ID is already registered as a core user.' });
         
         // Check for conflicts in the ServiceStaffAccess collection
@@ -47,13 +47,13 @@ router.post('/create-staff-v2', async (req, res) => {
 
         // 4. Create the core User account (using SUser model)
         const newSUser = new SUser({
-            // MAPPING: Use the prefixed field names for the User model schema
-            susername: susername,
-            semail: semail.toLowerCase(),
-            spasswordHash: passwordHash, // Storing the hashed password
-            srole: srole, 
-            smembership: 'none', // Assuming schema field is 'smembership'
-            spageAccess: ['laundry_request', 'laundry_staff'] // Assuming schema field is 'spageAccess'
+            // MAPPING FIX: Map prefixed local variables to NON-prefixed CORE User schema fields
+            username: susername, 
+            email: semail.toLowerCase(), 
+            passwordHash: passwordHash, 
+            role: srole, 
+            membership: 'none', 
+            pageAccess: ['laundry_request', 'laundry_staff'] 
         });
         await newSUser.save();
         
@@ -86,9 +86,8 @@ router.get('/staff-list', async (req, res) => {
     
     try {
         const staffList = await ServiceStaffAccess.find({})
-            // 🚨 CRITICAL: Populate field must be the new prefixed name (suser)
-            // 🚨 CRITICAL: The selection must also use the new prefixed role field (srole)
-            .populate('suser', 'srole') 
+            // CRITICAL: Populate fields must use the original core User fields to select
+            .populate('suser', 'username role') 
             // Select must use the prefixed field names
             .select('sname semployeeId sdepartment serviceScope'); 
             

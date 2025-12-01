@@ -19,6 +19,7 @@ const ROLE_COLORS = {
 };
 
 const DAYS_FULL = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const VALID_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 function generateWeeklyRoster(staffProfiles, weekStartDate) {
     
@@ -65,6 +66,8 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
         let hasDelCover = false;
 
         // --- Step 0: PRIORITY LEAVE & FIXED DAY OFF ASSIGNMENT (MUST COME FIRST) ---
+        // This ensures the Day Off entry is the absolute first thing to be assigned, 
+        // blocking later working shift assignments.
         staffProfiles.forEach(staff => {
             const staffEntry = weeklyRosterMap.get(staff.employeeId);
             const request = getWeeklyRequest(staff);
@@ -81,9 +84,16 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
                 }
             }
             
-            // 0b. FIXED DAY OFF ASSIGNMENT (Only apply if a day is explicitly set and not 'None')
-            if (!jobRole && staff.fixedDayOff !== 'None' && staff.fixedDayOff === day) {
-                jobRole = 'Day Off (Fixed)';
+            // 0b. FIXED DAY OFF ASSIGNMENT (Only if not already on leave)
+            if (!jobRole) {
+                const fixedDay = staff.fixedDayOff;
+                
+                // CRITICAL FIX: Only assign Day Off if the fixedDay is a valid day name AND matches the current day.
+                const isFixedDaySet = fixedDay && fixedDay !== 'None' && VALID_DAYS.includes(fixedDay);
+                
+                if (isFixedDaySet && fixedDay === day) {
+                    jobRole = 'Day Off (Fixed)';
+                }
             }
             
             // Apply assignment if determined
