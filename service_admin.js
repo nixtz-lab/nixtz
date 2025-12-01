@@ -195,7 +195,7 @@ window.deleteRequest = deleteRequest; // Expose globally for HTML onclick
 
 /**
  * NEW: Handles the submission of the form to create a new staff user.
- * Sends POST request to /api/laundry/admin/create-staff-v2.
+ * Sends POST request to /api/service/admin/create-staff-v2.
  */
 async function handleCreateStaffFormSubmit(e) {
     e.preventDefault();
@@ -228,8 +228,8 @@ async function handleCreateStaffFormSubmit(e) {
     const token = localStorage.getItem(window.SERVICE_TOKEN_KEY);
 
     try {
-        // Calling the new backend route
-        const response = await fetch(`${window.API_BASE_URL}/api/service/admin/create-staff-v2`, {
+        // Calling the new backend route using a relative path to fix the 'undefined' issue.
+        const response = await fetch('/api/service/admin/create-staff-v2', { // <--- CRITICAL FRONTEND FIX
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',

@@ -222,6 +222,7 @@ const staffRosterRoutes = require('./routes/staff_roster_api.js');
 const staffProfileRoutes = require('./routes/staff_profile_api_be.js'); 
 const laundryRoutes = require('./routes/laundry_api_be.js'); // NEW ROUTER IMPORT
 const serviceAdminRoutes = require('./routes/laundry_admin_api_be.js'); // NEW ADMIN ROUTER IMPORT
+const serviceStaffAdminRoutes = require('./routes/service_admin_be.js'); // <--- CRITICAL NEW IMPORT
 
 app.use(cors()); 
 app.use(express.json());
@@ -462,8 +463,12 @@ app.use('/api/projections', authMiddleware, budgetPlannerRoutes);
 // --- NEW SERVICE ROUTERS ---
 // The main laundry router handles user requests and staff status updates
 app.use('/api/laundry', authMiddleware, laundryRoutes); 
-// The service admin router handles analytics and staff/request management
-app.use('/api/laundry/admin', authMiddleware, serviceAdminRoutes); 
+
+// 1. Laundry Data Admin (Analytics, Delete Requests) - Standard authMiddleware removed.
+app.use('/api/laundry/admin', serviceAdminRoutes); //
+
+// 2. Service Staff Management (Staff Creation) - CRITICAL FIX: Mounts service_admin_be.js at the correct path. Standard authMiddleware removed.
+app.use('/api/service/admin', serviceStaffAdminRoutes); //
 
 
 // ===================================================================

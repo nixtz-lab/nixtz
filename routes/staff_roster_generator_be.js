@@ -7,8 +7,8 @@
  */
 const SHIFTS = { 
     1: { name: 'Morning', time: 'DYNAMIC_TIME_1', roles: ['C1', 'C4', 'C3'], required: 6 }, 
-    2: { name: 'Afternoon', time: 'DYNAMIC_TIME_2', roles: ['C1', 'C5', 'C3'], required: 5 }, 
-    3: { name: 'Night', time: 'DYNAMIC_TIME_3', roles: ['C1', 'C2'], required: 3 } // Total 3
+    2: { name: 'Afternoon', time: '13:30-22:30', roles: ['C1', 'C5', 'C3'], required: 5 }, 
+    3: { name: 'Night', time: '22:00-07:00', roles: ['C1', 'C2'], required: 3 } // Total 3
 };
 
 const ROLE_COLORS = {
@@ -44,7 +44,7 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
             if (['Morning', 'Afternoon', 'Night'].includes(val)) return { type: 'ShiftChange', shift: val };
             return { type: 'Leave', day: val };
         }
-        return { type: 'None' } // FIXED: Removed trailing semicolon
+        return { type: 'None' }
     }
     
     // Filter staff
@@ -80,7 +80,8 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
                 }
             }
             
-            // 0b. Fixed Day Off Assignment (Assign only if not already on requested leave)
+            // 0b. FIXED DAY OFF ASSIGNMENT (Highest Priority next to Requested Leave)
+            // This MUST be assigned before the Manager priority shift below (Step A.1)
             if (!jobRole && staff.fixedDayOff === day) {
                 jobRole = 'Day Off (Fixed)';
             }
@@ -169,7 +170,7 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
             
             if (countN >= REQUIRED_NIGHT_TOTAL) return;
 
-            // Only proceed if not already scheduled (e.g., if a previous step had an issue, but here we assume clean)
+            // Only proceed if not already scheduled
             if (isScheduled(staff.employeeId, dayIndex)) return; 
 
             const staffEntry = weeklyRosterMap.get(staff.employeeId);
@@ -253,6 +254,7 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
         employeeName: staff.name,
         employeeId: staff.employeeId,
         position: staff.position,
+        // The generator MUST return the whole week (7 days) because that is how the front-end renders the table structure.
         weeklySchedule: staff.weeklySchedule.map((ds, i) => ({ dayOfWeek: DAYS_FULL[i], shifts: ds.shifts || [] }))
     }));
 }
