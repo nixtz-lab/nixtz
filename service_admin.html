@@ -59,7 +59,7 @@
                     System Admin Panel
                 </a>
                 
-                 <a href="laundry_staff.html" class="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-1.5 px-4 rounded-full shadow-lg transition duration-300 text-sm border border-gray-700">
+                <a href="laundry_staff.html" class="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-1.5 px-4 rounded-full shadow-lg transition duration-300 text-sm border border-gray-700">
                     Go to Staff Panel
                 </a>
                 
@@ -250,4 +250,17 @@
         };
 
         // Initial setup on load
-        document
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            
+            // Set initial view and styling
+            window.switchAdminView('dashboard');
+
+            // Call the banner update function defined in service_script.js
+            if (typeof window.updateServiceBanner === 'function') {
+                window.updateServiceBanner();
+            }
+        });
+    </script>
+</body>
+</html>

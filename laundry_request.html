@@ -51,33 +51,36 @@
             
             <div class="flex items-center space-x-4">
                 
-                <div id="auth-buttons-container" class="flex items-center space-x-4 sm:space-x-6 hidden">
+                <div id="auth-buttons-container" class="flex items-center space-x-4 sm:space-x-6">
                     <a href="service_auth.html" class="bg-gray-800 hover:bg-gray-700 text-white font-bold py-1.5 px-4 rounded-full shadow-lg transition duration-300 transform hover:scale-105 border border-gray-700 text-sm">
                         Login
                     </a>
                 </div>
                 
-                <div id="user-menu-container" class="group relative flex items-center space-x-2 hidden"> 
+                <div id="user-menu-container" class="relative group hidden"> 
                     
-                    <div id="user-icon-display" class="flex items-center space-x-2">
-                        <span id="username-display" class="font-semibold text-white hidden sm:inline"></span>
-                        <button 
-                            id="nav-user-button"
-                            class="w-10 h-10 bg-nixtz-primary rounded-full flex items-center justify-center font-bold text-white hover:scale-105 transition duration-200"
-                            title="User Settings">
-                            <i data-lucide="user" class="w-6 h-6"></i>
-                        </button>
-                    </div>
+                    <button id="user-display-button" 
+                            onclick="toggleUserDropdown()"
+                            class="flex items-center space-x-2 p-2 rounded-full bg-nixtz-card border border-gray-600 hover:bg-gray-700 transition duration-200">
+                        <i data-lucide="user" class="w-5 h-5 text-nixtz-secondary"></i>
+                        <span id="username-display" class="font-semibold text-sm text-gray-200">User</span>
+                    </button>
 
-                    <div id="user-dropdown" class="absolute right-0 top-full mt-3 w-64 bg-gray-800 rounded-xl shadow-3xl-dark border border-gray-700/50 p-4 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 origin-top-right scale-95 group-hover:scale-100 z-50">
-                        <p class="text-sm font-medium text-white mb-3 border-b border-gray-700 pb-2">Account: <span id="user-initials" class="font-normal text-nixtz-secondary"></span></p>
-                        <button id="profile-button" class="w-full text-left text-sm text-gray-300 hover:text-white transition duration-200 font-medium py-2 px-3 rounded-lg hover:bg-gray-700 mb-3">
-                            <i data-lucide="settings" class="w-4 h-4 mr-2 inline"></i>
-                            Profile & Password
-                        </button>
-                        <button id="logout-button" class="w-full text-center text-sm text-red-400 hover:text-red-500 transition duration-200 font-medium py-2 px-3 rounded-lg hover:bg-gray-700">
-                            <i data-lucide="log-out" class="w-4 h-4 mr-2 inline"></i>
-                            Logout
+                    <div id="user-dropdown" 
+                         style="display: none;"
+                         class="absolute right-0 top-full mt-3 w-48 bg-gray-800 rounded-xl shadow-xl border border-gray-700/50 p-2 z-50">
+                        
+                        <a href="user_profile.html" class="w-full flex items-center text-left text-sm text-gray-300 hover:text-white transition duration-200 font-medium py-2 px-3 rounded-lg hover:bg-gray-700">
+                            <i data-lucide="user-circle" class="w-4 h-4 mr-2 inline"></i> User Profile
+                        </a>
+                        
+                        <a href="change_password.html" class="w-full flex items-center text-left text-sm text-gray-300 hover:text-white transition duration-200 font-medium py-2 px-3 rounded-lg hover:bg-gray-700">
+                            <i data-lucide="key" class="w-4 h-4 mr-2 inline"></i> Change Password
+                        </a>
+
+                        <button id="logout-button" onclick="/* Implement logout logic here */" 
+                                class="w-full flex items-center text-left text-sm text-red-400 hover:text-red-500 transition duration-200 font-medium py-2 px-3 rounded-lg hover:bg-gray-700 mt-2 border-t border-gray-700/50">
+                            <i data-lucide="log-out" class="w-4 h-4 mr-2 inline"></i> Logout
                         </button>
                     </div>
                 </div>
@@ -135,11 +138,32 @@
     <script src="laundry_request.js"></script>
     
     <script>
+        // Function to toggle the user dropdown menu
+        function toggleUserDropdown() {
+            const dropdown = document.getElementById('user-dropdown');
+            if (dropdown) {
+                if (dropdown.style.display === 'block') {
+                    dropdown.style.display = 'none';
+                } else {
+                    dropdown.style.display = 'block';
+                }
+            }
+        }
+        
+        // Listen for clicks outside the dropdown to close it
+        document.addEventListener('click', function(event) {
+            const menuContainer = document.getElementById('user-menu-container');
+            const dropdown = document.getElementById('user-dropdown');
+            if (dropdown && menuContainer && !menuContainer.contains(event.target)) {
+                dropdown.style.display = 'none';
+            }
+        });
+
         document.addEventListener('DOMContentLoaded', () => {
             if (typeof lucide !== 'undefined') lucide.createIcons();
             
-            // This is the function responsible for reading LocalStorage and updating the banner.
-            // It needs to be run after the core auth scripts load.
+            // This function (window.checkAuthStatusAndDisplay) needs to be defined in auth_script.js
+            // and should handle showing/hiding the 'auth-buttons-container' vs 'user-menu-container'.
             if (typeof window.checkAuthStatusAndDisplay === 'function') {
                 window.checkAuthStatusAndDisplay(); 
             }
