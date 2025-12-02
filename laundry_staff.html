@@ -48,6 +48,7 @@
             <div class="flex items-center space-x-4">
                 
                 <div id="user-display-container" class="relative group" style="display: none;">
+                    
                     <button id="user-display-button" 
                             onclick="toggleUserDropdown()"
                             class="flex items-center space-x-2 p-2 rounded-full bg-nixtz-card border border-gray-600 hover:bg-gray-700 transition duration-200">
@@ -67,13 +68,12 @@
                             <i data-lucide="key" class="w-4 h-4 mr-2 inline"></i> Change Password
                         </a>
 
-                        <button id="logout-dropdown-button" onclick="window.location.href = 'service_auth.html';" 
+                        <button id="logout-dropdown-button" onclick="window.handleServiceLogout()" 
                                 class="w-full flex items-center text-left text-sm text-red-400 hover:text-red-500 transition duration-200 font-medium py-2 px-3 rounded-lg hover:bg-gray-700 mt-2 border-t border-gray-700/50">
                             <i data-lucide="log-out" class="w-4 h-4 mr-2 inline"></i> Logout
                         </button>
                     </div>
                 </div>
-
                 <a href="service_admin.html" 
                    id="admin-button" 
                    style="display: none;" 
@@ -85,7 +85,7 @@
                     User Request Form
                 </a>
                 
-                <button onclick="window.location.href = 'service_auth.html';" 
+                <button id="default-logout-button" onclick="window.handleServiceLogout()"
                          class="bg-red-700 hover:bg-red-600 text-white font-semibold py-1.5 px-4 rounded-full shadow-lg transition duration-300 text-sm border border-gray-700">
                     Logout
                 </button>
@@ -120,12 +120,21 @@
         // FUNCTION to handle the dropdown toggle
         function toggleUserDropdown() {
             const dropdown = document.getElementById('user-dropdown');
-            if (dropdown.style.display === 'block') {
-                dropdown.style.display = 'none';
-            } else {
-                dropdown.style.display = 'block';
+            if (dropdown) {
+                // Toggles visibility
+                dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
             }
         }
+        
+        // Listen for clicks outside the dropdown to close it
+        document.addEventListener('click', function(event) {
+            const userContainer = document.getElementById('user-display-container');
+            const dropdown = document.getElementById('user-dropdown');
+            
+            if (dropdown && userContainer && dropdown.style.display === 'block' && !userContainer.contains(event.target)) {
+                dropdown.style.display = 'none';
+            }
+        });
 
         document.addEventListener('DOMContentLoaded', () => {
             if (typeof lucide !== 'undefined') lucide.createIcons();
