@@ -7,6 +7,48 @@
 // --- CORE SERVICE UTILITIES & AUTH CHECKERS ---
 const SERVICE_TOKEN_KEY = 'nixtz_service_auth_token'; // Dedicated service token key
 
+// 🚨 CRITICAL FIX: Define the global window.showMessage function here
+window.showMessage = (message, isError = false) => {
+    const box = document.getElementById('message-box');
+    const text = document.getElementById('message-text');
+
+    if (!box || !text) {
+        console.warn('Cannot display message: Message box elements not found.');
+        console.error(message);
+        return;
+    }
+    
+    // Clear previous classes and reset box
+    box.className = 'fixed top-4 right-4 p-4 rounded-lg shadow-2xl z-[9999] opacity-0 transition-opacity duration-300 text-white';
+    box.style.display = 'block';
+
+    // Apply color based on type
+    if (isError) {
+        box.classList.add('bg-red-600');
+    } else {
+        box.classList.add('bg-nixtz-secondary'); // Your success/primary color
+    }
+
+    text.textContent = message;
+    
+    // Show the box
+    setTimeout(() => {
+        box.classList.remove('opacity-0');
+        box.classList.add('opacity-100');
+    }, 50);
+
+    // Hide after 5 seconds
+    setTimeout(() => {
+        box.classList.remove('opacity-100');
+        box.classList.add('opacity-0');
+        // Delay display: none until transition is complete
+        setTimeout(() => {
+            box.style.display = 'none';
+        }, 300);
+    }, 5000);
+};
+
+
 /**
  * Returns true if a service token is present.
  */
@@ -20,6 +62,7 @@ window.getServiceAuthStatus = () => {
  */
 window.checkServiceAccessAndRedirect = (targetPage) => {
     if (!window.getServiceAuthStatus()) {
+        // Use the newly defined global function
         window.showMessage("Access Denied. Please sign in to the service panel.", true);
         setTimeout(() => {
             // Redirect to the service login page
@@ -33,9 +76,10 @@ window.checkServiceAccessAndRedirect = (targetPage) => {
 };
 
 // Helper to use global showMessage or fallback to console.error
+// NOTE: This helper is now redundant since window.showMessage is defined, but retained for safety.
 const showMsg = (text, isError) => {
     if (typeof window.showMessage === 'function') {
-        window.showMessage(text, isError);
+        window.showMessage(text, isError); 
     } else {
         console.error(`AUTH MSG (${isError ? 'ERROR' : 'INFO'}): ${text}`);
     }
