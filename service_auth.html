@@ -36,6 +36,7 @@
             to { opacity: 1; transform: translateY(0); }
         }
     </style>
+    <script src="https://unpkg.com/lucide@latest"></script> 
 </head>
 <body class="bg-nixtz-bg font-sans min-h-screen flex flex-col text-white">
 
@@ -68,11 +69,19 @@
                     <label for="login-email" class="block text-sm font-medium text-gray-300">Employee ID or Username</label>
                     <input type="text" id="login-email" name="employeeId" required class="mt-1 block w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-nixtz-primary focus:border-nixtz-primary transition" placeholder="Employee ID or Username">
                 </div>
+                
                 <div>
                     <label for="login-password" class="block text-sm font-medium text-gray-300">Password</label>
-                    <input type="password" id="login-password" name="password" required class="mt-1 block w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-nixtz-primary focus:border-nixtz-primary transition">
+                    <div class="relative mt-1">
+                        <input type="password" id="login-password" name="password" required class="block w-full px-4 py-2 pr-10 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-nixtz-primary focus:border-nixtz-primary transition">
+                        <button type="button" 
+                                id="password-toggle" 
+                                onclick="togglePasswordVisibility()"
+                                class="absolute inset-y-0 right-0 flex items-center px-2 text-gray-400 hover:text-white transition duration-200">
+                            <i data-lucide="eye-off" id="toggle-icon" class="w-5 h-5"></i>
+                        </button>
+                    </div>
                 </div>
-                
                 <div class="text-right">
                     <a href="javascript:void(0)" id="forgot-password-link" class="text-xs font-medium text-gray-500 hover:text-nixtz-secondary transition duration-200">
                         Forgot Password?
@@ -95,8 +104,15 @@
             <p class="text-sm text-gray-500">&copy; 2024 Nixtz. Simplify Everything.</p>
         </div>
     </footer>
-<script src="service_script.js"></script>
 
-<script src="service_login.js"></script> 
-    </body>
+    <script src="service_script.js"></script>
+
+    <script src="service_login.js"></script> 
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        });
+    </script>
+</body>
 </html>
