@@ -3,8 +3,8 @@
  * Handles the authentication process exclusively for service staff using the dedicated service_auth.html page.
  */
 
-// **CRITICAL FIX:** Removed the duplicate declaration of SERVICE_TOKEN_KEY.
-// The constant is now solely loaded from the global utility script (service_script.js).
+// **CRITICAL FIX:** The duplicate declaration of SERVICE_TOKEN_KEY has been removed here.
+// This constant must ONLY be defined in the global utility script (service_script.js).
 
 document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.getElementById('login-form'); 
@@ -57,7 +57,8 @@ async function handleServiceLogin(e) {
     }
 
     try {
-        // CRITICAL FIX: Using a relative path to call the new, dedicated service login endpoint.
+        // **CRITICAL FIX:** Using a relative path to call the new, dedicated service login endpoint.
+        // This resolves the /undefined/ path error.
         const response = await fetch('/api/serviceauth/login', {
             method: 'POST', 
             headers: { 'Content-Type': 'application/json' }, 
