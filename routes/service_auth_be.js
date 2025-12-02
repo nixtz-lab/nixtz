@@ -7,8 +7,7 @@ const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_default_jwt_secret_please_change_this_for_prod';
 
-// Safely access the dedicated Service User model and Service Staff Access model
-// NOTE: We rely on the model being compiled in server.js
+// Safely access the dedicated Service User model and Service Staff Access models
 const getSUserModel = () => mongoose.model('ServiceUser');
 const getServiceStaffAccessModel = () => mongoose.model('ServiceStaffAccess');
 
@@ -57,22 +56,23 @@ const createInitialServiceAdmin = async () => {
 router.post('/login', async (req, res) => {
     const SUser = getSUserModel(); // Use the dedicated ServiceUser model
     const ServiceStaffAccess = getServiceStaffAccessModel(); 
-    const { email, password } = req.body; // Input fields are 'email' and 'password'
+    const { email, password } = req.body; 
     
     if (!email || !password) return res.status(400).json({ success: false, message: 'Enter ID/Username and password.' });
 
     try {
-        // 1. Find user in DEDICATED ServiceUser collection (Check susername or semail)
-        let user = await SUser.findOne({ $or: [{ semail: email.toLowerCase() }, { susername: email }] });
+        // 1. Find user in DEDICATED ServiceUser collection and EXPLICITLY SELECT the password hash
+        let user = await SUser.findOne({ $or: [{ semail: email.toLowerCase() }, { susername: email }] }).select('+spasswordHash'); // <--- CRITICAL FIX: Explicitly select the hash
         if (!user) return res.status(400).json({ success: false, message: 'Invalid credentials.' });
 
         if (user.srole === 'pending') return res.status(403).json({ success: false, message: 'Account pending approval.' });
 
-        const isMatch = await bcrypt.compare(password, user.spasswordHash);
+        // 2. Compare the password hash using the retrieved field
+        const isMatch = await bcrypt.compare(password, user.spasswordHash); // <--- Uses the explicitly retrieved hash
         if (!isMatch) return res.status(400).json({ success: false, message: 'Invalid credentials.' });
         
         // 🚨 CRITICAL FIX: ENFORCE SERVICE ACCESS 🚨
-        // 2. Check if this authenticated ServiceUser has a record in the ServiceStaffAccess collection
+        // 3. Check if this authenticated ServiceUser has a record in the ServiceStaffAccess collection
         const staffAccess = await ServiceStaffAccess.findOne({ suser: user._id });
 
         if (!staffAccess) {
@@ -80,14 +80,13 @@ router.post('/login', async (req, res) => {
             return res.status(403).json({ success: false, message: 'Access Denied. Account is not registered for service staff access.' });
         }
         
-        // If execution reaches here, the user is authenticated AND verified as service staff.
-        // JWT Payload must reflect the ServiceUser's prefixed fields
+        // 4. JWT Payload and response
         const payload = { user: { 
             id: user._id.toString(), 
-            username: user.susername, // Use susername
-            role: user.srole,         // Use srole
-            membership: user.smembership, // Use smembership
-            pageAccess: user.spageAccess  // Use spageAccess
+            username: user.susername, 
+            role: user.srole,         
+            membership: user.smembership, 
+            pageAccess: user.spageAccess  
         } };
         
         jwt.sign(payload, JWT_SECRET, { expiresIn: '5d' }, (err, token) => {
@@ -96,11 +95,11 @@ router.post('/login', async (req, res) => {
                 success: true,
                 message: 'Service login successful!',
                 token,
-                username: user.susername, // Use susername in response
-                role: user.srole,         // Use srole in response
+                username: user.susername, 
+                role: user.srole,         
                 membership: user.smembership,
                 pageAccess: user.spageAccess,
-                email: user.semail // Use semail in response
+                email: user.semail 
             });
         });
     } catch (err) {
@@ -116,7 +115,7 @@ router.post('/login', async (req, res) => {
 router.post('/register', async (req, res) => {
     
     const SUser = getSUserModel();
-    const { username, email, password } = req.body; // Input fields are non-prefixed
+    const { username, email, password } = req.body; 
 
     if (!username || !email || !password || password.length < 8) {
         return res.status(400).json({ success: false, message: 'Provide valid username, email, and password (min 8 chars).' });
@@ -151,6 +150,6 @@ router.post('/register', async (req, res) => {
 
 // Export the setup function so server.js can call it on startup
 module.exports = {
-    router: router, // <-- FIX: Explicitly returns the router object
+    router: router,
     createInitialServiceAdmin
 };
