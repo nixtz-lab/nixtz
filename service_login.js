@@ -4,7 +4,8 @@
  */
 
 // **CRITICAL FIX:** Removed the duplicate declaration of SERVICE_TOKEN_KEY.
-// This constant must ONLY be defined in the global utility script (service_script.js).
+// This constant MUST ONLY be defined in the global utility script (service_script.js) 
+// to prevent the "Identifier has already been declared" syntax crash.
 
 document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.getElementById('login-form'); 
