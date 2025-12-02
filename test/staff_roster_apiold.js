@@ -2,9 +2,13 @@ const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
 
+// --- UPDATED IMPORT ---
 const { generateWeeklyRoster } = require('./staff_roster_generator_be'); 
+
+// Retrieve models
 const StaffRoster = mongoose.model('StaffRoster');
 const StaffProfile = mongoose.model('StaffProfile'); 
+
 
 /**
  * @route   GET /api/staff/roster/:startDate
@@ -49,27 +53,12 @@ router.get('/generate/:startDate', async (req, res) => {
         }
         
         // 1. Fetch current staff profiles dynamically
-        let staffProfiles = await StaffProfile.find({ user: userId }).sort({ name: 1 }).lean();
+        const staffProfiles = await StaffProfile.find({ user: userId }).sort({ name: 1 }).lean();
         
         if (staffProfiles.length === 0) {
             return res.status(404).json({ success: false, message: 'No staff profiles found to generate a roster.' });
         }
         
-        // --- CRITICAL DATA SANITIZATION FIX (To bypass corrupt FDO fields) ---
-        // Forces clean FDO data for known priority staff.
-        staffProfiles = staffProfiles.map(profile => {
-            if (profile.employeeId === '0001') { // Pae (Manager) -> Fixed Day Off: Sunday
-                profile.fixedDayOff = 'Sun'; 
-            } else if (profile.employeeId === '0003') { // AM (Supervisor) -> Fixed Day Off: None
-                profile.fixedDayOff = 'None';
-            }
-            // Ensure FDO is always a string ('None' or 'Mon'...'Sun')
-            profile.fixedDayOff = profile.fixedDayOff || 'None';
-            return profile;
-        });
-        // --- END CRITICAL FIX ---
-
-
         // 2. Generate the roster data array using the dynamic profiles
         const generatedRosterData = generateWeeklyRoster(staffProfiles, startOfWeek);
         

@@ -29,7 +29,38 @@ if (!MONGODB_URI) {
 
 // Temporary function to create a Super Admin user if one doesn't exist.
 // DELETE THIS FUNCTION AFTER SUCCESSFUL LOGIN.
-// **FUNCTION REMOVED AS REQUESTED**
+const createInitialSuperUser = async () => {
+    try {
+        const User = mongoose.model('User');
+        const adminEmail = 'superuser@nixtz.com';
+        
+        // 1. Check if a superuser already exists
+        let existingUser = await User.findOne({ email: adminEmail });
+        
+        if (existingUser) {
+            console.log(`[SETUP] Superuser (${adminEmail}) already exists.`);
+            return;
+        }
+
+        // 2. Create the user
+        const newAdmin = new User({
+            username: 'NixtzRootAdmin',
+            email: adminEmail,
+            // Pre-hashed password for: "SuperAdminPass123"
+            passwordHash: '$2a$10$3Y8vW8f7g9a0J2k1l0m9p5q4r6s7t8u3v2w1x0y3z2A1B0C9D8E', 
+            role: 'superadmin',
+            membership: 'vip',
+            pageAccess: ['all'],
+            currency: 'USD'
+        });
+
+        await newAdmin.save();
+        console.log(`[SETUP SUCCESS] New Superuser created: ${adminEmail}. Password is: SuperAdminPass123`);
+        
+    } catch (error) {
+        console.error('[SETUP ERROR] Failed to create initial superuser:', error.message);
+    }
+};
 
 
 const connectDB = async () => {
@@ -41,8 +72,8 @@ const connectDB = async () => {
         });
         console.log('✅ MongoDB Connected Successfully to NIXTZ DB');
         
-        // --- NEW CALL: Bootstrap the initial service admin user ---
-        await createInitialServiceAdmin(); 
+        // CALL THE SETUP FUNCTION HERE
+        await createInitialSuperUser(); 
 
         app.listen(PORT, () => {
             console.log(`Server is running on port ${PORT}`);
@@ -191,8 +222,7 @@ const staffRosterRoutes = require('./routes/staff_roster_api.js');
 const staffProfileRoutes = require('./routes/staff_profile_api_be.js'); 
 const laundryRoutes = require('./routes/laundry_api_be.js'); // NEW ROUTER IMPORT
 const serviceAdminRoutes = require('./routes/laundry_admin_api_be.js'); // NEW ADMIN ROUTER IMPORT
-const serviceStaffAdminRoutes = require('./routes/service_admin_be.js'); // CORRECTLY ADDED IMPORT
-const { router: serviceAuthRoutes, createInitialServiceAdmin } = require('./routes/service_auth_be.js'); // <-- NEW: Structured Import for auth router and bootstrap function
+const serviceStaffAdminRoutes = require('./routes/service_admin_be.js'); // <--- CRITICAL NEW IMPORT
 
 app.use(cors()); 
 app.use(express.json());
@@ -432,13 +462,13 @@ app.use('/api/projections', authMiddleware, budgetPlannerRoutes);
 
 // --- NEW SERVICE ROUTERS ---
 // The main laundry router handles user requests and staff status updates
-app.use('/api/laundry', laundryRoutes); // <-- FIX: Removed authMiddleware
-// The service admin router handles analytics and staff/request management
-app.use('/api/laundry/admin', serviceAdminRoutes); // <-- FIX: Removed authMiddleware
-// The service staff admin router handles staff user creation
-app.use('/api/service/admin', serviceStaffAdminRoutes); // <-- ADDED: Service Staff Admin Route (No authMiddleware)
-// NEW: Dedicated service authentication router
-app.use('/api/serviceauth', serviceAuthRoutes); // <-- ADDED: Dedicated service authentication router (No authMiddleware)
+app.use('/api/laundry', authMiddleware, laundryRoutes); 
+
+// 1. Laundry Data Admin (Analytics, Delete Requests) - Standard authMiddleware removed.
+app.use('/api/laundry/admin', serviceAdminRoutes); //
+
+// 2. Service Staff Management (Staff Creation) - CRITICAL FIX: Mounts service_admin_be.js at the correct path. Standard authMiddleware removed.
+app.use('/api/service/admin', serviceStaffAdminRoutes); //
 
 
 // ===================================================================

@@ -1,385 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Nixtz | Staff Roster & Timetable</title>
-
-<script src="https://cdn.tailwindcss.com"></script>
-<script>
-tailwind.config = {
-    theme: {
-        extend: {
-            colors: {
-                'nixtz-primary': '#4F46E5', // Indigo/Blue
-                'nixtz-secondary': '#10B981', // Emerald/Green
-                'nixtz-bg': '#0F172A', // Very dark background (Slate 900)
-                'nixtz-card': '#1E293B', // Dark card background (Slate 800)
-            },
-            fontFamily: {
-                sans: ['Inter', 'sans-serif'],
-            },
-        }
-    }
-}
-</script>
-<link rel="stylesheet" href="style.css">
-<script src="https://unpkg.com/lucide@latest"></script>
-<script src="script.js"></script> 
-<style>
-    /* Custom styles for the table cells to manage input appearance */
-    .roster-cell {
-        padding: 4px;
-        min-width: 100px;
-        position: relative;
-        cursor: pointer;
-    }
-    .roster-cell input, .roster-cell select {
-        background-color: transparent;
-        border: none;
-        width: 100%;
-        text-align: center;
-        font-size: 14px;
-        color: white;
-        padding: 0;
-        margin: 0;
-    }
-    .shift-summary {
-        font-size: 12px;
-        font-weight: 600;
-        text-align: center;
-        color: #94A3B8; /* Slate 400 */
-    }
-    .shift-dropdown {
-        position: absolute;
-        top: 100%;
-        left: 0;
-        z-index: 50;
-        width: 160px;
-        background-color: #334155; /* Slate 700 */
-        border: 1px solid #475569;
-        border-radius: 8px;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
-        padding: 8px;
-    }
-    .dropdown-button {
-        display: block;
-        width: 100%;
-        padding: 6px 10px;
-        text-align: left;
-        color: white;
-        font-size: 13px;
-        border-radius: 4px;
-        transition: background-color 0.1s;
-    }
-    .dropdown-button:hover {
-        background-color: #4F46E5; /* nixtz-primary */
-    }
-    /* Style for the day/date header */
-    .day-header {
-        display: block;
-        font-weight: bold;
-    }
-    .date-header {
-        display: block;
-        font-weight: normal;
-        font-size: 0.75rem; /* text-xs */
-        color: #9CA3AF; /* gray-400 */
-    }
-</style>
-</head>
-<body class="bg-nixtz-bg font-sans antialiased">
-    <div id="message-box" class="fixed top-4 right-4 p-4 rounded-lg shadow-2xl z-[9999] hidden text-white bg-nixtz-primary transition duration-300 opacity-0">
-        <p id="message-text" class="font-semibold"></p>
-    </div>
-    
-    <header class="bg-nixtz-bg shadow-2xl sticky top-0 z-50 border-b border-gray-800">
-        <div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-3 flex items-center justify-between">
-
-            <div class="flex items-center space-x-4">
-                <a href="index.html">
-                    <img
-                        src="images/nixtz_logo.png"
-                        alt="Nixtz Business Software Logo"
-                        class="h-14 sm:h-16 w-auto rounded-xl"
-                        title="Nixtz Business Software"
-                    >
-                </a>
-            </div>
-
-            <div class="flex items-center space-x-4 sm:space-x-6">
-                
-                <a href="javascript:void(0)" onclick="checkAccessAndRedirect('business_dashboard.html')" 
-                   class="text-nixtz-primary hover:text-nixtz-secondary transition duration-300 stacked-nav-link focus:outline-none font-medium ml-4 sm:ml-6" 
-                   title="Quick Dashboard">
-                    <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
-                    <span class="text-[10px] leading-tight md:text-[10px] md:leading-tight">Dashboard</span>
-                </a>
-                
-                <nav id="desktop-nav-links" class="hidden md:flex space-x-3 text-sm">
-                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('staff_roster.html')" class="text-gray-400 hover:text-nixtz-primary transition duration-300">Staff Roster</a>
-                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('asset_tracker.html')" class="text-gray-400 hover:text-nixtz-primary transition duration-300">Assets</a>
-                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('yearly_budget_planning.html')" class="text-gray-400 hover:text-nixtz-primary transition duration-300">Budget Planning</a>
-                </nav>
-                
-                <div id="auth-buttons-container" class="flex items-center space-x-4 sm:space-x-6">
-                    <a href="auth.html?mode=login" id="login-button" class="bg-gray-800 hover:bg-gray-700 text-white font-bold py-1.5 px-4 md:px-5 rounded-full shadow-lg transition duration-300 transform hover:scale-105 border border-gray-700 text-sm md:text-sm">
-                        Login
-                    </a>
-                    <a href="auth.html?mode=join" id="join-button" class="bg-nixtz-primary hover:bg-[#3f3bbf] text-white font-bold py-1.5 px-4 md:px-5 rounded-full shadow-lg transition duration-300 transform hover:scale-105 text-sm md:text-sm">
-                        Join
-                    </a>
-                </div>
-                
-                <div id="user-menu-container" class="group relative flex items-center space-x-2 hidden"> 
-                    <button id="nav-user-button" class="w-10 h-10 bg-nixtz-primary rounded-full flex items-center justify-center font-bold text-white hover:scale-105 transition duration-200" title="User Settings">
-                        <i data-lucide="user" class="w-6 h-6"></i>
-                    </button>
-                    <span id="username-display" class="font-semibold text-white hidden sm:inline">User</span>
-                    <div id="user-dropdown" class="absolute right-0 top-full mt-3 w-64 bg-gray-800 rounded-xl shadow-3xl-dark border border-gray-700/50 p-4 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 origin-top-right scale-95 group-hover:scale-100 z-50">
-                        <button id="logout-button" class="w-full text-center text-sm text-red-400 hover:text-red-500 transition duration-200 font-medium py-2 px-3 rounded-lg hover:bg-gray-700">
-                            <i data-lucide="log-out" class="w-4 h-4 mr-2 inline"></i> Logout
-                        </button>
-                    </div>
-                </div>
-                
-                <button id="menu-toggle" class="md:hidden p-2 rounded-lg text-gray-400 hover:text-nixtz-primary transition duration-200" aria-label="Toggle Menu">
-                    <svg id="icon-open" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
-                    <svg id="icon-close" class="w-6 h-6 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                </button>
-
-            </div>
-        </div>
-    </header>
-
-<main class="py-10">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h1 class="text-3xl font-extrabold text-white mb-6 border-b border-gray-700 pb-3">
-            7-Eleven Weekly Staff Roster (Nixtz)
-        </h1>
-        
-        <div class="bg-nixtz-card p-4 rounded-xl shadow-lg mb-6 border border-gray-700/50 flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0 md:space-x-6">
-            
-            <div class="flex items-center space-x-3 w-full md:w-auto">
-                <label for="week-start-date" class="text-gray-300 font-medium whitespace-nowrap">Week Start (Mon):</label>
-                <input type="date" id="week-start-date" 
-                       class="p-2 rounded-lg bg-gray-800 border border-gray-600 text-white focus:border-nixtz-secondary transition duration-200"
-                       onchange="handleDateChange(this)">
-                
-                <button onclick="openShiftConfigModal()" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-full shadow-md transition duration-200 flex items-center">
-                    <i data-lucide="settings" class="w-5 h-5 mr-1"></i> Shift Config
-                </button>
-                
-                <button onclick="openShiftConfigModal()" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-full shadow-md transition duration-200 flex items-center">
-                    <i data-lucide="list" class="w-5 h-5 mr-1"></i> Shift List
-                </button>
-            </div>
-
-            <div class="flex items-center space-x-4 w-full md:w-auto">
-                
-                <button onclick="openStaffRequestModal()" class="bg-nixtz-primary hover:bg-[#3f3bbf] text-white font-bold py-2 px-4 rounded-full shadow-md transition duration-200 flex items-center">
-                    <i data-lucide="edit" class="w-5 h-5 mr-1"></i> Update
-                </button>
-
-                <button onclick="openStaffListModal()" class="bg-nixtz-primary hover:bg-[#3f3bbf] text-white font-bold py-2 px-4 rounded-full shadow-md transition duration-200 flex items-center">
-                    <i data-lucide="list" class="w-5 h-5 mr-1"></i> Staff List
-                </button>
-                
-                <button onclick="showAddStaffModal()" class="bg-nixtz-secondary hover:bg-[#0da070] text-white font-bold py-2 px-4 rounded-full shadow-md transition duration-200 flex items-center">
-                    <i data-lucide="plus" class="w-5 h-5 mr-1"></i> Add Staff
-                </button>
-                
-                <button onclick="forceRosterRegeneration()" class="bg-nixtz-secondary hover:bg-[#0da070] text-white font-bold py-2 px-4 rounded-full shadow-md transition duration-200 flex items-center" title="Regenerate Roster">
-                    <i data-lucide="refresh-cw" class="w-5 h-5"></i>
-                </button>
-
-                <button onclick="saveRoster()" id="save-roster-btn" class="bg-nixtz-primary hover:bg-[#3f3bbf] text-white font-bold py-2 px-4 rounded-full shadow-md transition duration-200 flex items-center disabled:opacity-50" title="Save Roster">
-                    <i data-lucide="save" class="w-5 h-5"></i>
-                </button>
-            </div>
-        </div>
-
-        <div class="overflow-x-auto bg-nixtz-card rounded-xl shadow-2xl border border-gray-700/50">
-            <table id="roster-table" class="min-w-full divide-y divide-gray-700 text-gray-300">
-                <thead>
-                    <tr class="bg-gray-800 text-sm uppercase tracking-wider">
-                        <th class="p-3 text-left w-48">Staff Name / ID</th>
-                        <th id="header-mon" class="p-3 text-center"></th>
-                        <th id="header-tue" class="p-3 text-center"></th>
-                        <th id="header-wed" class="p-3 text-center"></th>
-                        <th id="header-thu" class="p-3 text-center"></th>
-                        <th id="header-fri" class="p-3 text-center"></th>
-                        <th id="header-sat" class="p-3 text-center"></th>
-                        <th id="header-sun" class="p-3 text-center"></th>
-                    </tr>
-                </thead>
-                <tbody id="roster-body" class="divide-y divide-gray-800">
-                    </tbody>
-                <tfoot class="bg-gray-900 border-t-2 border-nixtz-secondary">
-                    <tr class="text-xs font-bold uppercase text-white">
-                        <td class="p-3">Required Staff (M:6, A:5)</td>
-                        <td id="shift-summary-mon" class="p-3"></td>
-                        <td id="shift-summary-tue" class="p-3"></td>
-                        <td id="shift-summary-wed" class="p-3"></td>
-                        <td id="shift-summary-thu" class="p-3"></td>
-                        <td id="shift-summary-fri" class="p-3"></td>
-                        <td id="shift-summary-sat" class="p-3"></td>
-                        <td id="shift-summary-sun" class="p-3"></td>
-                    </tr>
-                </tfoot>
-            </table>
-        </div>
-
-        <div class="mt-8 p-4 bg-nixtz-card rounded-xl border border-gray-700/50 text-gray-400">
-            <h3 class="text-lg font-bold text-nixtz-secondary mb-3">Shift & Job Definitions</h3>
-            <div id="shift-definitions-display" class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                </div>
-            <p class="mt-3 text-xs italic">Job Roles: C1 (Mgr/Sup), C2 (Night Staff), C3 (Delivery), C4/C5 (General Staff).</p>
-        </div>
-
-    </div>
-</main>
-
-<div id="add-staff-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[9999] hidden items-center justify-center p-4 transition-opacity duration-300">
-    <div class="bg-nixtz-card w-full max-w-lg rounded-xl shadow-3xl-dark p-6 md:p-8 border border-gray-700/50">
-        <h2 class="text-2xl font-bold text-nixtz-secondary mb-4 border-b border-gray-700 pb-3 flex justify-between items-center">
-            Add New Staff Profile
-            <button id="close-staff-modal" onclick="document.getElementById('add-staff-modal').classList.add('hidden')" class="text-gray-400 hover:text-white transition duration-200">
-                <i data-lucide="x" class="w-6 h-6"></i>
-            </button>
-        </h2>
-
-        <div id="staff-message-box" class="p-3 rounded-lg text-white mb-3 hidden"></div>
-
-        <form id="add-staff-form" class="space-y-4">
-            <div>
-                <label for="new-staff-name" class="block text-sm font-medium text-gray-400 mb-1">Full Name</label>
-                <input type="text" id="new-staff-name" required placeholder="Staff Name"
-                       class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition duration-200">
-            </div>
-            <div>
-                <label for="new-staff-id" class="block text-sm font-medium text-gray-400 mb-1">Employee ID (Unique)</label>
-                <input type="text" id="new-staff-id" required placeholder="S711-001"
-                       class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition duration-200">
-            </div>
-            <div>
-                <label for="new-staff-position" class="block text-sm font-medium text-gray-400 mb-1">Position</label>
-                <select id="new-staff-position" required
-                        class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition duration-200">
-                    <option value="Normal Staff">Normal Staff</option>
-                    <option value="Delivery">Delivery</option>
-                    <option value="Supervisor">Supervisor</option>
-                    <option value="Manager">Manager</option>
-                </select>
-            </div>
-            <div>
-                <label for="new-staff-shift-preference" class="block text-sm font-medium text-gray-400 mb-1">Default Shift Preference</label>
-                <select id="new-staff-shift-preference"
-                        class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition duration-200">
-                    <option value="Morning">Morning</option>
-                    <option value="Afternoon">Afternoon</option>
-                    <option value="Night">Night</option>
-                </select>
-            </div>
-            <div>
-                <label for="new-staff-fixed-dayoff" class="block text-sm font-medium text-gray-400 mb-1">Fixed Day Off (if any)</label>
-                <select id="new-staff-fixed-dayoff"
-                        class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition duration-200">
-                    <option value="None">None (Auto-Rotate)</option>
-                    <option value="Mon">Monday</option>
-                    <option value="Tue">Tuesday</option>
-                    <option value="Wed">Wednesday</option>
-                    <option value="Thu">Thursday</option>
-                    <option value="Fri">Friday</option>
-                    <option value="Sat">Saturday</option>
-                    <option value="Sun">Sunday</option>
-                </select>
-            </div>
-             <button type="submit" id="submit-staff-btn"
-                    class="w-full p-3 bg-nixtz-secondary text-white rounded-lg font-bold shadow-lg hover:bg-[#0da070] transition duration-300 transform hover:scale-[1.01] disabled:opacity-50">
-                Save Staff Profile
-            </button>
-        </form>
-    </div>
-</div>
-
-<div id="staff-list-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[9999] hidden items-center justify-center p-4 transition-opacity duration-300">
-    <div class="bg-nixtz-card w-full max-w-2xl rounded-xl shadow-3xl-dark p-6 md:p-8 border border-gray-700/50 max-h-[90vh] overflow-y-auto">
-        <h2 class="text-2xl font-bold text-nixtz-primary mb-4 border-b border-gray-700 pb-3 flex justify-between items-center">
-            All Staff Profiles
-            <button onclick="document.getElementById('staff-list-modal').classList.add('hidden')" class="text-gray-400 hover:text-white transition duration-200">
-                <i data-lucide="x" class="w-6 h-6"></i>
-            </button>
-        </h2>
-
-        <div id="staff-list-message" class="text-sm text-center p-3 rounded-lg hidden"></div>
-
-        <div id="staff-profiles-container" class="space-y-4">
-            <p class="text-gray-500 text-center py-4">Loading staff data...</p>
-        </div>
-    </div>
-</div>
-
-<div id="single-staff-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[9999] hidden items-center justify-center p-4 transition-opacity duration-300">
-    <div class="bg-nixtz-card w-full max-w-md rounded-xl shadow-3xl-dark p-6 md:p-8 border border-gray-700/50">
-        <h2 class="text-xl font-bold text-nixtz-secondary mb-4 border-b border-gray-700 pb-3 flex justify-between items-center" id="single-staff-title">
-            Edit Profile:
-            <button onclick="closeEditProfileModal(event)" class="text-gray-400 hover:text-white transition duration-200">
-                <i data-lucide="x" class="w-6 h-6"></i>
-            </button>
-        </h2>
-
-        <form id="edit-staff-form" class="space-y-4">
-            <input type="hidden" id="edit-profile-id">
-            
-            <div>
-                <label for="edit-staff-name" class="block text-sm font-medium text-gray-400 mb-1">Full Name</label>
-                <input type="text" id="edit-staff-name" required class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition duration-200">
-            </div>
-            
-            <div>
-                <label for="edit-staff-id" class="block text-sm font-medium text-gray-400 mb-1">Employee ID</label>
-                <input type="text" id="edit-staff-id" required disabled class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-gray-500 cursor-not-allowed">
-            </div>
-
-            <div>
-                <label for="edit-staff-position" class="block text-sm font-medium text-gray-400 mb-1">Position</label>
-                <select id="edit-staff-position" required class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition">
-                    <option value="Normal Staff">Normal Staff</option>
-                    <option value="Delivery">Delivery</option>
-                    <option value="Supervisor">Supervisor</option>
-                    <option value="Manager">Manager</option>
-                </select>
-            </div>
-            <div>
-                <label for="edit-staff-shift-preference" class="block text-sm font-medium text-gray-400 mb-1">Default Shift Preference</label>
-                <select id="edit-staff-shift-preference" class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition">
-                    <option value="Morning">Morning</option>
-                    <option value="Afternoon">Afternoon</option>
-                    <option value="Night">Night</option>
-                </select>
-            </div>
-            <div>
-                <label for="edit-staff-fixed-dayoff" class="block text-sm font-medium text-gray-400 mb-1">Fixed Day Off (if any)</label>
-                <select id="edit-staff-fixed-dayoff" class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition">
-                    <option value="None">None (Auto-Rotate)</option>
-                    <option value="Mon">Monday</option>
-                    <option value="Tue">Tuesday</option>
-                    <option value="Wed">Wednesday</option>
-                    <option value="Thu">Thursday</option>
-                    <option value="Fri">Friday</option>
-                    <option value="Sat">Saturday</option>
-                    <option value="Sun">Sunday</option>
-                </select>
-            </div>
-
-             <button type="submit" class="w-full p-3 bg-nixtz-secondary text-white rounded-lg font-bold shadow-lg hover:bg-[#0da070] transition duration-300">
-                Update Profile
-            </button>
-        </form>
-    </div>
-</div>
-
 <div id="staff-request-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[9999] hidden items-center justify-center p-4 transition-opacity duration-300">
     <div class="bg-nixtz-card w-full max-w-lg rounded-xl shadow-3xl-dark p-6 md:p-8 border border-gray-700/50">
         <h2 class="text-2xl font-bold text-nixtz-primary mb-4 border-b border-gray-700 pb-3 flex justify-between items-center">
@@ -405,32 +23,52 @@ tailwind.config = {
                 <label for="request-type" class="block text-sm font-medium text-gray-400 mb-1">Update Type</label>
                 <select id="request-type" onchange="toggleRequestFields(this.value)"
                         class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition duration-200">
-                    <option value="holiday">Holiday/Annual Leave Request</option>
-                    <option value="sick_leave">Sick Leave Request</option>
-                    <option value="shift_change">Temporary Shift Preference Change</option>
                     <option value="none_clear">None (Clear All Temporary Requests)</option>
+                    <option value="specific_day_duty">Assign Specific Day/Duty/Leave</option>
+                    <option value="weekly_shift_pref">Override Weekly Shift Preference</option>
                 </select>
             </div>
 
-            <div id="holiday-fields" class="space-y-4">
-                <p class="text-xs text-gray-500">Select the specific day off. The system will automatically find the Monday start date for that week.</p>
+            <div id="specific-assignment-fields" class="space-y-4 hidden">
+                <h4 class="text-md font-semibold text-gray-300 border-b border-gray-700 pb-1 pt-2">Assign Duty or Day Off for a Specific Day</h4>
+
                 <div>
-                    <label for="request-single-date" class="block text-sm font-medium text-gray-400 mb-1">Date Requested (Any Day)</label>
-                    <input type="date" id="request-single-date" required
+                    <label for="request-date" class="block text-sm font-medium text-gray-400 mb-1">Date Requested (Any Day)</label>
+                    <input type="date" id="request-date"
                            class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition duration-200">
                 </div>
-            </div>
 
-            <div id="shift-change-fields" class="space-y-4 hidden">
+                <div>
+                    <label for="request-shift-id" class="block text-sm font-medium text-gray-400 mb-1">Shift Type / Day Off Status</label>
+                    <select id="request-shift-id" required
+                            onchange="updateShiftRoleDropdown()"
+                            class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition duration-200">
+                        </select>
+                </div>
+                
+                <div id="duty-role-container">
+                    <label for="request-duty-role" class="block text-sm font-medium text-gray-400 mb-1">Duty / Job Role</label>
+                    <select id="request-duty-role" required
+                            class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition duration-200">
+                        </select>
+                </div>
+                
+                <div>
+                    <label for="request-time-range" class="block text-sm font-medium text-gray-400 mb-1">Time Range</label>
+                    <input type="text" id="request-time-range" disabled 
+                           class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-gray-500 cursor-not-allowed">
+                </div>
+            </div>
+            <div id="shift-pref-fields" class="space-y-4 hidden">
                 <p class="text-xs text-gray-500">The shift selected here will temporarily override the employee's **Default Shift Preference** for the selected week only.</p>
                 <div>
                     <label for="shift-change-week-start" class="block text-sm font-medium text-gray-400 mb-1">Date Requested (Any Day of Week)</label>
-                    <input type="date" id="shift-change-week-start" required
+                    <input type="date" id="shift-change-week-start" 
                            class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition duration-200">
                 </div>
                 <div>
                     <label for="request-new-shift" class="block text-sm font-medium text-gray-400 mb-1">New Shift Preference for the Week</label>
-                    <select id="request-new-shift" required
+                    <select id="request-new-shift"
                             class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition duration-200">
                         <option value="Morning">Morning</option>
                         <option value="Afternoon">Afternoon</option>
@@ -439,9 +77,9 @@ tailwind.config = {
                 </div>
             </div>
             
-            <div id="none-clear-message" class="space-y-4 hidden">
+            <div id="none-clear-message" class="space-y-4">
                 <p class="text-sm text-yellow-400 font-semibold">
-                    This action will permanently clear the `nextWeekHolidayRequest` field on the staff profile, ensuring the staff member is scheduled using their standard default shift and fixed day off preferences from now on.
+                    This action will permanently clear the `nextWeekHolidayRequest` field on the staff profile.
                 </p>
             </div>
             
@@ -452,60 +90,3 @@ tailwind.config = {
         </form>
     </div>
 </div>
-
-<div id="shift-config-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[9999] hidden items-center justify-center p-4 transition-opacity duration-300">
-    <div class="bg-nixtz-card w-full max-w-lg rounded-xl shadow-3xl-dark p-6 md:p-8 border border-gray-700/50">
-        <h2 class="text-2xl font-bold text-nixtz-secondary mb-4 border-b border-gray-700 pb-3 flex justify-between items-center">
-            View & Configure Shifts
-            <button onclick="document.getElementById('shift-config-modal').classList.add('hidden')" class="text-gray-400 hover:text-white transition duration-200">
-                <i data-lucide="x" class="w-6 h-6"></i>
-            </button>
-        </h2>
-
-        <div id="shift-config-message" class="p-3 rounded-lg text-white mb-3 hidden"></div>
-        
-        <h3 class="text-lg font-semibold text-gray-300 mb-2">Current Shifts</h3>
-        <div id="configured-shift-list" class="space-y-3 p-3 bg-gray-800 rounded-lg border border-gray-700 max-h-48 overflow-y-auto mb-6">
-            <p class="text-gray-500 text-center py-2">Loading...</p>
-        </div>
-
-        <h3 class="text-lg font-semibold text-nixtz-primary mb-3 mt-4 border-t border-gray-700 pt-3" id="shift-form-title">
-            Add New Shift Configuration
-        </h3>
-
-        <form id="shift-config-form" class="space-y-4">
-            
-            <input type="hidden" id="edit-shift-id" value="0"> <div>
-                <label for="config-shift-select" class="block text-sm font-medium text-gray-400 mb-1">Shift ID Slot</label>
-                <select id="config-shift-select" required
-                        class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition duration-200">
-                    </select>
-            </div>
-            
-            <div>
-                <label for="config-shift-name" class="block text-sm font-medium text-gray-400 mb-1">Shift Name (e.g., M1)</label>
-                <input type="text" id="config-shift-name" required placeholder="M1"
-                       class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition duration-200">
-            </div>
-            
-            <div>
-                <label for="config-shift-time" class="block text-sm font-medium text-gray-400 mb-1">Time Range (HH:MM-HH:MM)</label>
-                <input type="text" id="config-shift-time" required placeholder="07:00-16:00"
-                       class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition duration-200">
-            </div>
-            
-            <input type="hidden" id="config-shift-required">
-            <input type="hidden" id="config-shift-roles">
-
-            <button type="submit" id="submit-shift-config-btn"
-                    class="w-full p-3 bg-nixtz-secondary text-white rounded-lg font-bold shadow-lg hover:bg-[#0da070] transition duration-300 disabled:opacity-50">
-                Save Shift Configuration
-            </button>
-        </form>
-    </div>
-</div>
-
-
-<script src="staff_roster.js" defer></script>
-</body>
-</html>
