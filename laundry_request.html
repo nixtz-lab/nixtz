@@ -134,6 +134,21 @@
     </main>
     
     <script src="service_script.js"></script>
-     <script src="laundry_request.js"></script>
+    <script src="laundry_request.js"></script>
+    
+    <script>
+        // Final Initialization Block (minimal and correct)
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            
+            // Run the banner display logic from service_script.js (updateServiceBanner)
+            if (typeof window.updateServiceBanner === 'function') {
+                window.updateServiceBanner(); 
+            }
+            
+            // NOTE: The core logic (initLaundryRequestPage) and UI wiring (toggleDropdown) 
+            // are expected to be called via the external laundry_request.js file.
+        });
+    </script>
 </body>
 </html>

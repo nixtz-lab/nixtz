@@ -7,6 +7,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Ensure Lucide icons are initialized
     createLucideIcons(); 
     initLaundryRequestPage();
+    
+    // Attach event listeners for the header UI (Dropdown close on outside click)
+    document.addEventListener('click', closeDropdownOnOutsideClick);
 });
 
 const SERVICE_TOKEN_KEY = 'nixtz_service_auth_token'; // Define key locally for API calls
@@ -35,7 +38,7 @@ function getStatusColor(status) {
 }
 
 // ------------------------------------
-// 1. HEADER BANNER UI & DROPDOWN LOGIC (NEW)
+// 1. HEADER BANNER UI & DROPDOWN LOGIC (INTEGRATED)
 // ------------------------------------
 
 /**
@@ -44,30 +47,45 @@ function getStatusColor(status) {
 function toggleUserDropdown() {
     const dropdown = document.getElementById('user-dropdown');
     if (dropdown) {
-        // Toggles visibility
         dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
     }
 }
-window.toggleUserDropdown = toggleUserDropdown; // Expose globally for onclick event
+window.toggleUserDropdown = toggleUserDropdown; // Expose globally for HTML onclick event
 
 
 /**
- * Function to initialize the user banner (reads core auth keys).
+ * Closes the user dropdown if the click occurred outside the container.
  */
-function checkAuthStatusAndDisplay() {
-    // NOTE: This page (laundry_request.html) uses the Core application's token logic.
-    // It is assumed the Core App defines nixtz_auth_token keys.
-    const token = localStorage.getItem('nixtz_auth_token');
-    const username = localStorage.getItem('nixtz_username');
-    const staffRole = localStorage.getItem('nixtz_service_user_role'); // Check for service role too
+function closeDropdownOnOutsideClick(event) {
+    const userContainer = document.getElementById('user-menu-container');
+    const dropdown = document.getElementById('user-dropdown');
+    const displayButton = document.getElementById('user-display-button');
+
+    // Only hide if the click was not on the button AND the menu is currently visible
+    if (dropdown && dropdown.style.display === 'block' && 
+        userContainer && !userContainer.contains(event.target) && 
+        !displayButton.contains(event.target)) {
+        
+        dropdown.style.display = 'none';
+    }
+}
+
+/**
+ * Function to initialize the user banner (reads service auth keys).
+ */
+function checkServiceBannerDisplay() {
+    // NOTE: This logic reads the isolated service token keys.
+    const token = localStorage.getItem('nixtz_service_auth_token');
+    const username = localStorage.getItem('nixtz_service_username');
+    const staffRole = localStorage.getItem('nixtz_service_user_role'); 
 
     const loginButtons = document.getElementById('auth-buttons-container');
     const userMenu = document.getElementById('user-menu-container');
     const usernameDisplay = document.getElementById('username-display');
     const staffPanelButton = document.getElementById('staff-panel-button');
 
+    // Update Banner Visibility
     if (token && username) {
-        // Logged In: Show user menu, hide login buttons
         if (loginButtons) loginButtons.style.display = 'none';
         if (userMenu) userMenu.style.display = 'flex';
         if (usernameDisplay) usernameDisplay.textContent = username;
@@ -86,23 +104,7 @@ function checkAuthStatusAndDisplay() {
         if (staffPanelButton) staffPanelButton.style.display = 'none';
     }
 }
-window.checkAuthStatusAndDisplay = checkAuthStatusAndDisplay; // Expose globally
-
-// Listen for clicks outside the dropdown to close it
-document.addEventListener('click', function(event) {
-    const userContainer = document.getElementById('user-menu-container');
-    const dropdown = document.getElementById('user-dropdown');
-    const displayButton = document.getElementById('user-display-button');
-
-    // Only hide if the click was not on the button AND the menu is currently visible
-    if (dropdown && dropdown.style.display === 'block' && 
-        userContainer && !userContainer.contains(event.target) && 
-        !displayButton.contains(event.target)) {
-        
-        dropdown.style.display = 'none';
-    }
-});
-
+window.checkServiceBannerDisplay = checkServiceBannerDisplay; // Expose globally
 
 // ------------------------------------
 // 2. DYNAMIC ITEM INPUT MANAGEMENT
@@ -225,7 +227,7 @@ async function handleFormSubmit(e) {
             if (response.status === 401 || response.status === 403) {
                  window.showMessage("Session expired or access denied. Please log in again.", true);
                  // CRITICAL: Clear potentially stale token and redirect
-                 if (typeof window.handleLogout === 'function') window.handleLogout(); 
+                 if (typeof window.handleServiceLogout === 'function') window.handleServiceLogout(); 
                  window.checkServiceAccessAndRedirect('laundry_request.html'); 
                  return;
             }
@@ -327,7 +329,7 @@ async function loadRequestHistory() {
 
 
 // ------------------------------------
-// 5. INITIALIZATION
+// 6. INITIALIZATION
 // ------------------------------------
 function initLaundryRequestPage() {
     // Safety check: if service auth fails, redirect immediately.
@@ -352,5 +354,9 @@ function initLaundryRequestPage() {
 
     loadRequestHistory();
     
-    // Final check for banner initialization (This logic is now in the HTML, calling checkAuthStatusAndDisplay)
+    // Final check for banner initialization
+    // CRITICAL: We run the banner logic here for the header to show up.
+    if (typeof window.updateServiceBanner === 'function') {
+        window.updateServiceBanner(); 
+    }
 }
