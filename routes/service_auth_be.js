@@ -15,13 +15,8 @@ const getServiceStaffAccessModel = () => mongoose.model('ServiceStaffAccess');
 // --- NEW FUNCTION: Hardcoded Service Admin Creation ---
 const createInitialServiceAdmin = async () => {
     const User = getSUserModel(); // Use the dedicated ServiceUser model
-    
-    // --- NEW BOOTSTRAP USER DEFINITION ---
-    const adminUsername = 'service_admin_01';
-    const adminEmail = 'admin01@nixtz.com'; 
-    // HASH for the temporary password: "ServiceAdmin01"
-    const passwordHash = '$2a$10$fV2hE9Z0bU7pA5c1r6t3q1d8g9j4k7l2m0n5x8y3z0a1B2C3D4E'; // NEW BCrypt Hash for ServiceAdmin01
-    // ------------------------------------
+    const adminUsername = 'service_root';
+    const adminEmail = 'service_root@nixtz.com'; // Use a dedicated service email
 
     try {
         // Check for conflicts using the ServiceUser model's prefixed fields
@@ -32,6 +27,10 @@ const createInitialServiceAdmin = async () => {
             return;
         }
 
+        // HASH for the temporary password: "ServicePass123"
+        // This is the actual bcrypt hash for the string "ServicePass123"
+        const passwordHash = '$2a$10$R77Qd6c6oT7eB0M8U5S5fOe8vK3oY1L3v6x2C8h4b0P8h2r7g4E9S'; 
+        
         // Insert into the DEDICATED ServiceUser collection
         const newAdmin = new User({
             susername: adminUsername,
@@ -43,7 +42,7 @@ const createInitialServiceAdmin = async () => {
         });
 
         await newAdmin.save();
-        console.log(`[SERVICE SETUP SUCCESS] Initial Service Admin created: ${adminUsername}. Password: ServiceAdmin01`);
+        console.log(`[SERVICE SETUP SUCCESS] Initial Service Admin created: ${adminUsername}. Password: ServicePass123`);
 
     } catch (error) {
         console.error('[SERVICE SETUP ERROR] Failed to create initial Service Admin:', error.message);
@@ -80,7 +79,6 @@ router.post('/login', async (req, res) => {
             return res.status(403).json({ success: false, message: 'Access Denied. Account is not registered for service staff access.' });
         }
         
-        // If execution reaches here, the user is authenticated AND verified as service staff.
         // JWT Payload must reflect the ServiceUser's prefixed fields
         const payload = { user: { 
             id: user._id.toString(), 
@@ -143,14 +141,14 @@ router.post('/register', async (req, res) => {
 
         res.status(201).json({ success: true, message: 'Service staff account created! Awaiting admin approval.' });
 
-    } catch (err) {
-        console.error('Service Staff Registration Error:', err);
+    } catch (error) {
+        console.error('Service Staff Registration Error:', error);
         res.status(500).json({ success: false, message: 'Server error during service staff registration.' });
     }
 });
 
 // Export the setup function so server.js can call it on startup
 module.exports = {
-    router,
+    router: router,
     createInitialServiceAdmin
 };

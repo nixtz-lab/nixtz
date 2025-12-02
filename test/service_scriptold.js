@@ -1,110 +1,162 @@
 /**
  * service_script.js
- * Global utility functions and authentication helpers for ALL service-related pages 
- * (e.g., laundry_staff.html, service_admin.html, laundry_request.html).
- * FIX: This script is fully decoupled from business_dashboard.html checks.
+ * Consolidated script for Laundry Service pages (laundry_auth.html, laundry_staff.html, etc.).
+ * Handles service-specific authentication and access checks.
  */
 
-// --- GLOBAL AUTHENTICATION HELPERS (Dual Token Check) ---
+// --- CORE SERVICE UTILITIES & AUTH CHECKERS ---
+const SERVICE_TOKEN_KEY = 'nixtz_service_auth_token'; // Dedicated service token key
 
-/**
- * Determines which active token key to use for API calls (nixtz_ OR tmt_).
- * Returns the key string ('nixtz_auth_token' or 'tmt_auth_token') or null.
- */
-const getActiveTokenKey = () => {
-    // Priority 1: Check for the new service token
-    if (localStorage.getItem('nixtz_auth_token')) return 'nixtz_auth_token';
-    // Priority 2: Check for the legacy main site token
-    if (localStorage.getItem('tmt_auth_token')) return 'tmt_auth_token';
-    return null;
-};
-window.getActiveTokenKey = getActiveTokenKey; // Expose globally
+// 🚨 CRITICAL FIX: Define the global window.showMessage function here
+window.showMessage = (message, isError = false) => {
+    const box = document.getElementById('message-box');
+    const text = document.getElementById('message-text');
 
-/**
- * Retrieves user data (e.g., role, username) regardless of the token prefix used during login.
- * @param {string} keySuffix - The end of the key (e.g., 'user_role', 'username').
- */
-const getServiceUserData = (keySuffix) => {
-    // Check nixtz_ prefix first
-    let data = localStorage.getItem(`nixtz_${keySuffix}`);
-    if (data) return data;
+    if (!box || !text) {
+        console.warn('Cannot display message: Message box elements not found.');
+        console.error(message);
+        return;
+    }
     
-    // Fallback to tmt_ prefix
-    data = localStorage.getItem(`tmt_${keySuffix}`);
-    return data;
-};
-window.getServiceUserData = getServiceUserData; // Expose globally
+    // Clear previous classes and reset box
+    box.className = 'fixed top-4 right-4 p-4 rounded-lg shadow-2xl z-[9999] opacity-0 transition-opacity duration-300 text-white';
+    box.style.display = 'block';
 
-// --- CORE SERVICE AUTH FUNCTIONS ---
+    // Apply color based on type
+    if (isError) {
+        box.classList.add('bg-red-600');
+    } else {
+        box.classList.add('bg-nixtz-secondary'); // Your success/primary color
+    }
 
-/**
- * Checks if ANY valid token exists.
- */
-const getAuthStatus = () => getActiveTokenKey() !== null;
-window.getAuthStatus = getAuthStatus; // Expose globally
-
-/**
- * Retrieves the user's role (essential for access control).
- */
-const getUserRole = () => getServiceUserData('user_role');
-window.getUserRole = getUserRole; // Expose globally
-
-
-// --- LAUNDRY SERVICE SPECIFIC UTILITIES ---
-
-/**
- * Retrieves the service staff member's department, which is necessary for form routing.
- * This is a placeholder function and assumes you will add an API call here.
- */
-window.getServiceStaffDepartment = async () => {
-    const token = localStorage.getItem(getActiveTokenKey());
-    if (!token) return null;
+    text.textContent = message;
     
-    try {
-        // You MUST create this new backend endpoint to return the staff's department.
-        const response = await fetch(`${window.API_BASE_URL}/api/service/staff/my-department`, { 
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const result = await response.json();
-        
-        if (response.ok && result.success) {
-            return result.department; // Assumes backend returns { success: true, department: "Housekeeping" }
-        }
-        return null;
-    } catch (e) {
-        console.error("Failed to fetch staff department.", e);
-        return null;
+    // Show the box
+    setTimeout(() => {
+        box.classList.remove('opacity-0');
+        box.classList.add('opacity-100');
+    }, 50);
+
+    // Hide after 5 seconds
+    setTimeout(() => {
+        box.classList.remove('opacity-100');
+        box.classList.add('opacity-0');
+        // Delay display: none until transition is complete
+        setTimeout(() => {
+            box.style.display = 'none';
+        }, 300);
+    }, 5000);
+};
+
+
+/**
+ * Returns true if a service token is present.
+ */
+window.getServiceAuthStatus = () => {
+    // Check the dedicated service key
+    return localStorage.getItem(SERVICE_TOKEN_KEY) !== null;
+};
+
+/**
+ * Handles access control for service-specific pages.
+ */
+window.checkServiceAccessAndRedirect = (targetPage) => {
+    if (!window.getServiceAuthStatus()) {
+        // Use the newly defined global function
+        window.showMessage("Access Denied. Please sign in to the service panel.", true);
+        setTimeout(() => {
+            // Redirect to the service login page
+            window.location.href = `service_auth.html?service=true`;
+        }, 500);
+        return false;
+    }
+    // If authenticated, proceed.
+    window.location.href = targetPage;
+    return true;
+};
+
+// Helper to use global showMessage or fallback to console.error
+// NOTE: This helper is now redundant since window.showMessage is defined, but retained for safety.
+const showMsg = (text, isError) => {
+    if (typeof window.showMessage === 'function') {
+        window.showMessage(text, isError); 
+    } else {
+        console.error(`AUTH MSG (${isError ? 'ERROR' : 'INFO'}): ${text}`);
     }
 };
 
-// --- INITIALIZATION CHECK (CRITICALLY FIXED) ---
+// --- SERVICE LOGIN FORM HANDLER ---
 
-document.addEventListener('DOMContentLoaded', () => {
-    // CRITICAL: business_dashboard is NOT in this list, ensuring it's not interfered with.
-    const servicePages = ['laundry_staff', 'service_admin', 'laundry_request'];
-    const currentPageSlug = window.location.pathname.split('/').pop().split('.')[0];
+/**
+ * Handles the service login process (designed to run on service_auth.html).
+ */
+async function handleServiceLogin(e) {
+    e.preventDefault();
     
-    if (servicePages.includes(currentPageSlug)) {
-        
-        // 1. Check Auth Status (If no token, redirect to service login)
-        if (!getAuthStatus()) {
-             window.location.href = 'service_auth.html?service=true';
-             return;
-        }
-        
-        // 2. Check Role Status (If logged in, check if they have valid service privileges)
-        const role = getUserRole();
+    // Assumes the HTML uses IDs: login-email (for ID/Username) and login-password
+    const loginValue = document.getElementById('login-email')?.value.trim();
+    const password = document.getElementById('login-password')?.value.trim();
 
-        // 🚨 CRITICAL FIX: Explicitly deny access for roles that are unauthorized or inactive.
-        if (role === 'pending' || role === 'none' || !role) {
-            window.showMessage("Access Denied. Account pending approval or insufficient privileges.", true);
-            setTimeout(() => {
-                 // Redirect unauthorized users away from service pages
-                 window.location.href = 'business_dashboard.html'; 
-            }, 800);
-            return; // Stop further script execution on this page
-        }
+    if (!loginValue || !password) {
+        return showMsg("Please enter your Employee ID/Username and password.", true);
+    }
+    
+    // Prepare Payload
+    const data = { email: loginValue, password: password };
+    
+    // CRITICAL FIX: Use the dedicated service login route
+    const url = `${window.API_BASE_URL}/api/serviceauth/login`; 
+    
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+
+        const result = await response.json();
         
-        // All other roles (standard, admin, superadmin) are allowed to proceed.
+        if (response.ok && result.success) {
+            
+            // 1. Save session data using the dedicated SERVICE TOKEN KEY
+            localStorage.setItem(SERVICE_TOKEN_KEY, result.token);
+            
+            // 2. ISOLATE PROFILE DATA using nixtz_service_ prefix
+            localStorage.setItem('nixtz_service_username', result.username);
+            localStorage.setItem('nixtz_service_user_role', result.role);
+            localStorage.setItem('nixtz_service_user_membership', result.membership || 'none');
+            
+            showMsg("Service Login successful! Redirecting to Staff Panel.", false);
+            
+            // 3. Redirect to the Staff Panel
+            setTimeout(() => {
+                window.location.href = 'laundry_staff.html';
+            }, 1000);
+
+        } else {
+            showMsg(result.message || 'Access denied. Invalid credentials.', true);
+        }
+
+    } catch (error) {
+        console.error('Service Auth Error:', error);
+        showMsg('Network error. Check server status.', true);
+    }
+}
+window.handleServiceLogin = handleServiceLogin;
+
+
+// --- INITIAL SETUP ---
+document.addEventListener('DOMContentLoaded', () => {
+    const loginForm = document.getElementById('login-form');
+    
+    if (loginForm) {
+        // --- Logic specific to service_auth.html ---
+        const urlParams = new URLSearchParams(window.location.search);
+        const isServiceRedirect = urlParams.get('service') === 'true';
+
+        if (isServiceRedirect) {
+            // Hijack the form to use service login logic
+            loginForm.addEventListener('submit', handleServiceLogin);
+        }
     }
 });

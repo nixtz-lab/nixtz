@@ -3,7 +3,7 @@
  * Handles the authentication process exclusively for service staff using the dedicated service_auth.html page.
  */
 
-// **CRITICAL FIX:** The duplicate declaration of SERVICE_TOKEN_KEY has been removed here.
+// **CRITICAL FIX:** Removed the duplicate declaration of SERVICE_TOKEN_KEY.
 // This constant must ONLY be defined in the global utility script (service_script.js).
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -11,8 +11,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Check if the form is present before attaching listeners
     if (loginForm) {
-        // We attach the handleServiceLogin handler to the form element itself
-        // to prevent conflicts with other auth scripts if they were loaded.
         loginForm.addEventListener('submit', handleServiceLogin); 
     }
     
@@ -48,7 +46,6 @@ window.togglePasswordVisibility = function() {
 async function handleServiceLogin(e) {
     e.preventDefault(); 
     
-    // Renamed 'email' to 'loginValue' for clarity (it handles Employee ID or Email)
     const loginValue = document.getElementById('login-email').value.trim(); 
     const password = document.getElementById('login-password').value.trim();
 
@@ -58,7 +55,6 @@ async function handleServiceLogin(e) {
 
     try {
         // **CRITICAL FIX:** Using a relative path to call the new, dedicated service login endpoint.
-        // This resolves the /undefined/ path error.
         const response = await fetch('/api/serviceauth/login', {
             method: 'POST', 
             headers: { 'Content-Type': 'application/json' }, 
@@ -68,8 +64,6 @@ async function handleServiceLogin(e) {
         const data = await response.json(); 
 
         if (response.ok && data.success) {
-            
-            // --- CRITICAL FIX: Use the dedicated service key and prefixed profile data ---
             
             // 1. Save dedicated service token
             localStorage.setItem(SERVICE_TOKEN_KEY, data.token); 
@@ -90,7 +84,6 @@ async function handleServiceLogin(e) {
             } else {
                 // Deny access if the user is only 'pending' or a restricted role
                 if (typeof window.handleLogout === 'function') {
-                    // Here we ensure the new service key is cleared if access is denied.
                     localStorage.removeItem(SERVICE_TOKEN_KEY); 
                 }
                 window.showMessage("Access Denied: Your account role does not permit service access.", true); 
@@ -109,7 +102,6 @@ async function handleServiceLogin(e) {
  * Handles the forgot password prompt (reused from auth_script.js logic).
  */
 async function handleForgotPassword() {
-    // Note: This is left calling the core reset route, as password reset functionality is usually universal.
     const email = prompt("Enter your email to receive a reset link:"); 
     if (!email) return; 
 
