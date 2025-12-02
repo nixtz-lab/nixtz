@@ -85,6 +85,57 @@ const showMsg = (text, isError) => {
     }
 };
 
+// --- BANNER DISPLAY LOGIC (NEW FEATURE) ---
+
+/**
+ * Function to update the header banner based on the isolated service user session.
+ * This runs on pages like laundry_staff.html to show username and admin buttons.
+ */
+function updateServiceBanner() {
+    // 1. Get isolated data from local storage
+    const token = localStorage.getItem(SERVICE_TOKEN_KEY);
+    const username = localStorage.getItem('nixtz_service_username'); 
+    const role = localStorage.getItem('nixtz_service_user_role'); // Reads 'admin', 'standard', etc.
+
+    // --- ASSUMED IDs on your laundry_staff.html page ---
+    // You MUST ensure these IDs exist in your HTML banner structure
+    const usernameDisplayElement = document.getElementById('username-display');
+    const userIconElement = document.getElementById('user-icon-display'); 
+    const adminButton = document.getElementById('admin-button'); 
+    // ----------------------------------------------------
+
+    if (token && username && role) {
+        // A. Show Username
+        if (usernameDisplayElement) {
+            usernameDisplayElement.textContent = username;
+            usernameDisplayElement.style.display = 'inline-block'; 
+        }
+        if (userIconElement) {
+             userIconElement.style.display = 'block'; 
+        }
+        
+        // B. Check Role and Conditionally Show Admin Button
+        const isAdmin = ['admin', 'superadmin'].includes(role);
+        
+        if (adminButton) {
+            if (isAdmin) {
+                // Show the Admin button for authorized users
+                adminButton.style.display = 'block';
+            } else {
+                // Ensure the button is hidden for standard staff
+                adminButton.style.display = 'none'; 
+            }
+        }
+    } else {
+        // If not logged in, ensure all custom elements are hidden or show a default state.
+        if (adminButton) adminButton.style.display = 'none';
+        if (usernameDisplayElement) usernameDisplayElement.textContent = 'Guest'; 
+        if (userIconElement) userIconElement.style.display = 'none';
+    }
+}
+window.updateServiceBanner = updateServiceBanner;
+
+
 // --- SERVICE LOGIN FORM HANDLER ---
 
 /**
@@ -158,4 +209,7 @@ document.addEventListener('DOMContentLoaded', () => {
             loginForm.addEventListener('submit', handleServiceLogin); 
         }
     }
+    
+    // 🚨 RUN BANNER UPDATE on every page load
+    updateServiceBanner(); 
 });
