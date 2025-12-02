@@ -30,7 +30,6 @@
 </head>
 <body class="bg-nixtz-bg font-sans min-h-screen flex flex-col text-white">
 
-    <!-- Header START -->
     <header class="bg-nixtz-bg shadow-2xl sticky top-0 z-50 border-b border-gray-800">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
             <div class="flex items-center space-x-4">
@@ -43,27 +42,32 @@
                     >
                     <span class="text-xl font-bold text-white ml-2">Laundry Service</span>
                 </a>
-                <a href="laundry_staff.html" class="bg-nixtz-secondary hover:bg-[#0da070] text-white font-semibold py-1.5 px-4 rounded-full shadow-lg transition duration-300 text-sm border border-gray-700">
+                
+                <a href="laundry_staff.html" id="staff-panel-button" style="display: none;" 
+                   class="bg-nixtz-secondary hover:bg-[#0da070] text-white font-semibold py-1.5 px-4 rounded-full shadow-lg transition duration-300 text-sm border border-gray-700">
                     Staff Panel
                 </a>
             </div>
             
-            <!-- AUTH UI ELEMENTS: Added containers required by script(6).js -->
             <div class="flex items-center space-x-4">
-                <div id="auth-buttons-container" class="flex items-center space-x-4 sm:space-x-6">
+                
+                <div id="auth-buttons-container" class="flex items-center space-x-4 sm:space-x-6 hidden">
                     <a href="service_auth.html" class="bg-gray-800 hover:bg-gray-700 text-white font-bold py-1.5 px-4 rounded-full shadow-lg transition duration-300 transform hover:scale-105 border border-gray-700 text-sm">
                         Login
                     </a>
                 </div>
                 
                 <div id="user-menu-container" class="group relative flex items-center space-x-2 hidden"> 
-                    <button 
-                        id="nav-user-button"
-                        class="w-10 h-10 bg-nixtz-primary rounded-full flex items-center justify-center font-bold text-white hover:scale-105 transition duration-200"
-                        title="User Settings">
-                        <i data-lucide="user" class="w-6 h-6"></i>
-                    </button>
-                    <span id="username-display" class="font-semibold text-white hidden sm:inline">User</span>
+                    
+                    <div id="user-icon-display" class="flex items-center space-x-2">
+                        <span id="username-display" class="font-semibold text-white hidden sm:inline"></span>
+                        <button 
+                            id="nav-user-button"
+                            class="w-10 h-10 bg-nixtz-primary rounded-full flex items-center justify-center font-bold text-white hover:scale-105 transition duration-200"
+                            title="User Settings">
+                            <i data-lucide="user" class="w-6 h-6"></i>
+                        </button>
+                    </div>
 
                     <div id="user-dropdown" class="absolute right-0 top-full mt-3 w-64 bg-gray-800 rounded-xl shadow-3xl-dark border border-gray-700/50 p-4 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 origin-top-right scale-95 group-hover:scale-100 z-50">
                         <p class="text-sm font-medium text-white mb-3 border-b border-gray-700 pb-2">Account: <span id="user-initials" class="font-normal text-nixtz-secondary"></span></p>
@@ -78,12 +82,8 @@
                     </div>
                 </div>
             </div>
-            <!-- AUTH UI ELEMENTS END -->
-
-        </div>
+            </div>
     </header>
-    <!-- Header END -->
-
     <div id="message-box" class="fixed top-4 right-4 bg-nixtz-primary text-white p-4 rounded-lg shadow-2xl z-[9999] hidden opacity-0 transition-opacity duration-300">
         <p id="message-text" class="font-semibold"></p>
     </div>
@@ -92,7 +92,6 @@
         <h1 class="text-3xl font-extrabold mb-8 text-center text-nixtz-secondary">Submit New Laundry Request</h1>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <!-- Request Form (Col 1) -->
             <div class="lg:col-span-1 bg-nixtz-card rounded-xl shadow-2xl p-6 border border-gray-700 h-fit">
                 <h2 class="text-xl font-bold mb-4 text-white">Request Details</h2>
                 <form id="laundry-request-form" class="space-y-4">
@@ -111,8 +110,7 @@
 
                     <h3 class="text-lg font-bold pt-4 pb-2 border-t border-gray-700 mt-4">Items for Cleaning</h3>
                     <div id="items-container" class="space-y-3">
-                        <!-- Item inputs will be appended here -->
-                    </div>
+                        </div>
                     <button type="button" id="add-item-btn" class="flex items-center text-nixtz-primary hover:text-white transition text-sm font-semibold">
                         <i data-lucide="plus-circle" class="w-4 h-4 mr-1"></i> Add Another Item Type
                     </button>
@@ -123,7 +121,6 @@
                 </form>
             </div>
 
-            <!-- Request History (Cols 2 & 3) -->
             <div class="lg:col-span-2 bg-nixtz-card rounded-xl shadow-2xl p-6 border border-gray-700">
                 <h2 class="text-xl font-bold mb-4 text-white">Your Request History</h2>
                 <div id="request-history-list" class="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
@@ -133,9 +130,20 @@
         </div>
     </main>
     
-    <!-- Scripts -->
     <script src="service_script.js"></script>
     <script src="auth_script.js"></script> 
     <script src="laundry_request.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            
+            // This is the function responsible for reading LocalStorage and updating the banner.
+            // It needs to be run after the core auth scripts load.
+            if (typeof window.checkAuthStatusAndDisplay === 'function') {
+                window.checkAuthStatusAndDisplay(); 
+            }
+        });
+    </script>
 </body>
 </html>
