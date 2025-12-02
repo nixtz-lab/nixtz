@@ -61,7 +61,7 @@ connectDB(); // Initial connection attempt
 // 2. SCHEMAS (CORE MODULES & NEW SERVICE MODULES)
 // ===================================================================
 
-// Core User & Config (Original, Untouched)
+// Core User & Config
 const UserSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true, trim: true },
     email: { type: String, required: true, unique: true, trim: true, lowercase: true },
@@ -74,19 +74,6 @@ const UserSchema = new mongoose.Schema({
 });
 const User = mongoose.model('User', UserSchema);
 
-// --- NEW DEDICATED SERVICE USER SCHEMA (Physical Separation) ---
-const ServiceUserSchema = new mongoose.Schema({
-    // Prefixed fields are now part of the independent ServiceUser collection
-    susername: { type: String, required: true, unique: true, trim: true },
-    semail: { type: String, required: true, unique: true, trim: true, lowercase: true },
-    spasswordHash: { type: String, required: true },
-    srole: { type: String, default: 'pending', enum: ['pending', 'standard', 'admin', 'superadmin'] }, 
-    smembership: { type: String, default: 'none', enum: ['none', 'standard', 'platinum', 'vip'] },
-    spageAccess: { type: [String], default: [] },
-    createdAt: { type: Date, default: Date.now },
-});
-const ServiceUser = mongoose.model('ServiceUser', ServiceUserSchema); // <-- NEW MODEL
-
 const MembershipConfigSchema = new mongoose.Schema({
     level: { type: String, required: true, unique: true, enum: ['standard', 'platinum', 'vip'] },
     pages: { type: [String], default: [] },
@@ -94,7 +81,7 @@ const MembershipConfigSchema = new mongoose.Schema({
 });
 const MembershipConfig = mongoose.model('MembershipConfig', MembershipConfigSchema);
 
-// Budget Schemas (Original, link to User model)
+// Budget Schemas
 const BudgetTransactionSchema = new mongoose.Schema({
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     description: { type: String, required: true, trim: true },
@@ -114,7 +101,7 @@ BudgetProjectionSchema.index({ user: 1, monthYear: 1 }, { unique: true });
 const BudgetProjection = mongoose.model('BudgetProjection', BudgetProjectionSchema);
 
 
-// Staff & Roster Schemas (Original, link to User model)
+// Staff & Roster Schemas
 const StaffProfileSchema = new mongoose.Schema({
     name: { type: String, required: true, unique: true, trim: true },
     employeeId: { type: String, unique: true, required: true, trim: true },
@@ -159,8 +146,7 @@ const LaundryItemSchema = new mongoose.Schema({
 }, { _id: false }); // Do not create _id for sub-documents
 
 const LaundryRequestSchema = new mongoose.Schema({
-    // CRITICAL CHANGE: Link laundry requests to ServiceUser for processing staff
-    requesterId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // Requestors are still core Users
+    requesterId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     requesterUsername: { type: String, required: true }, // Store username directly for lookup
     department: { type: String, required: true, trim: true },
     contactExt: { type: String, required: true, trim: true },
@@ -168,13 +154,12 @@ const LaundryRequestSchema = new mongoose.Schema({
     items: [LaundryItemSchema],
     requestedAt: { type: Date, default: Date.now },
     status: { type: String, default: 'Pending Pickup', enum: ['Pending Pickup', 'Picked Up', 'In Progress', 'Ready for Delivery', 'Completed', 'Cancelled'] },
-    processedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'ServiceUser', required: false } // <-- CRITICAL: ProcessedBy is ServiceUser
+    processedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false }
 });
 const LaundryRequest = mongoose.model('LaundryRequest', LaundryRequestSchema);
 
 const ServiceStaffAccessSchema = new mongoose.Schema({
-    // CRITICAL CHANGE: Link staff details to the dedicated ServiceUser model
-    suser: { type: mongoose.Schema.Types.ObjectId, ref: 'ServiceUser', required: true, unique: true }, // <-- CRITICAL: Link to ServiceUser
+    suser: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, unique: true }, // Link to core User document
     sname: { type: String, required: true },
     semployeeId: { type: String, required: true, unique: true },
     sdepartment: { type: String, required: true },

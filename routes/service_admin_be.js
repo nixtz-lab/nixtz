@@ -5,19 +5,19 @@ const router = express.Router();
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs'); 
 
-// --- CRITICAL FIX: Use helper functions to safely access models inside route handlers ---
-// The models are registered globally as 'User' and 'ServiceStaffAccess'
-const getSUserModel = () => mongoose.model('User');
+// --- CRITICAL FIX: Use helper functions to safely access DEDICATED Service models ---
+// The models are registered globally as 'ServiceUser' and 'ServiceStaffAccess'
+const getSUserModel = () => mongoose.model('ServiceUser'); // <-- NOW POINTS TO DEDICATED USER TABLE
 const getServiceStaffAccessModel = () => mongoose.model('ServiceStaffAccess');
 
 /**
  * POST /api/service/admin/create-staff-v2 - Create a new service staff user
- * Creates a linked User account for login and a ServiceStaffAccess record.
+ * Creates a linked ServiceUser account for login and a ServiceStaffAccess record.
  */
 router.post('/create-staff-v2', async (req, res) => {
     
     // 🚨 FIX: Model access delayed and aliased
-    const SUser = getSUserModel(); 
+    const SUser = getSUserModel(); // ServiceUser Model
     const ServiceStaffAccess = getServiceStaffAccessModel(); 
 
     // Destructure prefixed local variables from req.body
@@ -29,13 +29,13 @@ router.post('/create-staff-v2', async (req, res) => {
     }
     
     try {
-        // 2. Prepare unique identifiers for the core User account
+        // 2. Prepare unique identifiers for the ServiceUser account
         const susername = semployeeId; // Using unique Employee ID as username for login
         const semail = `${semployeeId.toLowerCase()}@nixtz.service.temp`; // Placeholder email
         
-        // Check for conflicts in the core User collection using the ORIGINAL NON-PREFIXED FIELD NAMES
-        let userExists = await SUser.findOne({ $or: [{ email: semail }, { username: susername }] }); 
-        if (userExists) return res.status(400).json({ success: false, message: 'Employee ID is already registered as a core user.' });
+        // Check for conflicts in the DEDICATED ServiceUser collection
+        let userExists = await SUser.findOne({ $or: [{ semail: semail }, { susername: susername }] }); 
+        if (userExists) return res.status(400).json({ success: false, message: 'Employee ID is already registered as a service user.' });
         
         // Check for conflicts in the ServiceStaffAccess collection
         let serviceStaffExists = await ServiceStaffAccess.findOne({ semployeeId });
@@ -45,21 +45,21 @@ router.post('/create-staff-v2', async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const passwordHash = await bcrypt.hash(spassword, salt); 
 
-        // 4. Create the core User account (using SUser model)
+        // 4. Create the DEDICATED ServiceUser account
         const newSUser = new SUser({
-            // MAPPING FIX: Map prefixed local variables to NON-prefixed CORE User schema fields
-            username: susername, 
-            email: semail.toLowerCase(), 
-            passwordHash: passwordHash, 
-            role: srole, 
-            membership: 'none', 
-            pageAccess: ['laundry_request', 'laundry_staff'] 
+            // MAPPING: Use the prefixed field names for the DEDICATED ServiceUser schema
+            susername: susername, 
+            semail: semail.toLowerCase(), 
+            spasswordHash: passwordHash, // Storing the hashed password
+            srole: srole, 
+            smembership: 'none', 
+            spageAccess: ['laundry_request', 'laundry_staff'] 
         });
         await newSUser.save();
         
         // 5. Create the linked ServiceStaffAccess document
         const newStaffAccess = new ServiceStaffAccess({
-             // MAPPING: Use the prefixed field names for the ServiceStaffAccess model schema
+             // suser links to the new ServiceUser's _id
              suser: newSUser._id,
              sname: sname, 
              semployeeId: semployeeId, 
@@ -86,8 +86,8 @@ router.get('/staff-list', async (req, res) => {
     
     try {
         const staffList = await ServiceStaffAccess.find({})
-            // CRITICAL: Populate fields must use the original core User fields to select
-            .populate('suser', 'username role') 
+            // CRITICAL: Populate fields now selects prefixed fields from the DEDICATED ServiceUser model
+            .populate('suser', 'susername srole') 
             // Select must use the prefixed field names
             .select('sname semployeeId sdepartment serviceScope'); 
             
