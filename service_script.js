@@ -95,42 +95,49 @@ function updateServiceBanner() {
     // 1. Get isolated data from local storage
     const token = localStorage.getItem(SERVICE_TOKEN_KEY);
     const username = localStorage.getItem('nixtz_service_username'); 
-    const role = localStorage.getItem('nixtz_service_user_role'); // Reads 'admin', 'standard', etc.
-
-    // --- ASSUMED IDs on your laundry_staff.html page ---
-    // You MUST ensure these IDs exist in your HTML banner structure
+    const role = localStorage.getItem('nixtz_service_user_role'); 
+    
+    // --- ASSUMED IDs on your HTML pages ---
     const usernameDisplayElement = document.getElementById('username-display');
     const userIconElement = document.getElementById('user-icon-display'); 
     const adminButton = document.getElementById('admin-button'); 
+    const logoutButton = document.getElementById('logout-button');
+    const authButtonsContainer = document.getElementById('auth-buttons-container');
     // ----------------------------------------------------
 
     if (token && username && role) {
-        // A. Show Username
+        // Logged In: Hide default buttons, show user data
+        if (authButtonsContainer) authButtonsContainer.style.display = 'none';
+        
+        // A. Show Username and ID
         if (usernameDisplayElement) {
-            usernameDisplayElement.textContent = username;
+            // Display: Username (Role)
+            const displayRole = role.charAt(0).toUpperCase() + role.slice(1);
+            usernameDisplayElement.innerHTML = `${username} (<b>${displayRole}</b>)`; 
             usernameDisplayElement.style.display = 'inline-block'; 
         }
         if (userIconElement) {
-             userIconElement.style.display = 'block'; 
+             userIconElement.style.display = 'flex'; // Use flex or block to make containers visible
         }
+        if (logoutButton) logoutButton.style.display = 'block'; // Show logout button
+
         
-        // B. Check Role and Conditionally Show Admin Button
+        // B. Check Role and Conditionally Show Admin Panel Button
         const isAdmin = ['admin', 'superadmin'].includes(role);
         
         if (adminButton) {
             if (isAdmin) {
-                // Show the Admin button for authorized users
                 adminButton.style.display = 'block';
             } else {
-                // Ensure the button is hidden for standard staff
                 adminButton.style.display = 'none'; 
             }
         }
     } else {
-        // If not logged in, ensure all custom elements are hidden or show a default state.
-        if (adminButton) adminButton.style.display = 'none';
-        if (usernameDisplayElement) usernameDisplayElement.textContent = 'Guest'; 
+        // Not Logged In: Show login buttons, hide user data
+        if (authButtonsContainer) authButtonsContainer.style.display = 'flex';
         if (userIconElement) userIconElement.style.display = 'none';
+        if (adminButton) adminButton.style.display = 'none';
+        if (logoutButton) logoutButton.style.display = 'none';
     }
 }
 window.updateServiceBanner = updateServiceBanner;
@@ -193,6 +200,15 @@ async function handleServiceLogin(e) {
     }
 }
 window.handleServiceLogin = handleServiceLogin;
+
+// Helper function for service page logout
+window.handleServiceLogout = () => {
+    localStorage.removeItem(SERVICE_TOKEN_KEY);
+    localStorage.removeItem('nixtz_service_username');
+    localStorage.removeItem('nixtz_service_user_role');
+    localStorage.removeItem('nixtz_service_user_membership');
+    window.location.href = 'service_auth.html';
+};
 
 
 // --- INITIAL SETUP ---

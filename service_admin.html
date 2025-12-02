@@ -63,6 +63,11 @@
                     Go to Staff Panel
                 </a>
                 
+                <button onclick="window.handleServiceLogout()" id="logout-button" style="display: none;"
+                         class="bg-red-700 hover:bg-red-600 text-white font-semibold py-1.5 px-4 rounded-full shadow-lg transition duration-300 text-sm border border-gray-700">
+                    Logout
+                </button>
+                
             </div>
             </div>
     </header>
@@ -96,6 +101,7 @@
                 
             </nav>
         </aside>
+        
         <main id="admin-main-content" class="flex-grow p-4 md:p-8 w-full max-w-5xl">
             
             <h1 class="text-3xl font-extrabold mb-8 text-nixtz-secondary" id="content-title">Laundry Service Management Dashboard</h1>
@@ -246,7 +252,10 @@
                 if (typeof fetchAnalytics === 'function') fetchAnalytics();
                 if (typeof fetchAllRequests === 'function') fetchAllRequests();
             }
-            // Add logic here to fetch active users if viewName === 'active-users'
+            // If switching to Active Users, fetch the list
+            if (viewName === 'active-users') {
+                 if (typeof fetchActiveServiceUsers === 'function') fetchActiveServiceUsers();
+            }
         };
 
         // Initial setup on load
