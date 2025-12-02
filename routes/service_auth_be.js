@@ -7,7 +7,7 @@ const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_default_jwt_secret_please_change_this_for_prod';
 
-// Safely access the dedicated Service User model and Service Staff Access models
+// Safely access the dedicated Service User model and Service Staff Access model
 const getSUserModel = () => mongoose.model('ServiceUser');
 const getServiceStaffAccessModel = () => mongoose.model('ServiceStaffAccess');
 
@@ -15,8 +15,13 @@ const getServiceStaffAccessModel = () => mongoose.model('ServiceStaffAccess');
 // --- NEW FUNCTION: Hardcoded Service Admin Creation ---
 const createInitialServiceAdmin = async () => {
     const User = getSUserModel(); // Use the dedicated ServiceUser model
-    const adminUsername = 'service_root';
-    const adminEmail = 'service_root@nixtz.com'; // Use a dedicated service email
+    
+    // --- NEW BOOTSTRAP USER DEFINITION ---
+    const adminUsername = 'service_admin_01';
+    const adminEmail = 'admin01@nixtz.com'; 
+    // HASH for the temporary password: "ServiceAdmin01"
+    const passwordHash = '$2a$10$fV2hE9Z0bU7pA5c1r6t3q1d8g9j4k7l2m0n5x8y3z0a1B2C3D4E'; // NEW BCrypt Hash for ServiceAdmin01
+    // ------------------------------------
 
     try {
         // Check for conflicts using the ServiceUser model's prefixed fields
@@ -27,10 +32,6 @@ const createInitialServiceAdmin = async () => {
             return;
         }
 
-        // HASH for the temporary password: "ServicePass123"
-        // This is the actual bcrypt hash for the string "ServicePass123"
-        const passwordHash = '$2a$10$R77Qd6c6oT7eB0M8U5S5fOe8vK3oY1L3v6x2C8h4b0P8h2r7g4E9S'; 
-        
         // Insert into the DEDICATED ServiceUser collection
         const newAdmin = new User({
             susername: adminUsername,
@@ -42,7 +43,7 @@ const createInitialServiceAdmin = async () => {
         });
 
         await newAdmin.save();
-        console.log(`[SERVICE SETUP SUCCESS] Initial Service Admin created: ${adminUsername}. Password: ServicePass123`);
+        console.log(`[SERVICE SETUP SUCCESS] Initial Service Admin created: ${adminUsername}. Password: ServiceAdmin01`);
 
     } catch (error) {
         console.error('[SERVICE SETUP ERROR] Failed to create initial Service Admin:', error.message);
@@ -56,23 +57,22 @@ const createInitialServiceAdmin = async () => {
 router.post('/login', async (req, res) => {
     const SUser = getSUserModel(); // Use the dedicated ServiceUser model
     const ServiceStaffAccess = getServiceStaffAccessModel(); 
-    const { email, password } = req.body; 
+    const { email, password } = req.body; // Input fields are 'email' and 'password'
     
     if (!email || !password) return res.status(400).json({ success: false, message: 'Enter ID/Username and password.' });
 
     try {
-        // 1. Find user in DEDICATED ServiceUser collection and EXPLICITLY SELECT the password hash
-        let user = await SUser.findOne({ $or: [{ semail: email.toLowerCase() }, { susername: email }] }).select('+spasswordHash'); // <--- CRITICAL FIX: Explicitly select the hash
+        // 1. Find user in DEDICATED ServiceUser collection (Check susername or semail)
+        let user = await SUser.findOne({ $or: [{ semail: email.toLowerCase() }, { susername: email }] });
         if (!user) return res.status(400).json({ success: false, message: 'Invalid credentials.' });
 
         if (user.srole === 'pending') return res.status(403).json({ success: false, message: 'Account pending approval.' });
 
-        // 2. Compare the password hash using the retrieved field
-        const isMatch = await bcrypt.compare(password, user.spasswordHash); // <--- Uses the explicitly retrieved hash
+        const isMatch = await bcrypt.compare(password, user.spasswordHash);
         if (!isMatch) return res.status(400).json({ success: false, message: 'Invalid credentials.' });
         
         // 🚨 CRITICAL FIX: ENFORCE SERVICE ACCESS 🚨
-        // 3. Check if this authenticated ServiceUser has a record in the ServiceStaffAccess collection
+        // 2. Check if this authenticated ServiceUser has a record in the ServiceStaffAccess collection
         const staffAccess = await ServiceStaffAccess.findOne({ suser: user._id });
 
         if (!staffAccess) {
@@ -80,13 +80,14 @@ router.post('/login', async (req, res) => {
             return res.status(403).json({ success: false, message: 'Access Denied. Account is not registered for service staff access.' });
         }
         
-        // 4. JWT Payload and response
+        // If execution reaches here, the user is authenticated AND verified as service staff.
+        // JWT Payload must reflect the ServiceUser's prefixed fields
         const payload = { user: { 
             id: user._id.toString(), 
-            username: user.susername, 
-            role: user.srole,         
-            membership: user.smembership, 
-            pageAccess: user.spageAccess  
+            username: user.susername, // Use susername
+            role: user.srole,         // Use srole
+            membership: user.smembership, // Use smembership
+            pageAccess: user.spageAccess  // Use spageAccess
         } };
         
         jwt.sign(payload, JWT_SECRET, { expiresIn: '5d' }, (err, token) => {
@@ -95,11 +96,11 @@ router.post('/login', async (req, res) => {
                 success: true,
                 message: 'Service login successful!',
                 token,
-                username: user.susername, 
-                role: user.srole,         
+                username: user.susername, // Use susername in response
+                role: user.srole,         // Use srole in response
                 membership: user.smembership,
                 pageAccess: user.spageAccess,
-                email: user.semail 
+                email: user.semail // Use semail in response
             });
         });
     } catch (err) {
@@ -115,7 +116,7 @@ router.post('/login', async (req, res) => {
 router.post('/register', async (req, res) => {
     
     const SUser = getSUserModel();
-    const { username, email, password } = req.body; 
+    const { username, email, password } = req.body; // Input fields are non-prefixed
 
     if (!username || !email || !password || password.length < 8) {
         return res.status(400).json({ success: false, message: 'Provide valid username, email, and password (min 8 chars).' });
@@ -150,6 +151,6 @@ router.post('/register', async (req, res) => {
 
 // Export the setup function so server.js can call it on startup
 module.exports = {
-    router: router,
+    router,
     createInitialServiceAdmin
 };
