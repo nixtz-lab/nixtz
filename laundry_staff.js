@@ -1,16 +1,40 @@
 /**
  * laundry_staff.js
  * Handles the logic for the staff-facing laundry management panel.
+ * Contains all application logic and UI wiring for the page.
  */
 
+// Define key locally for API calls
+const SERVICE_TOKEN_KEY = 'nixtz_service_auth_token'; 
+
 document.addEventListener('DOMContentLoaded', () => {
-    if (typeof lucide !== 'undefined') lucide.createIcons();
+    // Ensure Lucide icons are initialized
+    createLucideIcons(); 
+    
+    // Run initial access check and data load
     initLaundryStaffPage();
+    
+    // Run the banner display logic
+    updateServiceBanner();
+
+    // Attach global listener for outside clicks to close dropdown
+    document.addEventListener('click', closeDropdownOnOutsideClick);
 });
 
-const SERVICE_TOKEN_KEY = 'nixtz_service_auth_token'; // Define key locally for API calls
+// Helper function to create Lucide icons if they exist globally
+function createLucideIcons() {
+    if (typeof lucide !== 'undefined' && typeof lucide.createIcons === 'function') {
+        lucide.createIcons();
+    }
+}
 
-// --- Core Application Logic ---
+// ------------------------------------
+// CORE APPLICATION LOGIC & UTILITIES
+// ------------------------------------
+
+// NOTE: This logic is based on the functions required by laundry_staff.html and its dependencies.
+// It assumes window.handleServiceLogout and window.showMessage are defined elsewhere 
+// (e.g., in service_script.js, which must load before this file).
 
 function getStatusColor(status) {
     switch (status) {
@@ -34,14 +58,94 @@ function getNextStatus(currentStatus) {
     }
 }
 
+
 // ------------------------------------
-// 1. STATUS UPDATE
+// 1. DYNAMIC UI & BANNER LOGIC (MOVED FROM HTML/service_script.js)
+// ------------------------------------
+
+/**
+ * Toggles visibility of the user dropdown menu when the banner button is clicked.
+ */
+function toggleUserDropdown() {
+    const dropdown = document.getElementById('user-dropdown');
+    if (dropdown) {
+        // Toggles visibility
+        dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+    }
+}
+window.toggleUserDropdown = toggleUserDropdown; // Expose globally for HTML onclick
+
+
+/**
+ * Closes the user dropdown if the click occurred outside the container.
+ */
+function closeDropdownOnOutsideClick(event) {
+    const userContainer = document.getElementById('user-display-container');
+    const dropdown = document.getElementById('user-dropdown');
+    
+    if (dropdown && userContainer && dropdown.style.display === 'block' && !userContainer.contains(event.target)) {
+        dropdown.style.display = 'none';
+    }
+}
+
+
+/**
+ * Updates the header banner display based on isolated service session data.
+ */
+function updateServiceBanner() {
+    const token = localStorage.getItem(SERVICE_TOKEN_KEY);
+    const username = localStorage.getItem('nixtz_service_username'); 
+    const role = localStorage.getItem('nixtz_service_user_role'); 
+    
+    // --- Target HTML Elements ---
+    const userDisplayContainer = document.getElementById('user-display-container');
+    const usernameDisplayElement = document.getElementById('username-display');
+    const adminButton = document.getElementById('admin-button'); 
+    const defaultLogoutButton = document.getElementById('default-logout-button');
+
+    if (token && username && role) {
+        // Logged In: Show user container, hide default logout button
+        if (defaultLogoutButton) defaultLogoutButton.style.display = 'none';
+        if (userDisplayContainer) userDisplayContainer.style.display = 'flex';
+        
+        // A. Show Username and Role (Inner Content)
+        if (usernameDisplayElement) {
+            // Display: Username/ID (Role)
+            const displayRole = role.charAt(0).toUpperCase() + role.slice(1);
+            usernameDisplayElement.innerHTML = `${username} (<b>${displayRole}</b>)`; 
+        }
+        
+        // B. Check Role and Conditionally Show Admin Panel Button
+        const isAdmin = ['admin', 'superadmin'].includes(role);
+        
+        if (adminButton) {
+            if (isAdmin) {
+                adminButton.style.display = 'block';
+            } else {
+                adminButton.style.display = 'none'; 
+            }
+        }
+    } else {
+        // Not Logged In: Hide user menus, show default logout button (if needed, or redirect)
+        if (userDisplayContainer) userDisplayContainer.style.display = 'none';
+        if (adminButton) adminButton.style.display = 'none';
+        if (defaultLogoutButton) defaultLogoutButton.style.display = 'block';
+    }
+}
+window.updateServiceBanner = updateServiceBanner; // Expose globally for manual calls/other pages
+
+
+// ------------------------------------
+// 2. STATUS UPDATE (APP LOGIC)
 // ------------------------------------
 async function updateRequestStatus(requestId, newStatus) {
     const token = localStorage.getItem(SERVICE_TOKEN_KEY); // Use SERVICE KEY
     if (!token) {
          window.showMessage("Authentication failed. Redirecting to login.", true);
-         window.checkServiceAccessAndRedirect('laundry_staff.html');
+         // Use the specific service redirect function (assumed to be in service_script.js)
+         if (typeof window.checkServiceAccessAndRedirect === 'function') {
+            window.checkServiceAccessAndRedirect('laundry_staff.html');
+         }
          return;
     }
 
@@ -69,9 +173,11 @@ async function updateRequestStatus(requestId, newStatus) {
         } else {
             if (response.status === 401 || response.status === 403) {
                  window.showMessage("Session expired or access denied. Redirecting to login.", true);
-                 // CRITICAL: Clear potentially stale token and use service redirect
-                 if (typeof window.handleLogout === 'function') window.handleLogout(); 
-                 window.checkServiceAccessAndRedirect('laundry_staff.html');
+                 // CRITICAL FIX: Use the service specific logout function
+                 if (typeof window.handleServiceLogout === 'function') window.handleServiceLogout(); 
+                 if (typeof window.checkServiceAccessAndRedirect === 'function') {
+                    window.checkServiceAccessAndRedirect('laundry_staff.html');
+                 }
                  return;
             }
             window.showMessage(result.message || 'Failed to update request status.', true);
@@ -85,7 +191,7 @@ async function updateRequestStatus(requestId, newStatus) {
 window.updateRequestStatus = updateRequestStatus; // Expose globally for HTML onclick
 
 // ------------------------------------
-// 2. REQUEST DISPLAY
+// 3. REQUEST DISPLAY (APP LOGIC)
 // ------------------------------------
 function renderRequestCard(request) {
     const nextStatus = getNextStatus(request.status);
@@ -150,7 +256,7 @@ function renderRequestCard(request) {
 }
 
 // ------------------------------------
-// 3. DATA FETCHING
+// 4. DATA FETCHING (APP LOGIC)
 // ------------------------------------
 async function loadOutstandingRequests() {
     const listContainer = document.getElementById('requests-list');
@@ -161,7 +267,9 @@ async function loadOutstandingRequests() {
     if (!token) {
         // Use the new service check and exit
         listContainer.innerHTML = '<p class="text-red-400 text-center py-8">Authentication token missing. Redirecting...</p>';
-        window.checkServiceAccessAndRedirect('laundry_staff.html');
+        if (typeof window.checkServiceAccessAndRedirect === 'function') {
+            window.checkServiceAccessAndRedirect('laundry_staff.html');
+        }
         return; 
     }
 
@@ -181,8 +289,11 @@ async function loadOutstandingRequests() {
         } else {
              if (response.status === 401 || response.status === 403) {
                  window.showMessage("Session expired or access denied. Redirecting to login.", true);
-                 if (typeof window.handleLogout === 'function') window.handleLogout(); 
-                 window.checkServiceAccessAndRedirect('laundry_staff.html');
+                 // CRITICAL FIX: Use the service specific logout function
+                 if (typeof window.handleServiceLogout === 'function') window.handleServiceLogout(); 
+                 if (typeof window.checkServiceAccessAndRedirect === 'function') {
+                    window.checkServiceAccessAndRedirect('laundry_staff.html');
+                 }
                  return;
             }
             window.showMessage(result.message || 'Failed to load requests.', true);
@@ -199,7 +310,7 @@ async function loadOutstandingRequests() {
 }
 
 // ------------------------------------
-// 4. UTILITY (Custom Confirm Modal)
+// 5. UTILITY (Custom Confirm Modal) (MOVED FROM HTML)
 // ------------------------------------
 function showCustomConfirm(message) {
     return new Promise(resolve => {
@@ -242,21 +353,27 @@ function showCustomConfirm(message) {
     });
 }
 
+
 // ------------------------------------
-// 5. INITIALIZATION
+// 6. INITIALIZATION & ACCESS CHECK
 // ------------------------------------
 function initLaundryStaffPage() {
-    // Rely on the new service-specific access check
-    if (!window.getServiceAuthStatus()) {
-        window.checkServiceAccessAndRedirect('laundry_staff.html');
+    // Rely on the new service-specific access check (defined in service_script.js)
+    if (typeof window.getServiceAuthStatus === 'function' && !window.getServiceAuthStatus()) {
+        if (typeof window.checkServiceAccessAndRedirect === 'function') {
+            window.checkServiceAccessAndRedirect('laundry_staff.html');
+        }
         return; 
     }
     
-    // Check auth status and role access (redundant due to global script, but safe)
-    const isAuthorized = window.getUserRole() === 'admin' || window.getUserRole() === 'superadmin' || window.getUserRole() === 'standard';
+    // Check auth status and role access 
+    const userRole = localStorage.getItem('nixtz_service_user_role');
+    const isAuthorized = userRole === 'admin' || userRole === 'superadmin' || userRole === 'standard';
+    
     if (!isAuthorized) {
          window.showMessage("Access Denied: Your role does not permit staff panel access.", true);
-         setTimeout(() => window.location.href = 'business_dashboard.html', 1000);
+         // CRITICAL: Use handleServiceLogout for service page
+         if (typeof window.handleServiceLogout === 'function') window.handleServiceLogout(); 
          return;
     }
 

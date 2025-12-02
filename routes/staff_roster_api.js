@@ -56,7 +56,6 @@ router.get('/generate/:startDate', async (req, res) => {
         }
         
         // --- CRITICAL DATA SANITIZATION FIX (To bypass corrupt FDO fields) ---
-        // Forces clean FDO data for known priority staff.
         staffProfiles = staffProfiles.map(profile => {
             if (profile.employeeId === '0001') { // Pae (Manager) -> Fixed Day Off: Sunday
                 profile.fixedDayOff = 'Sun'; 

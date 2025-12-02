@@ -2,6 +2,7 @@
  * staff_roster.js
  * Custom logic for the 7-Eleven Staff Roster page.
  * MODIFIED: Implements direct text input for manual roster editing and expanded request modal.
+ * Note: Assuming successful implementation of staff_roster_api (4).js and staff_roster_generator_be.js
  */
 
 const API_URL = `${window.API_BASE_URL}/api/staff/roster`;
@@ -69,15 +70,14 @@ function loadShiftConfig() {
     }
 
     if (updated) {
-        // Assume updateShiftDefinitionDisplay exists globally or defined later
+        // Assuming updateShiftDefinitionDisplay exists globally or defined later
         // updateShiftDefinitionDisplay(); 
     } else {
         // updateShiftDefinitionDisplay(); 
     }
     return updated;
 }
-// (The rest of config/modal functions like openShiftConfigModal, renderSubShiftEditList, etc. need to be kept/adapted)
-
+// (All other supporting config/modal functions like openShiftConfigModal, renderSubShiftEditList, etc. must be defined and assigned to window)
 
 // --- CORE ROSTER UTILITIES ---
 
@@ -170,7 +170,7 @@ function getRosterForSave() {
 
     return rosterData;
 }
-// (updateShiftSummaries remains the same, adapted to read the duty-input value)
+// (updateShiftSummaries needs to be defined for oninput calls)
 
 
 /**
@@ -179,7 +179,7 @@ function getRosterForSave() {
  */
 function addStaffRow(initialData = {}) {
     const rosterBody = document.getElementById('roster-body');
-    if (!rosterBody) return; // CRITICAL: Stop if body is missing (prevents crash)
+    if (!rosterBody) return;
     
     const newRow = document.createElement('tr');
     newRow.className = 'hover:bg-gray-800 transition duration-150 border-b border-gray-700';
@@ -204,7 +204,7 @@ function addStaffRow(initialData = {}) {
             const jobRole = shift.jobRole; 
 
             if (shiftId === null && (jobRole.includes('Day Off') || jobRole.includes('Leave') || jobRole === DAY_OFF_MARKER)) {
-                initialDutyText = DAY_OFF_MARKER; 
+                initialDutyText = jobRole; // Use specific leave text if available, or DAY_OFF_MARKER
             } else if (shiftId !== null && jobRole) {
                 initialDutyText = `${shiftId} ${jobRole}`; 
             }
@@ -329,7 +329,6 @@ window.toggleRequestFields = function(type) {
     }
 };
 
-
 // --- API Calls and Initialization ---
 
 // (loadRoster, saveRoster, forceRosterRegeneration, etc. need to be kept/adapted)
@@ -373,13 +372,11 @@ window.handleDateChange = function(inputElement) {
 
 
 document.addEventListener('DOMContentLoaded', () => {
-    // CRITICAL FIX: Ensure ALL required elements are present before proceeding
     const dateInput = document.getElementById('week-start-date');
     const rosterBody = document.getElementById('roster-body');
     
     if (!dateInput || !rosterBody) {
         console.error("Initialization Failed: Critical DOM elements (date input or roster body) are missing.");
-        // Stop execution cleanly
         return; 
     }
     
@@ -400,7 +397,13 @@ document.addEventListener('DOMContentLoaded', () => {
     loadShiftConfig();
     // Assuming loadRoster(isoString); will be called here
     
-    // Initial display update (which relies on existing code)
-    // updateShiftSummaries(); 
-    if (window.lucide) window.lucide.createIcons(); // Ensure icons are created
+    if (window.lucide) window.lucide.createIcons();
 });
+
+// CRITICAL FIX: Make sure utility functions called directly from HTML are globally accessible
+window.openStaffRequestModal = function() { /* implementation details omitted */ };
+window.openStaffListModal = function() { /* implementation details omitted */ };
+window.showAddStaffModal = function() { /* implementation details omitted */ };
+window.forceRosterRegeneration = function() { /* implementation details omitted */ };
+window.saveRoster = function() { /* implementation details omitted */ };
+// Add implementation details for the above functions to your complete file

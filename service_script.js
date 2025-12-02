@@ -99,30 +99,30 @@ function updateServiceBanner() {
     
     // --- ASSUMED IDs on your HTML pages ---
     const usernameDisplayElement = document.getElementById('username-display');
-    const userIconElement = document.getElementById('user-icon-display'); 
+    const userDisplayContainer = document.getElementById('user-display-container'); // <-- Target the outer container
     const adminButton = document.getElementById('admin-button'); 
-    const logoutButton = document.getElementById('logout-button');
-    const authButtonsContainer = document.getElementById('auth-buttons-container');
+    const defaultLogoutButton = document.getElementById('default-logout-button');
     // ----------------------------------------------------
 
     if (token && username && role) {
         // Logged In: Hide default buttons, show user data
-        if (authButtonsContainer) authButtonsContainer.style.display = 'none';
         
-        // A. Show Username and ID
+        // A. Make the Outer Container Visible (shows username/icon)
+        if (userDisplayContainer) {
+            userDisplayContainer.style.display = 'block'; // Or 'flex' depending on CSS
+        }
+        if (defaultLogoutButton) {
+            defaultLogoutButton.style.display = 'none'; // Hide simple Logout button
+        }
+        
+        // B. Show Username and Role (Inner Content)
         if (usernameDisplayElement) {
-            // Display: Username (Role)
+            // Display: Username (Role) - The ID is usually the username in service context
             const displayRole = role.charAt(0).toUpperCase() + role.slice(1);
             usernameDisplayElement.innerHTML = `${username} (<b>${displayRole}</b>)`; 
-            usernameDisplayElement.style.display = 'inline-block'; 
         }
-        if (userIconElement) {
-             userIconElement.style.display = 'flex'; // Use flex or block to make containers visible
-        }
-        if (logoutButton) logoutButton.style.display = 'block'; // Show logout button
-
         
-        // B. Check Role and Conditionally Show Admin Panel Button
+        // C. Check Role and Conditionally Show Admin Panel Button
         const isAdmin = ['admin', 'superadmin'].includes(role);
         
         if (adminButton) {
@@ -133,11 +133,10 @@ function updateServiceBanner() {
             }
         }
     } else {
-        // Not Logged In: Show login buttons, hide user data
-        if (authButtonsContainer) authButtonsContainer.style.display = 'flex';
-        if (userIconElement) userIconElement.style.display = 'none';
+        // Not Logged In: Ensure all user elements are hidden. Show Logout/Default button.
+        if (userDisplayContainer) userDisplayContainer.style.display = 'none';
         if (adminButton) adminButton.style.display = 'none';
-        if (logoutButton) logoutButton.style.display = 'none';
+        if (defaultLogoutButton) defaultLogoutButton.style.display = 'block'; // Show simple Logout button
     }
 }
 window.updateServiceBanner = updateServiceBanner;

@@ -104,7 +104,7 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
 
             // 0a. Specific Day/Duty Assignment Override (Highest Priority)
             if (request.type === 'SpecificAssignment' && request.day === day) {
-                const shiftConfig = getAllShifts()[request.shiftId];
+                const shiftConfig = SHIFTS[request.shiftId] || {}; // Simplified
                 if (request.shiftId === 'STATUS_LEAVE') { // It's a Day Off/Leave
                      assignment = { 
                         shiftId: null, 

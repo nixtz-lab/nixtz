@@ -35,7 +35,77 @@ function getStatusColor(status) {
 }
 
 // ------------------------------------
-// 1. DYNAMIC ITEM INPUT MANAGEMENT
+// 1. HEADER BANNER UI & DROPDOWN LOGIC (NEW)
+// ------------------------------------
+
+/**
+ * Function to toggle the user dropdown menu
+ */
+function toggleUserDropdown() {
+    const dropdown = document.getElementById('user-dropdown');
+    if (dropdown) {
+        // Toggles visibility
+        dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+    }
+}
+window.toggleUserDropdown = toggleUserDropdown; // Expose globally for onclick event
+
+
+/**
+ * Function to initialize the user banner (reads core auth keys).
+ */
+function checkAuthStatusAndDisplay() {
+    // NOTE: This page (laundry_request.html) uses the Core application's token logic.
+    // It is assumed the Core App defines nixtz_auth_token keys.
+    const token = localStorage.getItem('nixtz_auth_token');
+    const username = localStorage.getItem('nixtz_username');
+    const staffRole = localStorage.getItem('nixtz_service_user_role'); // Check for service role too
+
+    const loginButtons = document.getElementById('auth-buttons-container');
+    const userMenu = document.getElementById('user-menu-container');
+    const usernameDisplay = document.getElementById('username-display');
+    const staffPanelButton = document.getElementById('staff-panel-button');
+
+    if (token && username) {
+        // Logged In: Show user menu, hide login buttons
+        if (loginButtons) loginButtons.style.display = 'none';
+        if (userMenu) userMenu.style.display = 'flex';
+        if (usernameDisplay) usernameDisplay.textContent = username;
+        
+        // Show Staff Panel button if user has a service role
+        if (staffPanelButton && staffRole && ['standard', 'admin', 'superadmin'].includes(staffRole)) {
+            staffPanelButton.style.display = 'block';
+        } else if (staffPanelButton) {
+            staffPanelButton.style.display = 'none';
+        }
+        
+    } else {
+        // Not Logged In: Show login buttons, hide user menu
+        if (loginButtons) loginButtons.style.display = 'flex';
+        if (userMenu) userMenu.style.display = 'none';
+        if (staffPanelButton) staffPanelButton.style.display = 'none';
+    }
+}
+window.checkAuthStatusAndDisplay = checkAuthStatusAndDisplay; // Expose globally
+
+// Listen for clicks outside the dropdown to close it
+document.addEventListener('click', function(event) {
+    const userContainer = document.getElementById('user-menu-container');
+    const dropdown = document.getElementById('user-dropdown');
+    const displayButton = document.getElementById('user-display-button');
+
+    // Only hide if the click was not on the button AND the menu is currently visible
+    if (dropdown && dropdown.style.display === 'block' && 
+        userContainer && !userContainer.contains(event.target) && 
+        !displayButton.contains(event.target)) {
+        
+        dropdown.style.display = 'none';
+    }
+});
+
+
+// ------------------------------------
+// 2. DYNAMIC ITEM INPUT MANAGEMENT
 // ------------------------------------
 let itemCounter = 0;
 
@@ -84,7 +154,7 @@ function createItemInput() {
 }
 
 // ------------------------------------
-// 2. FORM SUBMISSION
+// 3. FORM SUBMISSION
 // ------------------------------------
 async function handleFormSubmit(e) {
     e.preventDefault();
@@ -169,7 +239,7 @@ async function handleFormSubmit(e) {
 }
 
 // ------------------------------------
-// 3. HISTORY DISPLAY
+// 4. HISTORY DISPLAY
 // ------------------------------------
 function renderRequestCard(request) {
     const itemsHtml = request.items.map(item => `
@@ -230,7 +300,8 @@ async function loadRequestHistory() {
         if (response.status === 401 || response.status === 403) {
             // Token is invalid/expired or user lacks permission
             window.showMessage("Session expired. Redirecting to login.", true);
-            if (typeof window.handleLogout === 'function') window.handleLogout(); 
+            // NOTE: Must use handleServiceLogout() here as we are on a service page
+            if (typeof window.handleServiceLogout === 'function') window.handleServiceLogout(); 
             window.checkServiceAccessAndRedirect('laundry_request.html');
             return;
         }
@@ -256,7 +327,7 @@ async function loadRequestHistory() {
 
 
 // ------------------------------------
-// 4. INITIALIZATION
+// 5. INITIALIZATION
 // ------------------------------------
 function initLaundryRequestPage() {
     // Safety check: if service auth fails, redirect immediately.
@@ -280,4 +351,6 @@ function initLaundryRequestPage() {
     });
 
     loadRequestHistory();
+    
+    // Final check for banner initialization (This logic is now in the HTML, calling checkAuthStatusAndDisplay)
 }
