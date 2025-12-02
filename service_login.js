@@ -37,8 +37,8 @@ async function handleServiceLogin(e) {
     }
 
     try {
-        // CRITICAL FIX: Calling the new, dedicated service login endpoint
-        const response = await fetch(`${window.API_BASE_URL}/api/serviceauth/login`, {
+        // CRITICAL FIX: Using a relative path to call the new, dedicated service login endpoint.
+        const response = await fetch('/api/serviceauth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: loginValue, password })
@@ -51,10 +51,10 @@ async function handleServiceLogin(e) {
             // --- CRITICAL FIX: Use the dedicated service key and prefixed profile data ---
             
             // 1. Save dedicated service token
-            localStorage.setItem(SERVICE_TOKEN_KEY, data.token); 
+            localStorage.setItem(SERVICE_TOKEN_KEY, data.token);
             
             // 2. ISOLATE PROFILE DATA (using nixtz_service_ prefix)
-            localStorage.setItem('nixtz_service_username', data.username); 
+            localStorage.setItem('nixtz_service_username', data.username);
             localStorage.setItem('nixtz_service_user_role', data.role);
             localStorage.setItem('nixtz_service_user_membership', data.membership || 'none');
             
@@ -66,14 +66,14 @@ async function handleServiceLogin(e) {
                 window.showMessage("Service login successful! Redirecting to Staff Panel.", false);
                 setTimeout(() => {
                     // Redirect to the specific Staff Panel
-                    window.location.href = 'laundry_staff.html'; 
+                    window.location.href = 'laundry_staff.html';
                 }, 500);
             } else {
                 // Deny access if the user is only 'pending' or a restricted role
                 if (typeof window.handleLogout === 'function') {
                     // Note: If handleLogout clears ALL nixtz_ keys, it's safer.
                     // Here we ensure the new service key is cleared if access is denied.
-                    localStorage.removeItem(SERVICE_TOKEN_KEY); 
+                    localStorage.removeItem(SERVICE_TOKEN_KEY);
                 }
                 window.showMessage("Access Denied: Your account role does not permit service access.", true);
             }
