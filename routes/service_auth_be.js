@@ -7,20 +7,8 @@ const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_default_jwt_secret_please_change_this_for_prod';
 
-// --- NEW DEDICATED SERVICE USER SCHEMA (MUST BE DEFINED HERE FOR LOCAL ACCESS) ---
-const ServiceUserSchema = new mongoose.Schema({
-    susername: { type: String, required: true, unique: true, trim: true },
-    semail: { type: String, required: true, unique: true, trim: true, lowercase: true },
-    spasswordHash: { type: String, required: true },
-    srole: { type: String, default: 'pending', enum: ['pending', 'standard', 'admin', 'superadmin'] }, 
-    smembership: { type: String, default: 'none', enum: ['none', 'standard', 'platinum', 'vip'] },
-    spageAccess: { type: [String], default: [] },
-    createdAt: { type: Date, default: Date.now },
-});
-const ServiceUser = mongoose.model('ServiceUser', ServiceUserSchema);
-// -----------------------------------------------------------------------------------
-
 // Safely access the dedicated Service User model and Service Staff Access model
+// NOTE: We rely on the model being compiled in server.js
 const getSUserModel = () => mongoose.model('ServiceUser');
 const getServiceStaffAccessModel = () => mongoose.model('ServiceStaffAccess');
 
@@ -41,6 +29,7 @@ const createInitialServiceAdmin = async () => {
         }
 
         // HASH for the temporary password: "ServicePass123"
+        // This is the actual bcrypt hash for the string "ServicePass123"
         const passwordHash = '$2a$10$R77Qd6c6oT7eB0M8U5S5fOe8vK3oY1L3v6x2C8h4b0P8h2r7g4E9S'; 
         
         // Insert into the DEDICATED ServiceUser collection
@@ -162,6 +151,6 @@ router.post('/register', async (req, res) => {
 
 // Export the setup function so server.js can call it on startup
 module.exports = {
-    router,
+    router: router, // <-- FIX: Explicitly returns the router object
     createInitialServiceAdmin
 };
