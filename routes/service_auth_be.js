@@ -8,6 +8,7 @@ const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET || 'your_default_jwt_secret_please_change_this_for_prod';
 
 // Safely access the dedicated Service User model and Service Staff Access model
+// NOTE: We rely on the ServiceUser model being compiled ONLY in server.js
 const getSUserModel = () => mongoose.model('ServiceUser');
 const getServiceStaffAccessModel = () => mongoose.model('ServiceStaffAccess');
 
@@ -79,6 +80,7 @@ router.post('/login', async (req, res) => {
             return res.status(403).json({ success: false, message: 'Access Denied. Account is not registered for service staff access.' });
         }
         
+        // If execution reaches here, the user is authenticated AND verified as service staff.
         // JWT Payload must reflect the ServiceUser's prefixed fields
         const payload = { user: { 
             id: user._id.toString(), 
