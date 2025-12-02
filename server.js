@@ -159,8 +159,8 @@ const LaundryItemSchema = new mongoose.Schema({
 }, { _id: false }); // Do not create _id for sub-documents
 
 const LaundryRequestSchema = new mongoose.Schema({
-    // CRITICAL CHANGE: Link laundry requests to ServiceUser for processing staff
-    requesterId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // Requestors are still core Users
+    // Requestors are still core Users
+    requesterId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, 
     requesterUsername: { type: String, required: true }, // Store username directly for lookup
     department: { type: String, required: true, trim: true },
     contactExt: { type: String, required: true, trim: true },
@@ -168,7 +168,7 @@ const LaundryRequestSchema = new mongoose.Schema({
     items: [LaundryItemSchema],
     requestedAt: { type: Date, default: Date.now },
     status: { type: String, default: 'Pending Pickup', enum: ['Pending Pickup', 'Picked Up', 'In Progress', 'Ready for Delivery', 'Completed', 'Cancelled'] },
-    processedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'ServiceUser', required: false } // <-- CRITICAL: ProcessedBy is ServiceUser
+    processedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'ServiceUser', required: false } // <-- CRITICAL: ProcessedBy links to ServiceUser
 });
 const LaundryRequest = mongoose.model('LaundryRequest', LaundryRequestSchema);
 
