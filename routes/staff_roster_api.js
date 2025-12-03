@@ -55,18 +55,13 @@ router.get('/generate/:startDate', async (req, res) => {
             return res.status(404).json({ success: false, message: 'No staff profiles found to generate a roster.' });
         }
         
-        // --- CRITICAL DATA SANITIZATION FIX (To bypass corrupt FDO fields) ---
+        // --- CLEANUP FIX: Ensure fixedDayOff is always a string ('None' or 'Mon'...'Sun') ---
+        // Removed the hardcoded profile overrides (0001/0003) to use dynamic staff profiles
         staffProfiles = staffProfiles.map(profile => {
-            if (profile.employeeId === '0001') { // Pae (Manager) -> Fixed Day Off: Sunday
-                profile.fixedDayOff = 'Sun'; 
-            } else if (profile.employeeId === '0003') { // AM (Supervisor) -> Fixed Day Off: None
-                profile.fixedDayOff = 'None';
-            }
-            // Ensure FDO is always a string ('None' or 'Mon'...'Sun')
             profile.fixedDayOff = profile.fixedDayOff || 'None';
             return profile;
         });
-        // --- END CRITICAL FIX ---
+        // --- END CLEANUP FIX ---
 
 
         // 2. Generate the roster data array using the dynamic profiles

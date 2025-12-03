@@ -3,6 +3,8 @@
  * FINAL STABLE VERSION. Fixes: ReferenceError, Auth UI visibility, and initial load crash.
  */
 
+// Global constants and API endpoints
+window.API_BASE_URL = window.API_BASE_URL || window.location.origin; // Ensure API_BASE_URL is set
 const API_URL = `${window.API_BASE_URL}/api/staff/roster`;
 const PROFILE_API_URL = `${window.API_BASE_URL}/api/staff/profile`;
 const LEAVE_HISTORY_API_URL = `${window.API_BASE_URL}/api/staff/leave/history`; 
@@ -30,7 +32,6 @@ function getAllShifts() {
 let currentRosterData = []; 
 let currentWeekStartDate = null;
 let staffProfilesCache = [];
-// Use a fallback key if the nixtz key doesn't exist upon load, but prefer nixtz
 const AUTH_TOKEN_KEY = localStorage.getItem('nixtz_auth_token') ? 'nixtz_auth_token' : 'tmt_auth_token'; 
 
 // --- AUTHENTICATION AND UI STATE HANDLER ---
@@ -41,7 +42,6 @@ function getAuthStatus() {
 window.getAuthStatus = getAuthStatus;
 
 function getUsernameFromToken() {
-    // This is a stub for demonstration; in production, you should use the stored username or a function that decodes the token.
     return localStorage.getItem('nixtz_username') || 'Superwayno'; 
 }
 
@@ -63,7 +63,7 @@ function updateAuthUI() {
 window.updateAuthUI = updateAuthUI;
 
 
-// --- SHIFT CONFIGURATION LOGIC (Stubs/Functions assigned globally) ---
+// --- MODAL & SHIFT CONFIGURATION LOGIC (CRITICAL FIXES HERE) ---
 
 function loadShiftConfig() { 
     // Simplified load logic
@@ -71,7 +71,7 @@ function loadShiftConfig() {
 }
 window.loadShiftConfig = loadShiftConfig;
 
-// IMPORTANT FIX: Expose modal functions to the global scope for HTML onclick
+// FIX: Expose modal functions to the global scope for HTML onclick to work
 window.openShiftConfigModal = function() { 
     console.log('Shift Config Modal Opened');
     document.getElementById('shift-config-modal')?.classList.remove('hidden');
@@ -82,15 +82,58 @@ window.openStaffRequestModal = function() {
     document.getElementById('staff-request-modal')?.classList.remove('hidden');
     document.getElementById('staff-request-modal')?.classList.add('flex');
 };
-window.openStaffListModal = function() { 
-    console.log('Open Staff List Modal clicked.');
-    document.getElementById('staff-list-modal')?.classList.remove('hidden');
-    document.getElementById('staff-list-modal')?.classList.add('flex');
-};
 window.showAddStaffModal = function() { 
     console.log('Show Add Staff Modal clicked.');
     document.getElementById('add-staff-modal')?.classList.remove('hidden');
     document.getElementById('add-staff-modal')?.classList.add('flex');
+};
+
+// Helper for Staff List Modal (used by openStaffListModal)
+async function fetchStaffProfiles() {
+    if (!getAuthStatus()) return;
+    const container = document.getElementById('staff-profiles-container');
+    container.innerHTML = '<p class="text-gray-500 text-center py-4">Loading staff data...</p>';
+
+    try {
+        const response = await fetch(PROFILE_API_URL, {
+            method: 'GET',
+            headers: { 'Authorization': `Bearer ${localStorage.getItem(AUTH_TOKEN_KEY)}` },
+        });
+        
+        const result = await response.json();
+        if (response.ok && result.success && Array.isArray(result.data)) {
+            staffProfilesCache = result.data; // Cache for other uses
+            container.innerHTML = staffProfilesCache.map(staff => `
+                <div class="flex justify-between items-center p-3 bg-gray-800 rounded-lg border border-gray-700">
+                    <span class="text-white font-semibold">${staff.name}</span>
+                    <span class="text-sm text-gray-400">${staff.employeeId} - ${staff.position}</span>
+                    <button onclick="openEditProfileModal('${staff.employeeId}')" class="text-nixtz-primary hover:text-nixtz-secondary">
+                        <i data-lucide="edit" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            `).join('');
+            if (window.lucide) window.lucide.createIcons();
+        } else {
+            container.innerHTML = `<p class="text-red-400 text-center py-4">Error loading profiles: ${result.message || 'Unknown error'}</p>`;
+        }
+    } catch (error) {
+        container.innerHTML = `<p class="text-red-400 text-center py-4">Network error fetching staff profiles.</p>`;
+        console.error("Fetch staff error:", error);
+    }
+}
+
+// FIX: Implement working openStaffListModal
+window.openStaffListModal = function() { 
+    console.log('Open Staff List Modal clicked.');
+    fetchStaffProfiles(); // <--- Call the new fetch logic
+    document.getElementById('staff-list-modal')?.classList.remove('hidden');
+    document.getElementById('staff-list-modal')?.classList.add('flex');
+};
+
+// Placeholder for the edit modal function (required by fetchStaffProfiles)
+window.openEditProfileModal = function(id) { 
+    console.log('Opening edit modal for:', id);
+    // Logic to load data into the single-staff-modal goes here
 };
 
 
@@ -117,28 +160,56 @@ function updateDateHeaders(startDateString) {
 }
 window.updateDateHeaders = updateDateHeaders;
 
-// Stubs for stability
-window.updateShiftSummaries = function() { console.log('Shift summaries updated.'); };
+// FIX: Implement working forceRosterRegeneration
+window.forceRosterRegeneration = async function() { 
+    if (!currentWeekStartDate || !getAuthStatus()) {
+        window.showMessage("Select a week start date and log in first.", true);
+        return;
+    }
+    window.showMessage("Forcing roster regeneration...", false);
+    
+    try {
+        const response = await fetch(`${API_URL}/generate/${currentWeekStartDate}`, {
+            method: 'GET',
+            headers: { 'Authorization': `Bearer ${localStorage.getItem(AUTH_TOKEN_KEY)}` },
+        });
+
+        const result = await response.json();
+        if (response.ok && result.success) {
+            window.showMessage(result.message || 'Roster generated successfully.', false);
+            loadRoster(currentWeekStartDate); // Reload the new roster
+        } else {
+            window.showMessage(result.message || 'Failed to generate roster.', true);
+        }
+    } catch (error) {
+        window.showMessage("Network error during regeneration.", true);
+        console.error("Regeneration error:", error);
+    }
+};
+
 window.saveRoster = function() { console.log('Save Roster clicked. Initiating save API call.'); };
-window.forceRosterRegeneration = function() { console.log('Force Roster Regeneration clicked.'); };
+window.updateShiftSummaries = function() { console.log('Shift summaries updated.'); }; // Stub
+window.toggleRequestFields = function(value) { console.log('Toggling request fields for:', value); }; // Stub
+window.updateShiftRoleDropdown = function() { console.log('Updating shift role dropdown.'); }; // Stub
+window.closeEditProfileModal = function(event) { // Stub
+    event.preventDefault(); 
+    document.getElementById('single-staff-modal')?.classList.add('hidden');
+};
 
 
 /**
- * @function addStaffRow - MODIFIED FOR INPUT FIELDS
+ * @function addStaffRow - Renders a single staff row with inputs
  */
 function addStaffRow(initialData = {}) {
     const rosterBody = document.getElementById('roster-body');
     if (!rosterBody) return;
     
-    // Placeholder: Clear old placeholder text and re-render the single static placeholder
-    // In a real scenario, this should append a new row, not clear the body.
-    // Since the actual row rendering logic is missing, we revert to the placeholder logic as in the original file, 
-    // but the function name is exposed globally.
-    if (rosterBody.innerHTML === '<tr><td colspan="8" class="text-center py-4 text-gray-500">Click Regenerate or Add Staff to begin.</td></tr>') {
+    // Clear initial placeholder if data is being loaded
+    if (rosterBody.innerHTML.includes('Click Regenerate or Add Staff to begin') || rosterBody.innerHTML.includes('Loading roster data')) {
         rosterBody.innerHTML = '';
     }
     
-    rosterBody.innerHTML += `
+    const staffRowHtml = `
         <tr data-id="${initialData.employeeId || 'temp-id'}">
             <td class="p-3 text-left font-medium text-white">${initialData.employeeName || 'New Staff'} / ${initialData.employeeId || 'ID'}</td>
             ${DAYS.map(day => `
@@ -148,6 +219,7 @@ function addStaffRow(initialData = {}) {
             `).join('')}
         </tr>
     `;
+    rosterBody.insertAdjacentHTML('beforeend', staffRowHtml);
     
     if (window.lucide) window.lucide.createIcons();
 }
@@ -155,36 +227,48 @@ window.addStaffRow = addStaffRow;
 
 
 /**
- * @function loadRoster
- * Loads roster data for the current week.
+ * @function loadRoster - Fetches roster from the API
  */
 async function loadRoster(startDateString) {
     if (!startDateString || !getAuthStatus()) return; 
-    
-    document.getElementById('roster-body').innerHTML = '';
-    currentWeekStartDate = startDateString;
-    
-    // Mock Data to show the table if no API is connected
-    const mockRoster = [
-        { employeeId: '0001', employeeName: 'Pae', position: 'Manager', weeklySchedule: [
-            { dayOfWeek: 'Mon', shifts: [{ jobRole: 'C1 (Mgr)', timeRange: '07:00-16:00' }] },
-            { dayOfWeek: 'Tue', shifts: [{ jobRole: 'C1 (Mgr)', timeRange: '07:00-16:00' }] },
-            { dayOfWeek: 'Wed', shifts: [{ jobRole: 'C1 (Mgr)', timeRange: '07:00-16:00' }] },
-            { dayOfWeek: 'Thu', shifts: [{ jobRole: 'C1 (Mgr)', timeRange: '07:00-16:00' }] },
-            { dayOfWeek: 'Fri', shifts: [{ jobRole: 'C1 (Mgr)', timeRange: '07:00-16:00' }] },
-            { dayOfWeek: 'Sat', shifts: [{ jobRole: 'C1 (Mgr)', timeRange: '07:00-16:00' }] },
-            { dayOfWeek: 'Sun', shifts: [{ jobRole: DAY_OFF_MARKER, timeRange: DAY_OFF_MARKER }] },
-        ]},
-        // Add more mock staff here if needed
-    ];
 
-    const sortedRoster = mockRoster; // Replace with actual API fetch result
-    
-    if (sortedRoster.length === 0) {
-        // Display placeholder text when no data is returned
-        document.getElementById('roster-body').innerHTML = '<tr><td colspan="8" class="text-center py-4 text-gray-500">Click Regenerate or Add Staff to begin.</td></tr>';
-    } else {
-        sortedRoster.forEach(data => addStaffRow(data));
+    // 1. Set Loading State
+    const rosterBody = document.getElementById('roster-body');
+    rosterBody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-gray-400">Loading roster data...</td></tr>';
+    currentWeekStartDate = startDateString;
+
+    try {
+        // 2. Fetch the roster data for the specific week
+        const response = await fetch(`${API_URL}/${startDateString}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem(AUTH_TOKEN_KEY)}`,
+                'Content-Type': 'application/json',
+            },
+        });
+
+        const result = await response.json();
+        let rosterToRender = [];
+
+        // Check if data is directly in `result.data` (expected for this endpoint)
+        if (response.ok && result.success && Array.isArray(result.data)) {
+            rosterToRender = result.data;
+        } else {
+             console.warn("No existing roster found in API response. Need regeneration.");
+        }
+
+        // 3. Render the Roster
+        rosterBody.innerHTML = '';
+        
+        if (rosterToRender.length === 0) {
+            document.getElementById('roster-body').innerHTML = '<tr><td colspan="8" class="text-center py-4 text-gray-500">No roster found for this week. Click Regenerate or Add Staff to begin.</td></tr>';
+        } else {
+            rosterToRender.forEach(data => addStaffRow(data));
+        }
+
+    } catch (error) {
+        console.error("Error loading roster:", error);
+        rosterBody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-red-500">Failed to load roster. Check API connection.</td></tr>';
     }
     
     if (window.lucide) window.lucide.createIcons(); 
@@ -194,7 +278,6 @@ window.loadRoster = loadRoster;
 
 /**
  * @function snapToMonday
- * Converts any given date string (YYYY-MM-DD) to the ISO string of the Monday of that week.
  */
 function snapToMonday(dateString) {
     const date = new Date(dateString);
@@ -223,23 +306,9 @@ window.handleDateChange = function(inputElement) {
         inputElement.value = snappedDate;
     }
     
-    // Also update the headers when the date changes
     updateDateHeaders(snappedDate);
-    
     loadRoster(snappedDate);
 };
-
-// --- STAFF REQUEST MODAL LOGIC (Stubs/Assignments) ---
-
-// Placeholder/Stub functions needed globally by staff_roster (6).html
-window.openShiftConfigModal = function() { console.log('Shift Config Modal Opened'); }; 
-window.toggleRequestFields = function(value) { console.log('Toggling request fields for:', value); }; 
-window.updateShiftRoleDropdown = function() { console.log('Updating shift role dropdown.'); }; 
-window.closeEditProfileModal = function(event) { 
-    event.preventDefault(); 
-    document.getElementById('single-staff-modal')?.classList.add('hidden');
-};
-
 
 document.addEventListener('DOMContentLoaded', () => {
     
