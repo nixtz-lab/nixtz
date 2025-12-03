@@ -30,6 +30,7 @@ function getAllShifts() {
 let currentRosterData = []; 
 let currentWeekStartDate = null;
 let staffProfilesCache = [];
+// Use a fallback key if the nixtz key doesn't exist upon load, but prefer nixtz
 const AUTH_TOKEN_KEY = localStorage.getItem('nixtz_auth_token') ? 'nixtz_auth_token' : 'tmt_auth_token'; 
 
 // --- AUTHENTICATION AND UI STATE HANDLER ---
@@ -40,7 +41,8 @@ function getAuthStatus() {
 window.getAuthStatus = getAuthStatus;
 
 function getUsernameFromToken() {
-    return 'Superwayno'; 
+    // This is a stub for demonstration; in production, you should use the stored username or a function that decodes the token.
+    return localStorage.getItem('nixtz_username') || 'Superwayno'; 
 }
 
 function updateAuthUI() {
@@ -68,16 +70,50 @@ function loadShiftConfig() {
     return true; 
 }
 window.loadShiftConfig = loadShiftConfig;
-window.openShiftConfigModal = function() { console.log('Shift Config Modal Opened'); };
-// (All other config modal functions need to be assigned globally in your final file)
+
+// IMPORTANT FIX: Expose modal functions to the global scope for HTML onclick
+window.openShiftConfigModal = function() { 
+    console.log('Shift Config Modal Opened');
+    document.getElementById('shift-config-modal')?.classList.remove('hidden');
+    document.getElementById('shift-config-modal')?.classList.add('flex');
+};
+window.openStaffRequestModal = function() { 
+    console.log('Open Staff Request Modal clicked.');
+    document.getElementById('staff-request-modal')?.classList.remove('hidden');
+    document.getElementById('staff-request-modal')?.classList.add('flex');
+};
+window.openStaffListModal = function() { 
+    console.log('Open Staff List Modal clicked.');
+    document.getElementById('staff-list-modal')?.classList.remove('hidden');
+    document.getElementById('staff-list-modal')?.classList.add('flex');
+};
+window.showAddStaffModal = function() { 
+    console.log('Show Add Staff Modal clicked.');
+    document.getElementById('add-staff-modal')?.classList.remove('hidden');
+    document.getElementById('add-staff-modal')?.classList.add('flex');
+};
 
 
 // --- CORE ROSTER UTILITIES ---
 
 function updateDateHeaders(startDateString) {
     if (!startDateString) return;
-    // ... (updateDateHeaders implementation omitted for brevity)
-    // This is vital for the table header dates
+    
+    const start = new Date(startDateString);
+    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    
+    dayNames.forEach((dayName, index) => {
+        const currentDate = new Date(start);
+        currentDate.setDate(start.getDate() + index);
+        
+        const day = currentDate.getDate().toString().padStart(2, '0');
+        const month = (currentDate.getMonth() + 1).toString().padStart(2, '0');
+        
+        const headerEl = document.getElementById(`header-${dayName.toLowerCase()}`);
+        if (headerEl) {
+            headerEl.innerHTML = `<span class="day-header">${dayName}</span><span class="date-header">${day}/${month}</span>`;
+        }
+    });
 }
 window.updateDateHeaders = updateDateHeaders;
 
@@ -85,7 +121,6 @@ window.updateDateHeaders = updateDateHeaders;
 window.updateShiftSummaries = function() { console.log('Shift summaries updated.'); };
 window.saveRoster = function() { console.log('Save Roster clicked. Initiating save API call.'); };
 window.forceRosterRegeneration = function() { console.log('Force Roster Regeneration clicked.'); };
-// (Other utility functions like deleteStaffRow must also be globally defined)
 
 
 /**
@@ -95,11 +130,24 @@ function addStaffRow(initialData = {}) {
     const rosterBody = document.getElementById('roster-body');
     if (!rosterBody) return;
     
-    // Renders data, including the necessary input fields for manual entry
-    // ... (full addStaffRow logic from previous complete file)
-
     // Placeholder: Clear old placeholder text and re-render the single static placeholder
-    rosterBody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-gray-500">Click Regenerate or Add Staff to begin.</td></tr>';
+    // In a real scenario, this should append a new row, not clear the body.
+    // Since the actual row rendering logic is missing, we revert to the placeholder logic as in the original file, 
+    // but the function name is exposed globally.
+    if (rosterBody.innerHTML === '<tr><td colspan="8" class="text-center py-4 text-gray-500">Click Regenerate or Add Staff to begin.</td></tr>') {
+        rosterBody.innerHTML = '';
+    }
+    
+    rosterBody.innerHTML += `
+        <tr data-id="${initialData.employeeId || 'temp-id'}">
+            <td class="p-3 text-left font-medium text-white">${initialData.employeeName || 'New Staff'} / ${initialData.employeeId || 'ID'}</td>
+            ${DAYS.map(day => `
+                <td class="roster-cell bg-gray-900 border-l border-gray-800" data-day="${day}">
+                    <input type="text" class="duty-input" value="${initialData.weeklySchedule?.find(d => d.dayOfWeek === day)?.shifts[0]?.jobRole || ''}" placeholder="${DAY_OFF_MARKER}" />
+                </td>
+            `).join('')}
+        </tr>
+    `;
     
     if (window.lucide) window.lucide.createIcons();
 }
@@ -112,14 +160,25 @@ window.addStaffRow = addStaffRow;
  */
 async function loadRoster(startDateString) {
     if (!startDateString || !getAuthStatus()) return; 
-
-    // Assuming API calls and data fetching logic happens here
-    
-    // --- Render the Roster ---
-    const sortedRoster = []; // Placeholder for fetched/generated data
     
     document.getElementById('roster-body').innerHTML = '';
     currentWeekStartDate = startDateString;
+    
+    // Mock Data to show the table if no API is connected
+    const mockRoster = [
+        { employeeId: '0001', employeeName: 'Pae', position: 'Manager', weeklySchedule: [
+            { dayOfWeek: 'Mon', shifts: [{ jobRole: 'C1 (Mgr)', timeRange: '07:00-16:00' }] },
+            { dayOfWeek: 'Tue', shifts: [{ jobRole: 'C1 (Mgr)', timeRange: '07:00-16:00' }] },
+            { dayOfWeek: 'Wed', shifts: [{ jobRole: 'C1 (Mgr)', timeRange: '07:00-16:00' }] },
+            { dayOfWeek: 'Thu', shifts: [{ jobRole: 'C1 (Mgr)', timeRange: '07:00-16:00' }] },
+            { dayOfWeek: 'Fri', shifts: [{ jobRole: 'C1 (Mgr)', timeRange: '07:00-16:00' }] },
+            { dayOfWeek: 'Sat', shifts: [{ jobRole: 'C1 (Mgr)', timeRange: '07:00-16:00' }] },
+            { dayOfWeek: 'Sun', shifts: [{ jobRole: DAY_OFF_MARKER, timeRange: DAY_OFF_MARKER }] },
+        ]},
+        // Add more mock staff here if needed
+    ];
+
+    const sortedRoster = mockRoster; // Replace with actual API fetch result
     
     if (sortedRoster.length === 0) {
         // Display placeholder text when no data is returned
@@ -164,12 +223,22 @@ window.handleDateChange = function(inputElement) {
         inputElement.value = snappedDate;
     }
     
+    // Also update the headers when the date changes
+    updateDateHeaders(snappedDate);
+    
     loadRoster(snappedDate);
 };
 
 // --- STAFF REQUEST MODAL LOGIC (Stubs/Assignments) ---
 
-// (All helper functions for the modal toggles and dropdowns must be assigned globally)
+// Placeholder/Stub functions needed globally by staff_roster (6).html
+window.openShiftConfigModal = function() { console.log('Shift Config Modal Opened'); }; 
+window.toggleRequestFields = function(value) { console.log('Toggling request fields for:', value); }; 
+window.updateShiftRoleDropdown = function() { console.log('Updating shift role dropdown.'); }; 
+window.closeEditProfileModal = function(event) { 
+    event.preventDefault(); 
+    document.getElementById('single-staff-modal')?.classList.add('hidden');
+};
 
 
 document.addEventListener('DOMContentLoaded', () => {

@@ -355,8 +355,6 @@ function initLaundryRequestPage() {
     loadRequestHistory();
     
     // Final check for banner initialization
-    // CRITICAL: We run the banner logic here for the header to show up.
-    if (typeof window.updateServiceBanner === 'function') {
-        window.updateServiceBanner(); 
-    }
+    // FIX APPLIED HERE: Call the correct function defined in this script.
+    window.checkServiceBannerDisplay(); 
 }
