@@ -57,7 +57,7 @@
                     </a>
                 </div>
                 
-                <div id="user-menu-container" class="relative group hidden"> 
+                <div id="user-menu-container" class="relative group" style="display: none;"> 
                     
                     <button id="user-display-button" 
                             onclick="toggleUserDropdown()"
@@ -141,12 +141,15 @@
         document.addEventListener('DOMContentLoaded', () => {
             if (typeof lucide !== 'undefined') lucide.createIcons();
             
-            // Run the banner display logic and initialization logic from laundry_request.js
+            // Run the main initialization logic from laundry_request.js
             if (typeof initLaundryRequestPage === 'function') {
                 initLaundryRequestPage(); 
             }
             
-            // NOTE: The banner display function is called internally within initLaundryRequestPage.
+            // Run the banner display logic from laundry_request.js (checkServiceBannerDisplay)
+            if (typeof window.checkServiceBannerDisplay === 'function') {
+                window.checkServiceBannerDisplay(); 
+            }
         });
     </script>
 </body>
