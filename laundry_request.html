@@ -141,13 +141,12 @@
         document.addEventListener('DOMContentLoaded', () => {
             if (typeof lucide !== 'undefined') lucide.createIcons();
             
-            // Run the banner display logic from service_script.js (updateServiceBanner)
-            if (typeof window.updateServiceBanner === 'function') {
-                window.updateServiceBanner(); 
+            // Run the banner display logic and initialization logic from laundry_request.js
+            if (typeof initLaundryRequestPage === 'function') {
+                initLaundryRequestPage(); 
             }
             
-            // NOTE: The core logic (initLaundryRequestPage) and UI wiring (toggleDropdown) 
-            // are expected to be called via the external laundry_request.js file.
+            // NOTE: The banner display function is called internally within initLaundryRequestPage.
         });
     </script>
 </body>
