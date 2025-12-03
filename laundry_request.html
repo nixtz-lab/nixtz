@@ -57,7 +57,7 @@
                     </a>
                 </div>
                 
-                <div id="user-menu-container" class="relative group" style="display: none;"> 
+                <div id="user-menu-container" class="relative group hidden"> 
                     
                     <button id="user-display-button" 
                             onclick="toggleUserDropdown()"
@@ -144,11 +144,6 @@
             // Run the main initialization logic from laundry_request.js
             if (typeof initLaundryRequestPage === 'function') {
                 initLaundryRequestPage(); 
-            }
-            
-            // Run the banner display logic from laundry_request.js (checkServiceBannerDisplay)
-            if (typeof window.checkServiceBannerDisplay === 'function') {
-                window.checkServiceBannerDisplay(); 
             }
         });
     </script>
