@@ -99,17 +99,22 @@ function updateServiceBanner() {
     
     // --- ASSUMED IDs on your HTML pages ---
     const usernameDisplayElement = document.getElementById('username-display');
-    const userDisplayContainer = document.getElementById('user-display-container'); // <-- Target the outer container
+    const userDisplayContainer = document.getElementById('user-menu-container'); // Correct ID for laundry_request.html
     const adminButton = document.getElementById('admin-button'); 
+    const staffPanelButton = document.getElementById('staff-panel-button'); // For request page
+    const loginButtons = document.getElementById('auth-buttons-container'); // For request page
     const defaultLogoutButton = document.getElementById('default-logout-button');
     // ----------------------------------------------------
 
     if (token && username && role) {
-        // Logged In: Hide default buttons, show user data
+        // Logged In: Hide login/default logout, show user data
         
-        // A. Make the Outer Container Visible (shows username/icon)
+        // A. Update Visibility
         if (userDisplayContainer) {
-            userDisplayContainer.style.display = 'block'; // Or 'flex' depending on CSS
+            userDisplayContainer.style.display = 'flex'; 
+        }
+        if (loginButtons) {
+            loginButtons.style.display = 'none';
         }
         if (defaultLogoutButton) {
             defaultLogoutButton.style.display = 'none'; // Hide simple Logout button
@@ -118,11 +123,11 @@ function updateServiceBanner() {
         // B. Show Username and Role (Inner Content)
         if (usernameDisplayElement) {
             // Display: Username (Role) - The ID is usually the username in service context
-            const displayRole = role.charAt(0).toUpperCase() + role.slice(1);
-            usernameDisplayElement.innerHTML = `${username} (<b>${displayRole}</b>)`; 
+            // Note: The laundry_request page only shows the raw username for simplicity.
+            usernameDisplayElement.textContent = username; 
         }
         
-        // C. Check Role and Conditionally Show Admin Panel Button
+        // C. Check Role and Conditionally Show Admin/Staff Panel Button
         const isAdmin = ['admin', 'superadmin'].includes(role);
         
         if (adminButton) {
@@ -132,11 +137,21 @@ function updateServiceBanner() {
                 adminButton.style.display = 'none'; 
             }
         }
+        // Staff Panel Button (for request page)
+        if (staffPanelButton) {
+             if (['standard', 'admin', 'superadmin'].includes(role)) {
+                staffPanelButton.style.display = 'block';
+            } else {
+                staffPanelButton.style.display = 'none'; 
+            }
+        }
     } else {
-        // Not Logged In: Ensure all user elements are hidden. Show Logout/Default button.
+        // Not Logged In: Show login/default logout. Hide user menu and staff buttons.
         if (userDisplayContainer) userDisplayContainer.style.display = 'none';
         if (adminButton) adminButton.style.display = 'none';
-        if (defaultLogoutButton) defaultLogoutButton.style.display = 'block'; // Show simple Logout button
+        if (staffPanelButton) staffPanelButton.style.display = 'none';
+        if (loginButtons) loginButtons.style.display = 'flex'; 
+        if (defaultLogoutButton) defaultLogoutButton.style.display = 'block'; 
     }
 }
 window.updateServiceBanner = updateServiceBanner;
@@ -225,6 +240,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // 🚨 RUN BANNER UPDATE on every page load
-    updateServiceBanner(); 
+    // 🚨 FIX: Removed redundant generic banner call. 
+    // It is now the responsibility of the individual page scripts (e.g., laundry_request.js) 
+    // to call window.updateServiceBanner() from their init function.
 });

@@ -70,41 +70,8 @@ function closeDropdownOnOutsideClick(event) {
     }
 }
 
-/**
- * Function to initialize the user banner (reads service auth keys).
- */
-function checkServiceBannerDisplay() {
-    // NOTE: This logic reads the isolated service token keys.
-    const token = localStorage.getItem('nixtz_service_auth_token');
-    const username = localStorage.getItem('nixtz_service_username');
-    const staffRole = localStorage.getItem('nixtz_service_user_role'); 
-
-    const loginButtons = document.getElementById('auth-buttons-container');
-    const userMenu = document.getElementById('user-menu-container');
-    const usernameDisplay = document.getElementById('username-display');
-    const staffPanelButton = document.getElementById('staff-panel-button');
-
-    // Update Banner Visibility
-    if (token && username) {
-        if (loginButtons) loginButtons.style.display = 'none';
-        if (userMenu) userMenu.style.display = 'flex';
-        if (usernameDisplay) usernameDisplay.textContent = username;
-        
-        // Show Staff Panel button if user has a service role
-        if (staffPanelButton && staffRole && ['standard', 'admin', 'superadmin'].includes(staffRole)) {
-            staffPanelButton.style.display = 'block';
-        } else if (staffPanelButton) {
-            staffPanelButton.style.display = 'none';
-        }
-        
-    } else {
-        // Not Logged In: Show login buttons, hide user menu
-        if (loginButtons) loginButtons.style.display = 'flex';
-        if (userMenu) userMenu.style.display = 'none';
-        if (staffPanelButton) staffPanelButton.style.display = 'none';
-    }
-}
-window.checkServiceBannerDisplay = checkServiceBannerDisplay; // Expose globally
+// --- REMOVED checkServiceBannerDisplay() function (Lines 53-83 in original) ---
+// We now rely exclusively on window.updateServiceBanner from service_script.js
 
 // ------------------------------------
 // 2. DYNAMIC ITEM INPUT MANAGEMENT
@@ -333,7 +300,9 @@ async function loadRequestHistory() {
 // ------------------------------------
 function initLaundryRequestPage() {
     // Safety check: if service auth fails, redirect immediately.
+    // NOTE: This call only checks the token exists, it doesn't redirect if it exists.
     if (!window.getServiceAuthStatus()) {
+        // We only redirect if we have no token at all
         window.checkServiceAccessAndRedirect('laundry_request.html');
         return; 
     }
@@ -355,6 +324,8 @@ function initLaundryRequestPage() {
     loadRequestHistory();
     
     // Final check for banner initialization
-    // FIX APPLIED HERE: Call the correct function defined in this script.
-    window.checkServiceBannerDisplay(); 
+    // CRITICAL FIX: We run the general banner update logic from service_script.js here.
+    if (typeof window.updateServiceBanner === 'function') {
+        window.updateServiceBanner(); 
+    }
 }
