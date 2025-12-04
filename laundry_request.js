@@ -70,8 +70,42 @@ function closeDropdownOnOutsideClick(event) {
     }
 }
 
-// --- REMOVED checkServiceBannerDisplay() function (Lines 53-83 in original) ---
-// We now rely exclusively on window.updateServiceBanner from service_script.js
+/**
+ * Function to initialize the user banner (reads service auth keys).
+ * NOTE: This local function is re-added to ensure the header displays correctly on this page.
+ */
+function checkServiceBannerDisplay() {
+    // NOTE: This logic reads the isolated service token keys.
+    const token = localStorage.getItem('nixtz_service_auth_token');
+    const username = localStorage.getItem('nixtz_service_username');
+    const staffRole = localStorage.getItem('nixtz_service_user_role'); 
+
+    const loginButtons = document.getElementById('auth-buttons-container');
+    const userMenu = document.getElementById('user-menu-container');
+    const usernameDisplay = document.getElementById('username-display');
+    const staffPanelButton = document.getElementById('staff-panel-button');
+
+    // Update Banner Visibility
+    if (token && username) {
+        if (loginButtons) loginButtons.style.display = 'none';
+        if (userMenu) userMenu.style.display = 'flex'; // CRITICAL: Sets display to flex
+        if (usernameDisplay) usernameDisplay.textContent = username;
+        
+        // Show Staff Panel button if user has a service role
+        if (staffPanelButton && staffRole && ['standard', 'admin', 'superadmin'].includes(staffRole)) {
+            staffPanelButton.style.display = 'block';
+        } else if (staffPanelButton) {
+            staffPanelButton.style.display = 'none';
+        }
+        
+    } else {
+        // Not Logged In: Show login buttons, hide user menu
+        if (loginButtons) loginButtons.style.display = 'flex';
+        if (userMenu) userMenu.style.display = 'none';
+        if (staffPanelButton) staffPanelButton.style.display = 'none';
+    }
+}
+window.checkServiceBannerDisplay = checkServiceBannerDisplay; // Expose globally
 
 // ------------------------------------
 // 2. DYNAMIC ITEM INPUT MANAGEMENT
@@ -324,8 +358,8 @@ function initLaundryRequestPage() {
     loadRequestHistory();
     
     // Final check for banner initialization
-    // CRITICAL FIX: We run the general banner update logic from service_script.js here.
-    if (typeof window.updateServiceBanner === 'function') {
-        window.updateServiceBanner(); 
+    // CRITICAL FIX: Use the local banner function that is guaranteed to target the correct IDs.
+    if (typeof window.checkServiceBannerDisplay === 'function') {
+        window.checkServiceBannerDisplay(); 
     }
 }

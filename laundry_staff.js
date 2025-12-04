@@ -14,8 +14,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Run initial access check and data load
     initLaundryStaffPage();
     
-    // Run the banner display logic
-    updateServiceBanner();
+    // CRITICAL FIX: Run the global banner display logic from service_script.js
+    // This function is now defined ONLY in service_script.js and is called here.
+    if (typeof window.updateServiceBanner === 'function') {
+        window.updateServiceBanner();
+    }
 
     // Attach global listener for outside clicks to close dropdown
     document.addEventListener('click', closeDropdownOnOutsideClick);
@@ -31,10 +34,6 @@ function createLucideIcons() {
 // ------------------------------------
 // CORE APPLICATION LOGIC & UTILITIES
 // ------------------------------------
-
-// NOTE: This logic is based on the functions required by laundry_staff.html and its dependencies.
-// It assumes window.handleServiceLogout and window.showMessage are defined elsewhere 
-// (e.g., in service_script.js, which must load before this file).
 
 function getStatusColor(status) {
     switch (status) {
@@ -60,7 +59,7 @@ function getNextStatus(currentStatus) {
 
 
 // ------------------------------------
-// 1. DYNAMIC UI & BANNER LOGIC (MOVED FROM HTML/service_script.js)
+// 1. DYNAMIC UI & DROPDOWN LOGIC 
 // ------------------------------------
 
 /**
@@ -89,50 +88,7 @@ function closeDropdownOnOutsideClick(event) {
 }
 
 
-/**
- * Updates the header banner display based on isolated service session data.
- */
-function updateServiceBanner() {
-    const token = localStorage.getItem(SERVICE_TOKEN_KEY);
-    const username = localStorage.getItem('nixtz_service_username'); 
-    const role = localStorage.getItem('nixtz_service_user_role'); 
-    
-    // --- Target HTML Elements ---
-    const userDisplayContainer = document.getElementById('user-display-container');
-    const usernameDisplayElement = document.getElementById('username-display');
-    const adminButton = document.getElementById('admin-button'); 
-    const defaultLogoutButton = document.getElementById('default-logout-button');
-
-    if (token && username && role) {
-        // Logged In: Show user container, hide default logout button
-        if (defaultLogoutButton) defaultLogoutButton.style.display = 'none';
-        if (userDisplayContainer) userDisplayContainer.style.display = 'flex';
-        
-        // A. Show Username and Role (Inner Content)
-        if (usernameDisplayElement) {
-            // Display: Username/ID (Role)
-            const displayRole = role.charAt(0).toUpperCase() + role.slice(1);
-            usernameDisplayElement.innerHTML = `${username} (<b>${displayRole}</b>)`; 
-        }
-        
-        // B. Check Role and Conditionally Show Admin Panel Button
-        const isAdmin = ['admin', 'superadmin'].includes(role);
-        
-        if (adminButton) {
-            if (isAdmin) {
-                adminButton.style.display = 'block';
-            } else {
-                adminButton.style.display = 'none'; 
-            }
-        }
-    } else {
-        // Not Logged In: Hide user menus, show default logout button (if needed, or redirect)
-        if (userDisplayContainer) userDisplayContainer.style.display = 'none';
-        if (adminButton) adminButton.style.display = 'none';
-        if (defaultLogoutButton) defaultLogoutButton.style.display = 'block';
-    }
-}
-window.updateServiceBanner = updateServiceBanner; // Expose globally for manual calls/other pages
+// --- NOTE: The conflicting local updateServiceBanner() function has been removed from this file. ---
 
 
 // ------------------------------------
@@ -310,7 +266,7 @@ async function loadOutstandingRequests() {
 }
 
 // ------------------------------------
-// 5. UTILITY (Custom Confirm Modal) (MOVED FROM HTML)
+// 5. UTILITY (Custom Confirm Modal) 
 // ------------------------------------
 function showCustomConfirm(message) {
     return new Promise(resolve => {

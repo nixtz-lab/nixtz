@@ -132,6 +132,7 @@ function updateServiceBanner() {
             if (staffPageUserContainer) {
                 usernameDisplayElement.innerHTML = `${username} (<b>${displayRole}</b>)`; 
             } else {
+                // This targets the laundry_request page which just uses textContent
                 usernameDisplayElement.textContent = username;
             }
         }

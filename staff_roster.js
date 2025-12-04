@@ -6,7 +6,7 @@
 // Global constants and API endpoints
 window.API_BASE_URL = window.API_BASE_URL || window.location.origin; // Ensure API_BASE_URL is set
 const API_URL = `${window.API_BASE_URL}/api/staff/roster`;
-const PROFILE_API_URL = `${window.API_BASE_URL}/api/staff/profile`;
+const PROFILE_API_URL = `${window.API_BASE_URL}/api/staff/profile`; // Endpoint for fetching ALL staff profiles
 const LEAVE_HISTORY_API_URL = `${window.API_BASE_URL}/api/staff/leave/history`; 
 
 // --- CORE SHIFTS: REPLICATED FROM GENERATOR ---
@@ -63,7 +63,7 @@ function updateAuthUI() {
 window.updateAuthUI = updateAuthUI;
 
 
-// --- MODAL & SHIFT CONFIGURATION LOGIC (CRITICAL FIXES HERE) ---
+// --- MODAL & SHIFT CONFIGURATION LOGIC ---
 
 function loadShiftConfig() { 
     // Simplified load logic
@@ -71,16 +71,10 @@ function loadShiftConfig() {
 }
 window.loadShiftConfig = loadShiftConfig;
 
-// FIX: Expose modal functions to the global scope for HTML onclick to work
 window.openShiftConfigModal = function() { 
     console.log('Shift Config Modal Opened');
     document.getElementById('shift-config-modal')?.classList.remove('hidden');
     document.getElementById('shift-config-modal')?.classList.add('flex');
-};
-window.openStaffRequestModal = function() { 
-    console.log('Open Staff Request Modal clicked.');
-    document.getElementById('staff-request-modal')?.classList.remove('hidden');
-    document.getElementById('staff-request-modal')?.classList.add('flex');
 };
 window.showAddStaffModal = function() { 
     console.log('Show Add Staff Modal clicked.');
@@ -88,44 +82,106 @@ window.showAddStaffModal = function() {
     document.getElementById('add-staff-modal')?.classList.add('flex');
 };
 
-// Helper for Staff List Modal (used by openStaffListModal)
-async function fetchStaffProfiles() {
+// Helper function to populate the Staff Request Modal dropdown
+function populateStaffRequestDropdown(staffList) {
+    const select = document.getElementById('request-staff-select');
+    if (!select) return;
+
+    select.innerHTML = '<option value="">-- Select Staff --</option>';
+    staffList.forEach(staff => {
+        const option = document.createElement('option');
+        option.value = staff.employeeId;
+        option.textContent = `${staff.name} (${staff.employeeId})`;
+        select.appendChild(option);
+    });
+}
+
+
+/**
+ * @function fetchStaffProfiles - Fetches and caches all staff profiles.
+ * @param {boolean} updateUi - If true, updates the Staff List Modal UI.
+ */
+async function fetchStaffProfiles(updateUi = true) {
     if (!getAuthStatus()) return;
     const container = document.getElementById('staff-profiles-container');
-    container.innerHTML = '<p class="text-gray-500 text-center py-4">Loading staff data...</p>';
+    const authHeader = `Bearer ${localStorage.getItem(AUTH_TOKEN_KEY)}`;
+    
+    if (container && updateUi) {
+        container.innerHTML = '<p class="text-gray-500 text-center py-4">Loading staff data...</p>';
+    }
 
     try {
         const response = await fetch(PROFILE_API_URL, {
             method: 'GET',
-            headers: { 'Authorization': `Bearer ${localStorage.getItem(AUTH_TOKEN_KEY)}` },
+            headers: { 'Authorization': authHeader },
         });
         
-        const result = await response.json();
+        let result;
+        try {
+            result = await response.json();
+        } catch (e) {
+            // Handle non-JSON response (e.g., server down or serving HTML error page)
+            result = { success: false, message: `Non-JSON response (Status: ${response.status})` };
+        }
+
         if (response.ok && result.success && Array.isArray(result.data)) {
-            staffProfilesCache = result.data; // Cache for other uses
-            container.innerHTML = staffProfilesCache.map(staff => `
-                <div class="flex justify-between items-center p-3 bg-gray-800 rounded-lg border border-gray-700">
-                    <span class="text-white font-semibold">${staff.name}</span>
-                    <span class="text-sm text-gray-400">${staff.employeeId} - ${staff.position}</span>
-                    <button onclick="openEditProfileModal('${staff.employeeId}')" class="text-nixtz-primary hover:text-nixtz-secondary">
-                        <i data-lucide="edit" class="w-5 h-5"></i>
-                    </button>
-                </div>
-            `).join('');
-            if (window.lucide) window.lucide.createIcons();
+            staffProfilesCache = result.data; // Cache the successful list
+            
+            if (container && updateUi) {
+                 container.innerHTML = staffProfilesCache.map(staff => `
+                    <div class="flex justify-between items-center p-3 bg-gray-800 rounded-lg border border-gray-700">
+                        <span class="text-white font-semibold">${staff.name}</span>
+                        <span class="text-sm text-gray-400">${staff.employeeId} - ${staff.position}</span>
+                        <button onclick="openEditProfileModal('${staff.employeeId}')" class="text-nixtz-primary hover:text-nixtz-secondary">
+                            <i data-lucide="edit" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                `).join('');
+                if (window.lucide) window.lucide.createIcons();
+            }
+            return staffProfilesCache;
         } else {
-            container.innerHTML = `<p class="text-red-400 text-center py-4">Error loading profiles: ${result.message || 'Unknown error'}</p>`;
+            // Log the error message directly from the API or construct one
+            const errorMsg = result.message || `API Error: Status ${response.status}. URL: ${PROFILE_API_URL}`;
+            console.error("Fetch Staff Error:", errorMsg);
+
+            if (container && updateUi) {
+                container.innerHTML = `<p class="text-red-400 text-center py-4">Error fetching: ${errorMsg}</p>`;
+            }
+            return [];
         }
     } catch (error) {
-        container.innerHTML = `<p class="text-red-400 text-center py-4">Network error fetching staff profiles.</p>`;
-        console.error("Fetch staff error:", error);
+        const networkErrorMsg = `Network Error: Could not connect to API at ${PROFILE_API_URL}.`;
+        console.error("Fetch Staff Network Error:", error, networkErrorMsg);
+        
+        if (container && updateUi) {
+             container.innerHTML = `<p class="text-red-400 text-center py-4">${networkErrorMsg}</p>`;
+        }
+        return [];
     }
 }
 
+// FIX: Update openStaffRequestModal to populate the dropdown 
+window.openStaffRequestModal = async function() { 
+    console.log('Open Staff Request Modal clicked. Populating staff dropdown...');
+    
+    // 1. Show the loading state initially
+    document.getElementById('staff-request-modal')?.classList.remove('hidden');
+    document.getElementById('staff-request-modal')?.classList.add('flex');
+    document.getElementById('request-staff-select').innerHTML = '<option>Loading Staff...</option>';
+
+    // 2. Fetch the profiles without updating the Staff List Modal UI (updateUi=false)
+    const staffList = await fetchStaffProfiles(false);
+    
+    // 3. Populate the dropdown with the fetched list
+    populateStaffRequestDropdown(staffList);
+};
+
+
 // FIX: Implement working openStaffListModal
 window.openStaffListModal = function() { 
-    console.log('Open Staff List Modal clicked.');
-    fetchStaffProfiles(); // <--- Call the new fetch logic
+    console.log('Open Staff List Modal clicked. Fetching profiles...');
+    fetchStaffProfiles(true); // <--- Call the fetch logic, updating the modal UI
     document.getElementById('staff-list-modal')?.classList.remove('hidden');
     document.getElementById('staff-list-modal')?.classList.add('flex');
 };
