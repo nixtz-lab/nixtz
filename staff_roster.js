@@ -1,6 +1,6 @@
 /**
  * staff_roster.js
- * FINAL STABLE VERSION. Fixes: Form Saving (Shift & Requests), Icons, Generate & Fixed Day Off.
+ * FINAL STABLE VERSION. Fixes: Shift Config UI (ID vs Name separation), Icons, Generate & Fixed Day Off.
  */
 
 // Global constants and API endpoints
@@ -13,11 +13,13 @@ const DAY_OFF_MARKER = 'หยุด';
 const AUTH_TOKEN_KEY = localStorage.getItem('nixtz_auth_token') ? 'nixtz_auth_token' : 'tmt_auth_token'; 
 
 // --- CORE SHIFTS DEFINITION ---
-// This acts as the local state for shifts.
+// ID: Fixed internal ID for the Generator
+// Category: The fixed time slot description
+// Name: The editable label (M1, M2, etc.)
 const CORE_SHIFTS = { 
-    1: { name: 'Morning', time: '07:00-16:00', required: 6, roles: ['C1', 'C4', 'C3'] }, 
-    2: { name: 'Afternoon', time: '13:30-22:30', required: 5, roles: ['C1', 'C5', 'C3'] },
-    3: { name: 'Night', time: '22:00-07:00', required: 3, roles: ['C2', 'C1'] },
+    1: { category: 'Morning', name: 'M1', time: '07:00-16:00', required: 6, roles: ['C1', 'C4', 'C3'] }, 
+    2: { category: 'Afternoon', name: 'A1', time: '13:30-22:30', required: 5, roles: ['C1', 'C5', 'C3'] },
+    3: { category: 'Night', name: 'N1', time: '22:00-07:00', required: 3, roles: ['C2', 'C1'] },
 };
 
 // --- AUTHENTICATION ---
@@ -168,25 +170,27 @@ window.openShiftConfigModal = function() {
         modal.classList.remove('hidden');
         modal.classList.add('flex');
         
-        // Populate dropdown
+        // Populate Dropdown with Fixed Categories
         const select = document.getElementById('config-shift-select');
         const nameInput = document.getElementById('config-shift-name');
         const timeInput = document.getElementById('config-shift-time');
         
         if(select) {
-            select.innerHTML = '<option value="">-- Select Shift Slot --</option>';
+            select.innerHTML = '<option value="">-- Select Shift ID (Category) --</option>';
             Object.keys(CORE_SHIFTS).forEach(id => {
                 const shift = CORE_SHIFTS[id];
                 const option = document.createElement('option');
                 option.value = id;
-                option.textContent = `Shift ${id}: ${shift.name}`;
+                // Show ID and Fixed Category Name (e.g., "ID 1 - Morning")
+                option.textContent = `ID ${id} - ${shift.category}`; 
                 select.appendChild(option);
             });
             
             select.onchange = function() {
                 const shiftId = this.value;
                 if(shiftId && CORE_SHIFTS[shiftId]) {
-                    nameInput.value = CORE_SHIFTS[shiftId].name;
+                    // Fill editable fields
+                    nameInput.value = CORE_SHIFTS[shiftId].name; // Editable Name (M1, etc)
                     timeInput.value = CORE_SHIFTS[shiftId].time;
                 } else {
                     nameInput.value = '';
@@ -195,7 +199,7 @@ window.openShiftConfigModal = function() {
             };
         }
 
-        // Render List
+        // Render List with Clear Separation
         const listContainer = document.getElementById('configured-shift-list');
         if (listContainer) {
             listContainer.innerHTML = '';
@@ -204,8 +208,9 @@ window.openShiftConfigModal = function() {
                 listContainer.innerHTML += `
                     <div class="flex justify-between items-center bg-gray-700 p-2 rounded border border-gray-600 mb-2">
                         <div>
-                            <span class="text-white font-bold block">Shift ${id}: ${s.name}</span>
-                            <div class="text-xs text-gray-400">${s.time} (Req: ${s.required})</div>
+                            <span class="text-xs text-gray-400 uppercase tracking-wider">ID ${id}: ${s.category}</span>
+                            <span class="text-white font-bold block text-lg">${s.name}</span>
+                            <div class="text-xs text-gray-300">${s.time} (Req: ${s.required})</div>
                         </div>
                         <span class="text-nixtz-secondary text-xs bg-nixtz-secondary/10 px-2 py-1 rounded">Active</span>
                     </div>
@@ -224,7 +229,6 @@ window.openStaffRequestModal = async function() {
     modal.classList.add('flex');
     
     const select = document.getElementById('request-staff-select');
-    // Always refresh staff list on open to ensure we have latest IDs
     if (select) {
         select.innerHTML = '<option>Loading...</option>';
         await fetchStaffProfiles(); 
@@ -233,17 +237,14 @@ window.openStaffRequestModal = async function() {
             const opt = document.createElement('option');
             opt.value = s.employeeId; 
             opt.text = `${s.name} (${s.employeeId})`;
-            // Store the full mongo ID in a data attribute if needed, but employeeId is cleaner for display
             opt.setAttribute('data-mongo-id', s._id); 
             select.add(opt);
         });
     }
     
-    // Reset toggle
     if(window.toggleRequestFields) window.toggleRequestFields('none_clear');
 };
 
-// Helper: Toggle form fields based on type
 window.toggleRequestFields = function(val) {
     document.getElementById('specific-assignment-fields').classList.add('hidden');
     document.getElementById('shift-pref-fields').classList.add('hidden');
@@ -333,7 +334,6 @@ window.openEditProfileModal = (id) => {
 document.addEventListener('DOMContentLoaded', () => {
     updateAuthUI();
     
-    // Set initial date
     const today = new Date();
     const d = document.getElementById('week-start-date');
     if(d) {
@@ -344,7 +344,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (window.lucide) window.lucide.createIcons();
 
-    // 1. Handle Shift Config Form Submit
     const shiftForm = document.getElementById('shift-config-form');
     if(shiftForm) {
         shiftForm.addEventListener('submit', (e) => {
@@ -355,24 +354,20 @@ document.addEventListener('DOMContentLoaded', () => {
             const time = document.getElementById('config-shift-time').value;
             
             if(CORE_SHIFTS[id]) {
-                // Update Local State
                 CORE_SHIFTS[id].name = name;
                 CORE_SHIFTS[id].time = time;
                 
-                alert(`Shift ${id} updated to "${name}" locally. Re-open config to see changes.`);
+                alert(`Shift ID ${id} (${CORE_SHIFTS[id].category}) updated to name: "${name}"`);
                 document.getElementById('shift-config-modal').classList.add('hidden');
-                // Optional: Reload roster or refresh UI elements dependent on this
             }
         });
     }
 
-    // 2. Handle Staff Request (Update) Form Submit
     const requestForm = document.getElementById('staff-request-form');
     if(requestForm) {
         requestForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            // Get Mongo ID from the selected option's data attribute or cache
             const empId = document.getElementById('request-staff-select').value;
             const staffMember = staffCache.find(s => s.employeeId === empId);
             
@@ -382,18 +377,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const type = document.getElementById('request-type').value;
-            let reqString = "None"; // Default to clearing
-
-            // Build string format: ISO:Day:ShiftID:Role OR ISO:ShiftName OR ISO:Day
-            // Note: We need the week start string (Monday YYYY-MM-DD)
+            let reqString = "None"; 
             const weekStart = document.getElementById('week-start-date').value;
 
             if (type === 'specific_day_duty') {
                 const rDate = document.getElementById('request-date').value;
                 const rShift = document.getElementById('request-shift-id').value;
                 const rRole = document.getElementById('request-duty-role').value;
-                // Simplified day check: extract Mon/Tue etc from date if needed, but here we just store raw data
-                // The Generator expects: WeekStart:Date:ShiftId:Role
                 reqString = `${weekStart}:${rDate}:${rShift}:${rRole}`;
             } 
             else if (type === 'weekly_shift_pref') {
@@ -401,7 +391,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 reqString = `${weekStart}:${newShift}`;
             }
 
-            // Send PUT to profile API
             try {
                 const res = await fetch(`${PROFILE_API_URL}/${staffMember._id}`, {
                     method: 'PUT',
@@ -410,7 +399,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         'Authorization': `Bearer ${localStorage.getItem(AUTH_TOKEN_KEY)}`
                     },
                     body: JSON.stringify({ 
-                        name: staffMember.name, // Required by PUT validation
+                        name: staffMember.name, 
                         position: staffMember.position, 
                         employeeId: staffMember.employeeId,
                         nextWeekHolidayRequest: reqString 
