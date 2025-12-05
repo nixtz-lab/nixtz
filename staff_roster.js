@@ -1,6 +1,6 @@
 /**
  * staff_roster.js
- * FINAL STABLE VERSION. Fixes: Shift Config Form, Icons, Generate Button & Fixed Day Off logic.
+ * FINAL STABLE VERSION. Fixes: Shift Config List, Roles, Icons, Generate Button & Fixed Day Off.
  */
 
 // Global constants and API endpoints
@@ -12,12 +12,12 @@ const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const DAY_OFF_MARKER = 'หยุด'; 
 const AUTH_TOKEN_KEY = localStorage.getItem('nixtz_auth_token') ? 'nixtz_auth_token' : 'tmt_auth_token'; 
 
-// --- CORE SHIFTS DEFINITION ---
-// Used for populating the config modal
+// --- CORE SHIFTS DEFINITION (Updated with Roles) ---
+// This ensures the frontend matches the backend generator logic
 const CORE_SHIFTS = { 
-    1: { name: 'Morning', time: '07:00-16:00', required: 6 }, 
-    2: { name: 'Afternoon', time: '13:30-22:30', required: 5 },
-    3: { name: 'Night', time: '22:00-07:00', required: 3 },
+    1: { name: 'Morning', time: '07:00-16:00', required: 6, roles: ['C1', 'C4', 'C3'] }, 
+    2: { name: 'Afternoon', time: '13:30-22:30', required: 5, roles: ['C1', 'C5', 'C3'] },
+    3: { name: 'Night', time: '22:00-07:00', required: 3, roles: ['C2', 'C1'] },
 };
 
 // --- AUTHENTICATION ---
@@ -166,22 +166,22 @@ window.handleDateChange = function(input) {
     loadRoster(monday);
 };
 
-// 5. MODAL LOGIC (FIXED SHIFT CONFIG)
+// 5. MODAL LOGIC (FIXED CONFIG POPULATION)
 let staffCache = [];
 
-// FIX: Populate Shift Config Dropdown
+// FIX: Populate Shift Config Dropdown AND List
 window.openShiftConfigModal = function() {
     const modal = document.getElementById('shift-config-modal');
     if (modal) {
         modal.classList.remove('hidden');
         modal.classList.add('flex');
         
-        // Populate the dropdown
+        // 1. Populate Dropdown Options
         const select = document.getElementById('config-shift-select');
         const nameInput = document.getElementById('config-shift-name');
         const timeInput = document.getElementById('config-shift-time');
         
-        if(select && select.options.length <= 1) { // Only populate if empty
+        if(select) {
             select.innerHTML = '<option value="">-- Select Shift Slot --</option>';
             Object.keys(CORE_SHIFTS).forEach(id => {
                 const shift = CORE_SHIFTS[id];
@@ -191,7 +191,7 @@ window.openShiftConfigModal = function() {
                 select.appendChild(option);
             });
             
-            // Add listener to auto-fill inputs when shift is selected
+            // Add listener to auto-fill inputs
             select.onchange = function() {
                 const shiftId = this.value;
                 if(shiftId && CORE_SHIFTS[shiftId]) {
@@ -203,6 +203,26 @@ window.openShiftConfigModal = function() {
                 }
             };
         }
+
+        // 2. Populate "Current Shifts" List (The missing part!)
+        const listContainer = document.getElementById('configured-shift-list');
+        if (listContainer) {
+            listContainer.innerHTML = '';
+            Object.keys(CORE_SHIFTS).forEach(id => {
+                const s = CORE_SHIFTS[id];
+                listContainer.innerHTML += `
+                    <div class="flex justify-between items-center bg-gray-700 p-2 rounded border border-gray-600">
+                        <div>
+                            <span class="text-white font-bold block">Shift ${id}: ${s.name}</span>
+                            <div class="text-xs text-gray-400">${s.time} (Req: ${s.required})</div>
+                            <div class="text-xs text-nixtz-primary mt-1">Roles: ${s.roles.join(', ')}</div>
+                        </div>
+                        <span class="text-nixtz-secondary text-xs bg-nixtz-secondary/10 px-2 py-1 rounded">Active</span>
+                    </div>
+                `;
+            });
+        }
+
     } else {
         console.error("Shift config modal not found in DOM");
     }

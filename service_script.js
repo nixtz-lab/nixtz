@@ -65,14 +65,21 @@ window.checkServiceAccessAndRedirect = (targetPage) => {
         // Use the newly defined global function
         window.showMessage("Access Denied. Please sign in to the service panel.", true);
         setTimeout(() => {
-            // Redirect with a return parameter so we come back here after login
-            // Fix: Include the redirect parameter pointing to the target page
-            window.location.href = `service_auth.html?service=true&redirect=${targetPage}`;
+            // Redirect to the service login page with redirect parameter
+            // FIX: Ensure we pass the current page so we can come back!
+            const currentPage = window.location.pathname.split('/').pop() || 'index.html'; 
+            // If targetPage is provided use it, otherwise use current page
+            const redirectDest = targetPage || currentPage;
+            
+            window.location.href = `service_auth.html?service=true&redirect=${redirectDest}`;
         }, 500);
         return false;
     }
     // If authenticated, proceed.
-    window.location.href = targetPage;
+    // If targetPage is different from current page, redirect
+    if (targetPage && window.location.pathname.split('/').pop() !== targetPage) {
+         window.location.href = targetPage;
+    }
     return true;
 };
 
@@ -127,21 +134,14 @@ function updateServiceBanner() {
         
         // B. Show Username and Role (Inner Content)
         if (usernameDisplayElement) {
-            // For staff pages, we might want bold roles, for request pages just the name is fine.
-            // This logic handles both gracefully.
-            if (usernameDisplayElement.innerHTML === '') {
-                 usernameDisplayElement.textContent = username; 
-            }
-            // If the element expects HTML (like on staff page), you can keep using innerHTML in specific page scripts
-            // or just set textContent here as a safe default.
-             // Display: Username (Role) - The ID is usually the username in service context
+            // Display: Username (Role) - The ID is usually the username in service context
             const displayRole = role.charAt(0).toUpperCase() + role.slice(1);
             // Use different display content depending on the active container (Staff/Admin often show role, Request often shows just username)
             if (staffPageUserContainer) {
                 usernameDisplayElement.innerHTML = `${username} (<b>${displayRole}</b>)`; 
             } else {
                 // This targets the laundry_request page which just uses textContent
-                 usernameDisplayElement.textContent = username;
+                usernameDisplayElement.textContent = username;
             }
         }
         
@@ -217,16 +217,17 @@ async function handleServiceLogin(e) {
             
             showMsg("Service Login successful! Redirecting...", false); 
             
-            // --- DYNAMIC REDIRECT FIX ---
-            // Check if there is a 'redirect' param in the URL
+            // 3. REDIRECT LOGIC
+            // Check for 'redirect' query parameter in the current URL
             const urlParams = new URLSearchParams(window.location.search);
             const redirectTarget = urlParams.get('redirect');
 
             setTimeout(() => {
-                // If redirect param exists, go there. Otherwise default to staff panel.
                 if (redirectTarget) {
+                    // Redirect to the page that sent us here
                     window.location.href = redirectTarget;
                 } else {
+                    // Default fallback
                     window.location.href = 'laundry_staff.html'; 
                 }
             }, 1000);
