@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('click', closeDropdownOnOutsideClick);
 });
 
-const SERVICE_TOKEN_KEY = 'nixtz_service_auth_token'; // Define key locally for API calls
+// const SERVICE_TOKEN_KEY = 'nixtz_service_auth_token'; // Define key locally for API calls
 const itemsContainer = document.getElementById('items-container');
 
 // Helper function to create Lucide icons if they exist globally

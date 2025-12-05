@@ -1,6 +1,6 @@
 /**
  * staff_roster.js
- * FINAL STABLE VERSION. Fixes: Profile Saving (Edit/Add), Shift Config, Generate & Fixed Day Off.
+ * FINAL STABLE VERSION. Fixes: Persistent Shift Config (LocalStorage), Icons, and Dropdowns.
  */
 
 // Global constants and API endpoints
@@ -11,6 +11,7 @@ const PROFILE_API_URL = `${window.API_BASE_URL}/api/staff/profile`;
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const DAY_OFF_MARKER = 'หยุด'; 
 const AUTH_TOKEN_KEY = localStorage.getItem('nixtz_auth_token') ? 'nixtz_auth_token' : 'tmt_auth_token'; 
+const SHIFT_STORAGE_KEY = 'nixtz_core_shifts';
 
 // --- BASE CATEGORIES (The Fixed 1, 2, 3) ---
 const BASE_CATEGORIES = {
@@ -19,12 +20,18 @@ const BASE_CATEGORIES = {
     3: { name: 'Night', defaultTime: '22:00-07:00', required: 3, roles: ['C2', 'C1'] }
 };
 
-// --- ACTIVE SHIFTS (Editable List) ---
-let CORE_SHIFTS = { 
+// --- ACTIVE SHIFTS (Editable List with Persistence) ---
+// Try to load from LocalStorage first, otherwise use defaults.
+let storedShifts = localStorage.getItem(SHIFT_STORAGE_KEY);
+let CORE_SHIFTS = storedShifts ? JSON.parse(storedShifts) : { 
     '1': { baseId: 1, category: 'Morning', name: 'M1', time: '07:00-16:00', required: 6 }, 
     '2': { baseId: 2, category: 'Afternoon', name: 'A1', time: '13:30-22:30', required: 5 },
     '3': { baseId: 3, category: 'Night', name: 'N1', time: '22:00-07:00', required: 3 },
 };
+
+function saveShiftsToStorage() {
+    localStorage.setItem(SHIFT_STORAGE_KEY, JSON.stringify(CORE_SHIFTS));
+}
 
 // --- AUTHENTICATION ---
 function getAuthStatus() { return !!localStorage.getItem(AUTH_TOKEN_KEY); }
@@ -82,11 +89,11 @@ function addStaffRow(initialData = {}) {
                 let cellClass = "text-white";
                 if (displayVal.includes(DAY_OFF_MARKER) || displayVal.includes("Off")) {
                     cellClass = "text-gray-500";
-                } else if (displayVal.includes("M1") || displayVal.includes("Morning")) {
+                } else if (displayVal.includes("M") || displayVal.includes("Morning")) {
                     cellClass = "text-yellow-300 font-medium";
-                } else if (displayVal.includes("A1") || displayVal.includes("Afternoon")) {
+                } else if (displayVal.includes("A") || displayVal.includes("Afternoon")) {
                     cellClass = "text-blue-300 font-medium";
-                } else if (displayVal.includes("N1") || displayVal.includes("Night")) {
+                } else if (displayVal.includes("N") || displayVal.includes("Night")) {
                     cellClass = "text-purple-300 font-medium";
                 }
                 
@@ -124,6 +131,7 @@ async function loadRoster(startDateString) {
         console.error("Load Roster Error:", error);
         rosterBody.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-red-500">Connection Error.</td></tr>';
     }
+    // Refresh icons after loading
     if (window.lucide) window.lucide.createIcons();
 }
 
@@ -198,6 +206,7 @@ window.openShiftConfigModal = function() {
         modal.classList.remove('hidden');
         modal.classList.add('flex');
         
+        // Populate Dropdown
         const select = document.getElementById('config-shift-select');
         const nameInput = document.getElementById('config-shift-name');
         const timeInput = document.getElementById('config-shift-time');
@@ -261,7 +270,7 @@ window.openStaffRequestModal = async function() {
     modal.classList.remove('hidden');
     modal.classList.add('flex');
 
-    // Populate Shifts
+    // Populate Shifts IMMEDIATELY
     const shiftSelect = document.getElementById('request-configured-shift');
     if (shiftSelect) {
         shiftSelect.innerHTML = '<option value="">-- Select Assigned Shift --</option>';
@@ -318,7 +327,6 @@ window.showAddStaffModal = () => {
 window.closeEditProfileModal = (event) => {
     event.preventDefault();
     document.getElementById('single-staff-modal').classList.add('hidden');
-    // Re-open list if needed, or just close
     document.getElementById('staff-list-modal').classList.remove('hidden');
 };
 
@@ -425,6 +433,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     required: baseCat.required 
                 };
                 
+                // SAVE TO LOCAL STORAGE
+                saveShiftsToStorage();
+
                 alert(`Added new shift "${name}" to ${baseCat.name} category.`);
                 renderShiftList(); 
                 document.getElementById('config-shift-name').value = "";
@@ -502,7 +513,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 3. EDIT STAFF PROFILE SAVE (Added this block)
+    // 3. EDIT STAFF PROFILE SAVE
     const editProfileForm = document.getElementById('edit-staff-form');
     if(editProfileForm) {
         editProfileForm.addEventListener('submit', async (e) => {
@@ -543,7 +554,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 4. ADD STAFF SAVE (Added this block)
+    // 4. ADD STAFF SAVE
     const addStaffForm = document.getElementById('add-staff-form');
     if(addStaffForm) {
         addStaffForm.addEventListener('submit', async (e) => {
