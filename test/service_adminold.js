@@ -1,72 +1,27 @@
 /**
  * service_admin.js
- * Handles the logic for the dedicated Service Management Admin Panel.
+ * Handles the logic for the dedicated Service Management Admin Panel (Analytics and Full Data View).
+ * This page currently manages the Laundry Service data but is structured for future service additions.
+ * NOTE: Relies on SERVICE_TOKEN_KEY being defined in service_script.js.
  */
 
-// --- 1. CONFIGURATION FIX ---
-// Prevent "undefined/api/..." errors
-if (typeof window.API_BASE_URL === 'undefined') {
-    window.API_BASE_URL = ''; 
-}
-
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Initialize Icons
+    // We must rely on window.SERVICE_TOKEN_KEY being available after service_script.js loads.
     if (typeof lucide !== 'undefined') lucide.createIcons();
     
-    // 2. Load Dashboard Data
+    // Load initial data (assuming a token or access method is active)
     fetchAnalytics();
     fetchAllRequests();
     
-    // 3. Attach Form Listeners
+    // Attach listener to the staff creation form (ID: create-staff-form)
     const createStaffForm = document.getElementById('create-staff-form');
     if (createStaffForm) {
         createStaffForm.addEventListener('submit', handleCreateStaffFormSubmit);
     }
-
-    // 4. Attach Dropdown Close Listener
-    document.addEventListener('click', closeDropdownOnOutsideClick);
 });
 
-// ------------------------------------
-// 2. DROPDOWN LOGIC (The Missing Part)
-// ------------------------------------
-
-/**
- * Toggles the user dropdown menu visibility
- */
-function toggleUserDropdown() {
-    const dropdown = document.getElementById('user-dropdown');
-    if (dropdown) {
-        const isHidden = dropdown.style.display === 'none' || dropdown.style.display === '';
-        dropdown.style.display = isHidden ? 'block' : 'none';
-        
-        // Re-render icons inside the dropdown just in case
-        if (isHidden && typeof lucide !== 'undefined') lucide.createIcons();
-    }
-}
-window.toggleUserDropdown = toggleUserDropdown; // Expose to HTML
-
-/**
- * Closes the dropdown if the user clicks outside of it
- */
-function closeDropdownOnOutsideClick(event) {
-    const userContainer = document.getElementById('user-display-container');
-    const dropdown = document.getElementById('user-dropdown');
-    const displayButton = document.getElementById('user-display-button');
-
-    // Only hide if the menu is visible AND the click was NOT inside the container
-    if (dropdown && dropdown.style.display === 'block' && 
-        userContainer && !userContainer.contains(event.target) && 
-        !displayButton.contains(event.target)) {
-        
-        dropdown.style.display = 'none';
-    }
-}
-
-
-// ------------------------------------
-// 3. DATA FETCHING & DASHBOARD
-// ------------------------------------
+// NOTE: SERVICE_TOKEN_KEY definition removed here to avoid SyntaxError.
+// We access it globally as window.SERVICE_TOKEN_KEY
 
 const statusMap = {
     'PendingPickup': { label: 'Pending Pickup', color: 'bg-status-pending text-nixtz-bg', icon: 'hourglass' },
@@ -77,11 +32,13 @@ const statusMap = {
     'Cancelled': { label: 'Cancelled', color: 'bg-status-cancelled text-white', icon: 'x-circle' }
 };
 
+// ------------------------------------
+// 1. DATA FETCHING
+// ------------------------------------
+
 async function fetchAnalytics() {
-    // 🚨 FIX: Ensure we use the token key safely
-    const tokenKey = window.SERVICE_TOKEN_KEY || 'nixtz_service_auth_token';
-    const token = localStorage.getItem(tokenKey);
-    
+    // Access token via the global key
+    const token = localStorage.getItem(window.SERVICE_TOKEN_KEY);
     if (!token) return;
 
     try {
@@ -93,18 +50,18 @@ async function fetchAnalytics() {
         if (response.ok && result.success) {
             updateAnalyticsDashboard(result.data);
         } else {
-            if(window.showMessage) window.showMessage(result.message || 'Failed to load analytics.', true);
+            window.showMessage(result.message || 'Failed to load analytics.', true);
         }
     } catch (error) {
         console.error('Analytics Fetch Error:', error);
+        window.showMessage('Network error loading analytics.', true);
     }
 }
 
 async function fetchAllRequests() {
     const tableBody = document.getElementById('all-requests-body');
-    const tokenKey = window.SERVICE_TOKEN_KEY || 'nixtz_service_auth_token';
-    const token = localStorage.getItem(tokenKey);
-
+    // Access token via the global key
+    const token = localStorage.getItem(window.SERVICE_TOKEN_KEY);
     if (!tableBody || !token) return;
 
     tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-500">Loading all requests...</td></tr>';
@@ -113,13 +70,6 @@ async function fetchAllRequests() {
         const response = await fetch(`${window.API_BASE_URL}/api/laundry/admin/all-requests`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        
-        // Check for non-JSON response (e.g. 404 HTML page)
-        const contentType = response.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-            throw new Error("Invalid server response");
-        }
-
         const result = await response.json();
 
         if (response.ok && result.success && result.data.length > 0) {
@@ -127,10 +77,11 @@ async function fetchAllRequests() {
         } else if (result.data && result.data.length === 0) {
             tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-400">No requests found in the system.</td></tr>';
         } else {
+            window.showMessage(result.message || 'Failed to load all requests.', true);
             tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-red-400">Error loading data.</td></tr>';
         }
 
-        if(typeof lucide !== 'undefined') lucide.createIcons();
+        if(window.lucide) window.lucide.createIcons();
 
     } catch (error) {
         console.error('All Requests Fetch Error:', error);
@@ -138,16 +89,22 @@ async function fetchAllRequests() {
     }
 }
 
+// ------------------------------------
+// 2. RENDERING AND UI UPDATES
+// ------------------------------------
+
 function updateAnalyticsDashboard(data) {
     const container = document.getElementById('analytics-dashboard');
     if (!container) return;
     
+    // Define the card order/labels
     const statuses = ['Total', 'PendingPickup', 'PickedUp', 'InProgress', 'ReadyforDelivery', 'Completed', 'Cancelled'];
     
     container.innerHTML = statuses.map(key => {
         const count = data[key] || 0;
         const info = statusMap[key] || { label: key, color: 'bg-gray-700 text-white', icon: 'info' };
         
+        // Custom styling for Total count
         const cardColor = key === 'Total' ? 'bg-nixtz-primary' : info.color;
         const iconName = key === 'Total' ? 'trending-up' : info.icon;
         const labelText = key === 'Total' ? 'Total Requests' : info.label;
@@ -164,7 +121,7 @@ function updateAnalyticsDashboard(data) {
         `;
     }).join('');
     
-    if(typeof lucide !== 'undefined') lucide.createIcons();
+    if(window.lucide) window.lucide.createIcons();
 }
 
 function renderRequestRow(request) {
@@ -200,12 +157,12 @@ function renderRequestRow(request) {
 }
 
 // ------------------------------------
-// 4. ADMIN ACTIONS
+// 3. ADMIN ACTION HANDLERS
 // ------------------------------------
 
 async function deleteRequest(id, department) {
-    const tokenKey = window.SERVICE_TOKEN_KEY || 'nixtz_service_auth_token';
-    const token = localStorage.getItem(tokenKey);
+    // 🚨 FIX: Use the dedicated service token key
+    const token = localStorage.getItem(window.SERVICE_TOKEN_KEY);
     if (!token) return;
 
     const confirmationMessage = `Are you sure you want to PERMANENTLY delete the request from ${department}? This cannot be undone.`;
@@ -222,6 +179,7 @@ async function deleteRequest(id, department) {
 
         if (response.ok && result.success) {
             window.showMessage(result.message, false);
+            // Refresh both analytics and the full list
             fetchAnalytics();
             fetchAllRequests();
         } else {
@@ -233,11 +191,16 @@ async function deleteRequest(id, department) {
         window.showMessage('Network error during deletion.', true);
     }
 }
-window.deleteRequest = deleteRequest;
+window.deleteRequest = deleteRequest; // Expose globally for HTML onclick
 
+/**
+ * NEW: Handles the submission of the form to create a new staff user.
+ * Sends POST request to /api/service/admin/create-staff-v2.
+ */
 async function handleCreateStaffFormSubmit(e) {
     e.preventDefault();
     
+    // 1. Get form data (Using Name and Employee ID)
     const name = document.getElementById('staff-name').value.trim();
     const semployeeId = document.getElementById('staff-employee-id').value.trim();
     const password = document.getElementById('staff-password').value.trim();
@@ -245,7 +208,7 @@ async function handleCreateStaffFormSubmit(e) {
     const role = document.getElementById('staff-role').value;
 
     if (!name || !semployeeId || !password || !department || !role) {
-        window.showMessage("All fields are required.", true);
+        window.showMessage("All fields (Name, ID, Password, Role) are required.", true);
         return;
     }
     if (password.length < 8) {
@@ -253,6 +216,7 @@ async function handleCreateStaffFormSubmit(e) {
          return;
     }
 
+    // Payload keys match the prefixed names the backend expects
     const payload = { 
         sname: name,             
         semployeeId: semployeeId,
@@ -260,12 +224,12 @@ async function handleCreateStaffFormSubmit(e) {
         sdepartment: department, 
         srole: role              
     }; 
-    
-    const tokenKey = window.SERVICE_TOKEN_KEY || 'nixtz_service_auth_token';
-    const token = localStorage.getItem(tokenKey);
+    // 🚨 FIX: Use the dedicated service token key
+    const token = localStorage.getItem(window.SERVICE_TOKEN_KEY);
 
     try {
-        const response = await fetch(`${window.API_BASE_URL}/api/service/admin/create-staff-v2`, { 
+        // Calling the new backend route using a relative path to fix the 'undefined' issue.
+        const response = await fetch('/api/service/admin/create-staff-v2', { // <--- CRITICAL FRONTEND FIX
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
@@ -278,17 +242,22 @@ async function handleCreateStaffFormSubmit(e) {
 
         if (response.ok && result.success) {
             window.showMessage(result.message, false);
-            e.target.reset(); 
+            e.target.reset(); // Clear form on success
+            // Optional: Refresh any list showing staff users
         } else {
             window.showMessage(result.message || 'Failed to create staff account.', true);
         }
 
     } catch (error) {
         console.error('Staff Creation Error:', error);
-        window.showMessage('Network error.', true);
+        window.showMessage('Network error during staff account creation.', true);
     }
 }
 
+
+// ------------------------------------
+// 4. UTILITY (Custom Confirm Modal - Copied from laundry_staff.js)
+// ------------------------------------
 function showCustomConfirm(message) {
     return new Promise(resolve => {
         let existingModal = document.getElementById('custom-confirm-modal');

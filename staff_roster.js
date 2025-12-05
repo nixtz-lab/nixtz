@@ -96,17 +96,33 @@ function addStaffRow(initialData = {}) {
                 
                 // Display Logic
                 let displayVal = shiftInfo.jobRole || DAY_OFF_MARKER;
+                let displayTime = "";
 
                 if (shiftInfo.shiftId) {
-                    const config = CORE_SHIFTS[shiftInfo.shiftId];
+                    // 1. Try to find specific config matching the Role Name (e.g., "M2")
+                    let config = Object.values(CORE_SHIFTS).find(c => c.name === displayVal);
+                    
+                    // 2. If not found, fallback to the Base ID default (e.g., ID 1 -> M1)
+                    if (!config) {
+                        config = CORE_SHIFTS[shiftInfo.shiftId];
+                    }
+
                     if (config) {
+                        displayTime = config.time || "";
+                        
+                        // If the job role from backend (e.g. "C1 (Mgr)") isn't the shift name "M1"
                         if (displayVal !== config.name) {
                              displayVal = `${config.name} (${displayVal})`;
                         } else {
                              displayVal = config.name;
                         }
+                    } else if (shiftInfo.timeRange && shiftInfo.timeRange !== DAY_OFF_MARKER) {
+                         displayTime = shiftInfo.timeRange;
                     }
                 }
+
+                // Combine Name and Time
+                const fullText = displayTime ? `${displayVal} ${displayTime}` : displayVal;
 
                 let cellClass = "text-white";
                 if (displayVal.includes(DAY_OFF_MARKER) || displayVal.includes("Off")) {
@@ -121,7 +137,7 @@ function addStaffRow(initialData = {}) {
                 
                 return `
                 <td class="roster-cell bg-gray-900 border-l border-b border-gray-800 p-2 text-center text-sm" data-day="${day}">
-                    <input type="text" class="duty-input w-full text-center bg-transparent focus:outline-none ${cellClass}" value="${displayVal}" />
+                    <input type="text" class="duty-input w-full text-center bg-transparent focus:outline-none ${cellClass}" value="${fullText}" title="${fullText}" />
                 </td>`;
             }).join('')}
         </tr>
