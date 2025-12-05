@@ -8,7 +8,12 @@ document.addEventListener('DOMContentLoaded', () => {
     createLucideIcons(); 
     initLaundryRequestPage();
     
-    // Attach event listeners for the header UI (Dropdown close on outside click)
+    // CRITICAL: Call the global function exposed by service_script.js (Matches Staff Page Logic)
+    if (typeof window.updateServiceBanner === 'function') {
+        window.updateServiceBanner();
+    }
+
+    // Attach global listener for outside clicks to close dropdown (Matches Staff Page Logic)
     document.addEventListener('click', closeDropdownOnOutsideClick);
 });
 
@@ -38,11 +43,11 @@ function getStatusColor(status) {
 }
 
 // ------------------------------------
-// 1. HEADER BANNER UI & DROPDOWN LOGIC
+// 1. HEADER BANNER UI & DROPDOWN LOGIC (COPIED FROM STAFF PAGE)
 // ------------------------------------
 
 /**
- * Function to toggle the user dropdown menu
+ * Toggles visibility of the user dropdown menu when the banner button is clicked.
  */
 function toggleUserDropdown() {
     const dropdown = document.getElementById('user-dropdown');
@@ -55,22 +60,19 @@ window.toggleUserDropdown = toggleUserDropdown; // Expose globally for HTML oncl
 
 /**
  * Closes the user dropdown if the click occurred outside the container.
- * UPDATED: Uses 'user-display-container' to match the new HTML structure.
+ * Targets 'user-display-container' to match the staff page HTML structure.
  */
 function closeDropdownOnOutsideClick(event) {
-    // FIX: This now matches the ID used in the staff page
     const userContainer = document.getElementById('user-display-container');
     const dropdown = document.getElementById('user-dropdown');
-    const displayButton = document.getElementById('user-display-button');
-
-    // Only hide if the click was not on the button AND the menu is currently visible
-    if (dropdown && dropdown.style.display === 'block' && 
-        userContainer && !userContainer.contains(event.target) && 
-        !displayButton.contains(event.target)) {
-        
+    
+    if (dropdown && userContainer && dropdown.style.display === 'block' && !userContainer.contains(event.target)) {
         dropdown.style.display = 'none';
     }
 }
+
+// NOTE: Banner update logic is now handled globally by window.updateServiceBanner() 
+// called in the DOMContentLoaded block above.
 
 // ------------------------------------
 // 2. DYNAMIC ITEM INPUT MANAGEMENT
@@ -321,10 +323,5 @@ function initLaundryRequestPage() {
     });
 
     loadRequestHistory();
-    
-    // Final check for banner initialization
-    // CRITICAL FIX: We run the general banner update logic from service_script.js here.
-    if (typeof window.updateServiceBanner === 'function') {
-        window.updateServiceBanner(); 
-    }
+    // Banner update is handled in DOMContentLoaded to prevent duplicate calls
 }
