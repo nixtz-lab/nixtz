@@ -158,132 +158,45 @@ window.handleDateChange = function(input) {
     loadRoster(monday);
 };
 
-// 5. MODAL LOGIC (FIXED BUTTONS)
+// 5. MODAL STUBS
 let staffCache = [];
-
-// Fix: Expose these globally so HTML onclick works
-window.openShiftConfigModal = function() {
-    const modal = document.getElementById('shift-config-modal');
-    if (modal) {
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-    } else {
-        console.error("Shift config modal not found in DOM");
-    }
-};
-
-// Fix: Update button logic (opens Staff Request Modal)
-window.openStaffRequestModal = async function() {
-    const modal = document.getElementById('staff-request-modal');
-    if (!modal) return;
-    
-    modal.classList.remove('hidden');
-    modal.classList.add('flex');
-    
-    // Populate dropdown if needed
-    const select = document.getElementById('request-staff-select');
-    if (select && select.options.length <= 1) {
-        select.innerHTML = '<option>Loading...</option>';
-        await fetchStaffProfiles(); // Ensure cache is loaded
-        select.innerHTML = '<option value="">-- Select Staff --</option>';
-        staffCache.forEach(s => {
-            const opt = document.createElement('option');
-            opt.value = s.employeeId;
-            opt.text = `${s.name} (${s.employeeId})`;
-            select.add(opt);
-        });
-    }
-};
-
-window.showAddStaffModal = () => {
-    const modal = document.getElementById('add-staff-modal');
-    if(modal) {
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-    }
-};
-
-// Fix: Fetch staff helper function
-async function fetchStaffProfiles() {
-    try {
-        const res = await fetch(PROFILE_API_URL, { headers: { 'Authorization': `Bearer ${localStorage.getItem(AUTH_TOKEN_KEY)}` } });
-        const json = await res.json();
-        if(json.success) {
-            staffCache = json.data;
-            return staffCache;
-        }
-    } catch (e) {
-        console.error("Fetch profiles error", e);
-    }
-    return [];
-}
+window.showAddStaffModal = () => document.getElementById('add-staff-modal').classList.remove('hidden');
 
 window.openStaffListModal = async () => {
-    const modal = document.getElementById('staff-list-modal');
-    if(!modal) return;
-    
-    modal.classList.remove('hidden');
-    modal.classList.add('flex');
-    
+    document.getElementById('staff-list-modal').classList.remove('hidden');
     const container = document.getElementById('staff-profiles-container');
-    container.innerHTML = '<p class="text-center text-gray-400 py-4">Loading...</p>';
+    container.innerHTML = 'Loading...';
     
-    await fetchStaffProfiles();
-    
-    if(staffCache.length > 0) {
-        // Restored original card style for staff list
+    const res = await fetch(PROFILE_API_URL, { headers: { 'Authorization': `Bearer ${localStorage.getItem(AUTH_TOKEN_KEY)}` } });
+    const json = await res.json();
+    if(json.success) {
+        staffCache = json.data;
         container.innerHTML = staffCache.map(s => `
-            <div class="flex justify-between items-center p-3 bg-gray-800 rounded-lg border border-gray-700 hover:border-nixtz-primary transition-colors duration-200">
-                <div class="flex flex-col">
-                    <span class="text-white font-semibold text-sm">${s.name}</span>
-                    <span class="text-xs text-gray-400">${s.position} (${s.employeeId})</span>
-                </div>
-                <button onclick="openEditProfileModal('${s.employeeId}')" class="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-full transition-colors">
+            <div class="flex justify-between items-center p-2 border-b border-gray-700">
+                <span>${s.name} (${s.position})</span>
+                <button onclick="openEditModal('${s.employeeId}')" class="text-blue-400 hover:text-blue-300">
                     <i data-lucide="edit" class="w-4 h-4"></i>
                 </button>
             </div>
         `).join('');
         // Re-render icons inside the modal
         if (window.lucide) window.lucide.createIcons();
-    } else {
-        container.innerHTML = '<p class="text-center text-gray-500 py-4">No staff found.</p>';
     }
 };
 
-window.openEditProfileModal = (id) => {
+window.openEditModal = (id) => {
     const s = staffCache.find(x => x.employeeId === id);
     if(!s) return;
-    
-    // Use the specific IDs from your Edit Modal HTML
-    const titleEl = document.getElementById('single-staff-title');
-    if(titleEl) titleEl.textContent = `Edit Profile: ${s.name}`;
-    
-    const idField = document.getElementById('edit-profile-id');
-    if(idField) idField.value = s._id;
-    
-    const nameField = document.getElementById('edit-staff-name');
-    if(nameField) nameField.value = s.name;
-    
-    const empIdField = document.getElementById('edit-staff-id');
-    if(empIdField) empIdField.value = s.employeeId;
-    
-    const posField = document.getElementById('edit-staff-position');
-    if(posField) posField.value = s.position;
-    
-    const prefField = document.getElementById('edit-staff-shift-preference');
-    if(prefField) prefField.value = s.shiftPreference;
-    
-    const dayOffField = document.getElementById('edit-staff-fixed-dayoff');
-    if(dayOffField) dayOffField.value = s.fixedDayOff;
+    // Populate your edit modal IDs here
+    document.getElementById('single-staff-title').textContent = `Edit Profile: ${s.name}`;
+    document.getElementById('edit-profile-id').value = s._id;
+    document.getElementById('edit-staff-name').value = s.name;
+    document.getElementById('edit-staff-id').value = s.employeeId;
+    document.getElementById('edit-staff-position').value = s.position;
+    document.getElementById('edit-staff-shift-preference').value = s.shiftPreference;
+    document.getElementById('edit-staff-fixed-dayoff').value = s.fixedDayOff;
 
-    const modal = document.getElementById('single-staff-modal');
-    if(modal) {
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-    }
-    
-    // Hide the list modal so they don't overlap awkwardly
-    document.getElementById('staff-list-modal')?.classList.add('hidden');
+    document.getElementById('single-staff-modal').classList.remove('hidden');
 };
 
 // --- INIT ---

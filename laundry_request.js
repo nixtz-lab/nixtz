@@ -55,7 +55,7 @@ window.toggleUserDropdown = toggleUserDropdown; // Expose globally for HTML oncl
 
 /**
  * Closes the user dropdown if the click occurred outside the container.
- * UPDATED: Uses 'user-display-container' to match the new HTML structure
+ * UPDATED: Uses 'user-display-container' to match the new HTML structure.
  */
 function closeDropdownOnOutsideClick(event) {
     // FIX: This now matches the ID used in the staff page
@@ -71,10 +71,6 @@ function closeDropdownOnOutsideClick(event) {
         dropdown.style.display = 'none';
     }
 }
-
-// --- BANNER LOGIC ---
-// We rely on the global window.updateServiceBanner from service_script.js
-// because the HTML IDs are now standardized.
 
 // ------------------------------------
 // 2. DYNAMIC ITEM INPUT MANAGEMENT
