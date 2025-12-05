@@ -3,16 +3,13 @@
  * Handles the logic for the user-facing laundry request submission form and history display.
  */
 
-// --- 1. CONFIGURATION FIX ---
-// Fixes the "undefined/api/..." error by setting a default URL if one is missing.
+// --- 1. CONFIGURATION FIX (CRITICAL) ---
 if (typeof window.API_BASE_URL === 'undefined') {
-    // Use an empty string '' for relative paths (e.g., /api/laundry...)
-    // Or set your full backend URL here: 'https://api.nixtz.com'
+    // Leave empty if Nginx is configured, or use 'https://nixtz.com:3000' if not.
     window.API_BASE_URL = ''; 
 }
 
-// REMOVED: Service token key is already defined in service_script.js
-// const SERVICE_TOKEN_KEY = 'nixtz_service_auth_token'; 
+// const SERVICE_TOKEN_KEY = 'nixtz_service_auth_token'; // REMOVED: Defined globally or accessed directly
 
 const itemsContainer = document.getElementById('items-container');
 
@@ -248,8 +245,6 @@ async function loadRequestHistory() {
     historyList.innerHTML = '<p class="text-gray-500 text-center py-8">Loading request history...</p>';
 
     try {
-        // This line caused the "undefined/api" error before.
-        // We now have window.API_BASE_URL defined at the top.
         const response = await fetch(`${window.API_BASE_URL}/api/laundry/user-requests`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });

@@ -29,38 +29,7 @@ if (!MONGODB_URI) {
 
 // Temporary function to create a Super Admin user if one doesn't exist.
 // DELETE THIS FUNCTION AFTER SUCCESSFUL LOGIN.
-const createInitialSuperUser = async () => {
-    try {
-        const User = mongoose.model('User');
-        const adminEmail = 'superuser@nixtz.com';
-        
-        // 1. Check if a superuser already exists
-        let existingUser = await User.findOne({ email: adminEmail });
-        
-        if (existingUser) {
-            console.log(`[SETUP] Superuser (${adminEmail}) already exists.`);
-            return;
-        }
-
-        // 2. Create the user
-        const newAdmin = new User({
-            username: 'NixtzRootAdmin',
-            email: adminEmail,
-            // Pre-hashed password for: "SuperAdminPass123"
-            passwordHash: '$2a$10$3Y8vW8f7g9a0J2k1l0m9p5q4r6s7t8u3v2w1x0y3z2A1B0C9D8E', 
-            role: 'superadmin',
-            membership: 'vip',
-            pageAccess: ['all'],
-            currency: 'USD'
-        });
-
-        await newAdmin.save();
-        console.log(`[SETUP SUCCESS] New Superuser created: ${adminEmail}. Password is: SuperAdminPass123`);
-        
-    } catch (error) {
-        console.error('[SETUP ERROR] Failed to create initial superuser:', error.message);
-    }
-};
+// **FUNCTION REMOVED AS REQUESTED**
 
 
 const connectDB = async () => {
@@ -72,8 +41,8 @@ const connectDB = async () => {
         });
         console.log('✅ MongoDB Connected Successfully to NIXTZ DB');
         
-        // CALL THE SETUP FUNCTION HERE
-        await createInitialSuperUser(); 
+        // --- NEW CALL: Bootstrap the initial service admin user ---
+        await createInitialServiceAdmin(); 
 
         app.listen(PORT, () => {
             console.log(`Server is running on port ${PORT}`);
@@ -89,10 +58,10 @@ const connectDB = async () => {
 connectDB(); // Initial connection attempt
 
 // ===================================================================
-// 2. SCHEMAS (CORE MODULES ONLY)
+// 2. SCHEMAS (CORE MODULES & NEW SERVICE MODULES)
 // ===================================================================
-// ... (Your Schemas remain here as they define the User model)
-// Core User & Config
+
+// Core User & Config (Original, Untouched)
 const UserSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true, trim: true },
     email: { type: String, required: true, unique: true, trim: true, lowercase: true },
@@ -104,7 +73,19 @@ const UserSchema = new mongoose.Schema({
     pageAccess: { type: [String], default: [] }, 
 });
 const User = mongoose.model('User', UserSchema);
-// ... (rest of your schemas)
+
+// --- NEW DEDICATED SERVICE USER SCHEMA (Physical Separation) ---
+const ServiceUserSchema = new mongoose.Schema({
+    // Prefixed fields are now part of the independent ServiceUser collection
+    susername: { type: String, required: true, unique: true, trim: true },
+    semail: { type: String, required: true, unique: true, trim: true, lowercase: true },
+    spasswordHash: { type: String, required: true },
+    srole: { type: String, default: 'pending', enum: ['pending', 'standard', 'admin', 'superadmin'] }, 
+    smembership: { type: String, default: 'none', enum: ['none', 'standard', 'platinum', 'vip'] },
+    spageAccess: { type: [String], default: [] },
+    createdAt: { type: Date, default: Date.now },
+});
+const ServiceUser = mongoose.model('ServiceUser', ServiceUserSchema); // <-- NEW MODEL
 
 const MembershipConfigSchema = new mongoose.Schema({
     level: { type: String, required: true, unique: true, enum: ['standard', 'platinum', 'vip'] },
@@ -112,7 +93,8 @@ const MembershipConfigSchema = new mongoose.Schema({
     monthlyPrice: { type: Number, required: true }
 });
 const MembershipConfig = mongoose.model('MembershipConfig', MembershipConfigSchema);
-// ... (rest of your schemas BudgetTransaction, BudgetProjection, StaffProfile, StaffRoster)
+
+// Budget Schemas (Original, link to User model)
 const BudgetTransactionSchema = new mongoose.Schema({
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     description: { type: String, required: true, trim: true },
@@ -132,7 +114,7 @@ BudgetProjectionSchema.index({ user: 1, monthYear: 1 }, { unique: true });
 const BudgetProjection = mongoose.model('BudgetProjection', BudgetProjectionSchema);
 
 
-// Staff & Roster Schemas
+// Staff & Roster Schemas (Original, link to User model)
 const StaffProfileSchema = new mongoose.Schema({
     name: { type: String, required: true, unique: true, trim: true },
     employeeId: { type: String, unique: true, required: true, trim: true },
@@ -157,7 +139,7 @@ const RosterEntrySchema = new mongoose.Schema({
         weeklySchedule: [{
             dayOfWeek: { type: String, enum: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], required: true },
             shifts: [{ 
-                shiftId: { type: Number },
+                shiftId: { type: mongoose.Schema.Types.Mixed }, // Changed to Mixed to allow string IDs like 'sub_123'
                 jobRole: { type: String },
                 timeRange: { type: String, default: '' },
                 color: { type: String, default: '#FFFFFF' }
@@ -167,6 +149,41 @@ const RosterEntrySchema = new mongoose.Schema({
 });
 RosterEntrySchema.index({ user: 1, weekStartDate: 1 }, { unique: true }); 
 const StaffRoster = mongoose.model('StaffRoster', RosterEntrySchema); 
+
+// --- NEW SERVICE SCHEMAS (Laundry) ---
+
+const LaundryItemSchema = new mongoose.Schema({
+    type: { type: String, required: true },
+    count: { type: Number, required: true, min: 1 },
+    details: { type: String, trim: true }
+}, { _id: false }); // Do not create _id for sub-documents
+
+const LaundryRequestSchema = new mongoose.Schema({
+    // Requestors are still core Users
+    requesterId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, 
+    requesterUsername: { type: String, required: true }, // Store username directly for lookup
+    department: { type: String, required: true, trim: true },
+    contactExt: { type: String, required: true, trim: true },
+    notes: { type: String, trim: true },
+    items: [LaundryItemSchema],
+    requestedAt: { type: Date, default: Date.now },
+    status: { type: String, default: 'Pending Pickup', enum: ['Pending Pickup', 'Picked Up', 'In Progress', 'Ready for Delivery', 'Completed', 'Cancelled'] },
+    processedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'ServiceUser', required: false } // <-- CRITICAL: ProcessedBy links to ServiceUser
+});
+const LaundryRequest = mongoose.model('LaundryRequest', LaundryRequestSchema);
+
+const ServiceStaffAccessSchema = new mongoose.Schema({
+    // CRITICAL CHANGE: Link staff details to the dedicated ServiceUser model
+    suser: { type: mongoose.Schema.Types.ObjectId, ref: 'ServiceUser', required: true, unique: true }, // <-- CRITICAL: Link to ServiceUser
+    sname: { type: String, required: true },
+    semployeeId: { type: String, required: true, unique: true },
+    sdepartment: { type: String, required: true },
+    serviceScope: { type: String, default: 'laundry' }
+});
+// Index on suser for fast lookups
+// ServiceStaffAccessSchema.index({ semployeeId: 1 }, { unique: true });
+const ServiceStaffAccess = mongoose.model('ServiceStaffAccess', ServiceStaffAccessSchema);
+
 
 // 3. MIDDLEWARE & CONFIG
 const transporter = nodemailer.createTransport({
@@ -187,7 +204,10 @@ const { authMiddleware, adminAuthMiddleware, superAdminAuthMiddleware } = requir
 const budgetPlannerRoutes = require('./routes/budget_planner_be.js');
 const staffRosterRoutes = require('./routes/staff_roster_api.js'); 
 const staffProfileRoutes = require('./routes/staff_profile_api_be.js'); 
-// All TMT/Stock/Service Routers REMOVED
+const laundryRoutes = require('./routes/laundry_api_be.js'); // NEW ROUTER IMPORT
+const serviceAdminRoutes = require('./routes/laundry_admin_api_be.js'); // NEW ADMIN ROUTER IMPORT
+const serviceStaffAdminRoutes = require('./routes/service_admin_be.js'); // CORRECTLY ADDED IMPORT
+const { router: serviceAuthRoutes, createInitialServiceAdmin } = require('./routes/service_auth_be.js'); // <-- NEW: Structured Import for auth router and bootstrap function
 
 app.use(cors()); 
 app.use(express.json());
@@ -232,7 +252,8 @@ app.post('/api/auth/login', async (req, res) => {
     if (!email || !password) return res.status(400).json({ success: false, message: 'Enter email and password.' });
 
     try {
-        let user = await User.findOne({ email: email.toLowerCase() });
+        // Find user by either email or username (Employee ID)
+        let user = await User.findOne({ $or: [{ email: email.toLowerCase() }, { username: email }] }); // Search by email OR username
         if (!user) return res.status(400).json({ success: false, message: 'Invalid credentials.' });
 
         if (user.role === 'pending') return res.status(403).json({ success: false, message: 'Account pending approval.' });
@@ -417,12 +438,23 @@ app.put('/api/admin/membership-config/:level', authMiddleware, adminAuthMiddlewa
 
 
 // ===================================================================
-// 6. MOUNT CORE ROUTERS (Staff and Budget)
+// 6. MOUNT CORE ROUTERS (Staff and Budget) AND NEW SERVICE ROUTERS
 // ===================================================================
 
 app.use('/api/staff/profile', authMiddleware, staffProfileRoutes); 
 app.use('/api/staff/roster', authMiddleware, staffRosterRoutes); 
 app.use('/api/projections', authMiddleware, budgetPlannerRoutes); 
+
+// --- NEW SERVICE ROUTERS ---
+// The main laundry router handles user requests and staff status updates
+app.use('/api/laundry', laundryRoutes); // <-- FIX: Removed authMiddleware
+// The service admin router handles analytics and staff/request management
+app.use('/api/laundry/admin', serviceAdminRoutes); // <-- FIX: Removed authMiddleware
+// The service staff admin router handles staff user creation
+app.use('/api/service/admin', serviceStaffAdminRoutes); // <-- ADDED: Service Staff Admin Route (No authMiddleware)
+// NEW: Dedicated service authentication router
+app.use('/api/serviceauth', serviceAuthRoutes); // <-- ADDED: Dedicated service authentication router (No authMiddleware)
+
 
 // ===================================================================
 // 7. BUDGET/FINANCE ROUTES (CONSOLIDATED)
@@ -489,5 +521,8 @@ module.exports = {
     StaffProfile, 
     BudgetTransaction, 
     BudgetProjection, 
-    MembershipConfig 
+    MembershipConfig,
+    // Export New Models
+    LaundryRequest,
+    ServiceStaffAccess
 };

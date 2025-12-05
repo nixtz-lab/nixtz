@@ -3,10 +3,15 @@
  * Handles the logic for the staff-facing laundry management panel.
  */
 
-// --- 1. CONFIGURATION FIX ---
-// Prevent "undefined/api/..." errors if global config is missing
+// --- 1. CONFIGURATION FIX (CRITICAL) ---
+// This prevents the "undefined/api/..." error.
 if (typeof window.API_BASE_URL === 'undefined') {
+    // OPTION A: If your Nginx/Web Server is configured correctly to forward /api
     window.API_BASE_URL = ''; 
+    
+    // OPTION B: If you are getting "404 Not Found" and cannot fix Nginx:
+    // Uncomment the line below to point directly to your backend port (usually 3000)
+    // window.API_BASE_URL = 'https://nixtz.com:3000'; 
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -16,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Run initial access check and data load
     initLaundryStaffPage();
     
-    // Run the global banner display logic
+    // Run the global banner display logic from service_script.js
     if (typeof window.updateServiceBanner === 'function') {
         window.updateServiceBanner();
     }
@@ -218,7 +223,7 @@ function renderRequestCard(request) {
 // ------------------------------------
 async function loadOutstandingRequests() {
     const listContainer = document.getElementById('requests-list');
-    // FIX: Use string literal
+    // FIX: Use string literal to avoid dependency issues
     const token = localStorage.getItem('nixtz_service_auth_token'); 
     
     if (!listContainer) return;
@@ -238,10 +243,10 @@ async function loadOutstandingRequests() {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
-        // Check for 404 HTML response
+        // Check for 404 HTML response (Common with Nginx config issues)
         const contentType = response.headers.get("content-type");
         if (!contentType || !contentType.includes("application/json")) {
-            throw new Error("Server returned non-JSON response (likely a 404).");
+            throw new Error("Server returned non-JSON response (likely a 404). Check API_BASE_URL.");
         }
 
         const result = await response.json();
@@ -265,7 +270,7 @@ async function loadOutstandingRequests() {
     } catch (error) {
         console.error('Requests Load Error:', error);
         window.showMessage('A network error occurred while contacting the server.', true);
-        listContainer.innerHTML = '<p class="text-red-400 text-center py-8">Network error loading requests.</p>';
+        listContainer.innerHTML = '<p class="text-red-400 text-center py-8">Network error. Check console for details.</p>';
     }
 }
 

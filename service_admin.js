@@ -3,9 +3,9 @@
  * Handles the logic for the dedicated Service Management Admin Panel.
  */
 
-// --- 1. CONFIGURATION FIX ---
-// Prevent "undefined/api/..." errors
+// --- 1. CONFIGURATION FIX (CRITICAL) ---
 if (typeof window.API_BASE_URL === 'undefined') {
+    // Leave empty if Nginx is configured, or use 'https://nixtz.com:3000' if not.
     window.API_BASE_URL = ''; 
 }
 
@@ -28,33 +28,25 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ------------------------------------
-// 2. DROPDOWN LOGIC (The Missing Part)
+// 2. DROPDOWN LOGIC
 // ------------------------------------
 
-/**
- * Toggles the user dropdown menu visibility
- */
 function toggleUserDropdown() {
     const dropdown = document.getElementById('user-dropdown');
     if (dropdown) {
         const isHidden = dropdown.style.display === 'none' || dropdown.style.display === '';
         dropdown.style.display = isHidden ? 'block' : 'none';
         
-        // Re-render icons inside the dropdown just in case
         if (isHidden && typeof lucide !== 'undefined') lucide.createIcons();
     }
 }
-window.toggleUserDropdown = toggleUserDropdown; // Expose to HTML
+window.toggleUserDropdown = toggleUserDropdown; 
 
-/**
- * Closes the dropdown if the user clicks outside of it
- */
 function closeDropdownOnOutsideClick(event) {
     const userContainer = document.getElementById('user-display-container');
     const dropdown = document.getElementById('user-dropdown');
     const displayButton = document.getElementById('user-display-button');
 
-    // Only hide if the menu is visible AND the click was NOT inside the container
     if (dropdown && dropdown.style.display === 'block' && 
         userContainer && !userContainer.contains(event.target) && 
         !displayButton.contains(event.target)) {
@@ -78,7 +70,6 @@ const statusMap = {
 };
 
 async function fetchAnalytics() {
-    // 🚨 FIX: Ensure we use the token key safely
     const tokenKey = window.SERVICE_TOKEN_KEY || 'nixtz_service_auth_token';
     const token = localStorage.getItem(tokenKey);
     
@@ -114,10 +105,9 @@ async function fetchAllRequests() {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         
-        // Check for non-JSON response (e.g. 404 HTML page)
         const contentType = response.headers.get("content-type");
         if (!contentType || !contentType.includes("application/json")) {
-            throw new Error("Invalid server response");
+            throw new Error("Invalid server response (404/500)");
         }
 
         const result = await response.json();

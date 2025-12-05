@@ -199,6 +199,8 @@ const transporter = nodemailer.createTransport({
 
 // Import the shared middleware
 const { authMiddleware, adminAuthMiddleware, superAdminAuthMiddleware } = require('./middleware/auth'); 
+// IMPORT THE NEW SERVICE MIDDLEWARE
+const { serviceAuthMiddleware } = require('./middleware/service_auth');
 
 // --- Router Imports (Core Routers) ---
 const budgetPlannerRoutes = require('./routes/budget_planner_be.js');
@@ -445,15 +447,15 @@ app.use('/api/staff/profile', authMiddleware, staffProfileRoutes);
 app.use('/api/staff/roster', authMiddleware, staffRosterRoutes); 
 app.use('/api/projections', authMiddleware, budgetPlannerRoutes); 
 
-// --- NEW SERVICE ROUTERS ---
+// --- NEW SERVICE ROUTERS (Using Dedicated Service Auth Middleware) ---
 // The main laundry router handles user requests and staff status updates
-app.use('/api/laundry', laundryRoutes); // <-- FIX: Removed authMiddleware
+app.use('/api/laundry', serviceAuthMiddleware, laundryRoutes); // <-- UPDATED: Uses serviceAuthMiddleware
 // The service admin router handles analytics and staff/request management
-app.use('/api/laundry/admin', serviceAdminRoutes); // <-- FIX: Removed authMiddleware
+app.use('/api/laundry/admin', serviceAuthMiddleware, serviceAdminRoutes); // <-- UPDATED: Uses serviceAuthMiddleware
 // The service staff admin router handles staff user creation
-app.use('/api/service/admin', serviceStaffAdminRoutes); // <-- ADDED: Service Staff Admin Route (No authMiddleware)
+app.use('/api/service/admin', serviceAuthMiddleware, serviceStaffAdminRoutes); // <-- UPDATED: Uses serviceAuthMiddleware
 // NEW: Dedicated service authentication router
-app.use('/api/serviceauth', serviceAuthRoutes); // <-- ADDED: Dedicated service authentication router (No authMiddleware)
+app.use('/api/serviceauth', serviceAuthRoutes); // <-- Correct: Login routes do not need middleware
 
 
 // ===================================================================

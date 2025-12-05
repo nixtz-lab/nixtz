@@ -1,6 +1,6 @@
 /**
  * staff_roster.js
- * FINAL STABLE VERSION. Fixes: Persistent Shift Config (LocalStorage), Icons, and Dropdowns.
+ * FINAL STABLE VERSION. Fixes: Clean Display for Mgr/Sup, Background Colors, Persistence.
  */
 
 // Global constants and API endpoints
@@ -11,17 +11,16 @@ const PROFILE_API_URL = `${window.API_BASE_URL}/api/staff/profile`;
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const DAY_OFF_MARKER = 'หยุด'; 
 const AUTH_TOKEN_KEY = localStorage.getItem('nixtz_auth_token') ? 'nixtz_auth_token' : 'tmt_auth_token'; 
-const SHIFT_STORAGE_KEY = 'nixtz_shifts_v2'; // Changed key to force fresh start if data was corrupt
+const SHIFT_STORAGE_KEY = 'nixtz_shifts_v2'; 
 
-// --- BASE CATEGORIES (The Fixed 1, 2, 3) ---
+// --- BASE CATEGORIES ---
 const BASE_CATEGORIES = {
     1: { name: 'Morning', defaultTime: '07:00-16:00', required: 6, roles: ['C1', 'C4', 'C3'] },
     2: { name: 'Afternoon', defaultTime: '13:30-22:30', required: 5, roles: ['C1', 'C5', 'C3'] },
     3: { name: 'Night', defaultTime: '22:00-07:00', required: 3, roles: ['C2', 'C1'] }
 };
 
-// --- ACTIVE SHIFTS (Editable List with Persistence) ---
-// Try to load from LocalStorage first, otherwise use defaults.
+// --- ACTIVE SHIFTS ---
 let CORE_SHIFTS;
 try {
     const storedShifts = localStorage.getItem(SHIFT_STORAGE_KEY);
@@ -31,7 +30,7 @@ try {
         '3': { baseId: 3, category: 'Night', name: 'N1', time: '22:00-07:00', required: 3 },
     };
 } catch (e) {
-    console.error("Error parsing saved shifts, resetting to default.", e);
+    console.error("Error parsing saved shifts", e);
     CORE_SHIFTS = { 
         '1': { baseId: 1, category: 'Morning', name: 'M1', time: '07:00-16:00', required: 6 }, 
         '2': { baseId: 2, category: 'Afternoon', name: 'A1', time: '13:30-22:30', required: 5 },
@@ -40,15 +39,10 @@ try {
 }
 
 function saveShiftsToStorage() {
-    try {
-        localStorage.setItem(SHIFT_STORAGE_KEY, JSON.stringify(CORE_SHIFTS));
-        console.log("Shifts saved to storage:", CORE_SHIFTS);
-    } catch (e) {
-        console.error("Failed to save shifts to storage", e);
-    }
+    localStorage.setItem(SHIFT_STORAGE_KEY, JSON.stringify(CORE_SHIFTS));
 }
 
-// --- HELPER: REFRESH ICONS SAFELY ---
+// --- HELPER: REFRESH ICONS ---
 function refreshIcons() {
     if (window.lucide && typeof window.lucide.createIcons === 'function') {
         window.lucide.createIcons();
@@ -85,59 +79,80 @@ function addStaffRow(initialData = {}) {
         rosterBody.innerHTML = '';
     }
     
+    // Determine Row Background Color based on Position
+    let rowBgClass = "bg-gray-900"; // Default
+    if (initialData.position === 'Manager') {
+        rowBgClass = "bg-indigo-900/40"; // Slight blue tint for Manager
+    } else if (initialData.position === 'Supervisor') {
+        rowBgClass = "bg-slate-800"; // Slightly lighter gray for Supervisor
+    }
+
     const staffRowHtml = `
-        <tr data-id="${initialData.employeeId || 'temp'}">
-            <td class="p-3 text-left font-medium text-white border-b border-gray-800">
-                ${initialData.employeeName} <span class="text-xs text-gray-500">(${initialData.employeeId})</span>
+        <tr data-id="${initialData.employeeId || 'temp'}" class="${rowBgClass} hover:bg-gray-800 transition-colors duration-150">
+            <td class="p-3 text-left font-medium text-white border-b border-gray-800 border-r border-gray-700">
+                <div class="flex flex-col">
+                    <span>${initialData.employeeName}</span>
+                    <span class="text-[10px] text-gray-400 uppercase tracking-wider">${initialData.position}</span>
+                </div>
             </td>
             ${DAYS.map(day => {
                 const dayData = initialData.weeklySchedule?.find(d => d.dayOfWeek === day);
                 const shiftInfo = dayData?.shifts[0] || {};
                 
-                // Display Logic
+                // --- DISPLAY LOGIC ---
                 let displayVal = shiftInfo.jobRole || DAY_OFF_MARKER;
                 let displayTime = "";
+                let isManagerOrSup = (initialData.position === 'Manager' || initialData.position === 'Supervisor');
 
-                if (shiftInfo.shiftId) {
-                    // 1. Try to find specific config matching the Role Name (e.g., "M2")
-                    let config = Object.values(CORE_SHIFTS).find(c => c.name === displayVal);
-                    
-                    // 2. If not found, fallback to the Base ID default (e.g., ID 1 -> M1)
-                    if (!config) {
-                        config = CORE_SHIFTS[shiftInfo.shiftId];
-                    }
+                // If looking for "Day Off", handle it simply
+                if (displayVal.includes(DAY_OFF_MARKER) || displayVal.includes("Off") || displayVal.includes("หยุด")) {
+                    displayVal = DAY_OFF_MARKER;
+                } else if (shiftInfo.shiftId) {
+                    // It's a working shift
+                    const config = Object.values(CORE_SHIFTS).find(c => c.name === displayVal) || CORE_SHIFTS[shiftInfo.shiftId];
 
                     if (config) {
-                        displayTime = config.time || "";
+                        displayTime = config.time || ""; 
                         
-                        // If the job role from backend (e.g. "C1 (Mgr)") isn't the shift name "M1"
-                        if (displayVal !== config.name) {
-                             displayVal = `${config.name} (${displayVal})`;
+                        // CUSTOM RULE: For Manager/Sup, show ONLY the shift Name (e.g. M1)
+                        if (isManagerOrSup) {
+                            displayVal = config.name; 
                         } else {
-                             displayVal = config.name;
+                            // For Normal staff, combine if different (e.g. "M1 (C4)")
+                            if (displayVal !== config.name) {
+                                displayVal = `${config.name} (${displayVal})`;
+                            } else {
+                                displayVal = config.name;
+                            }
                         }
-                    } else if (shiftInfo.timeRange && shiftInfo.timeRange !== DAY_OFF_MARKER) {
-                         displayTime = shiftInfo.timeRange;
                     }
                 }
 
-                // Combine Name and Time
-                const fullText = displayTime ? `${displayVal} ${displayTime}` : displayVal;
+                // Tooltip text (always shows full info)
+                const fullText = displayTime ? `${displayVal} \n${displayTime}` : displayVal;
 
+                // Color Logic
                 let cellClass = "text-white";
-                if (displayVal.includes(DAY_OFF_MARKER) || displayVal.includes("Off")) {
-                    cellClass = "text-gray-500";
+                if (displayVal === DAY_OFF_MARKER) {
+                    cellClass = "text-red-400 font-medium"; // Red for off
+                } else if (initialData.position === 'Manager') {
+                    cellClass = "text-blue-200 font-bold";
+                } else if (initialData.position === 'Supervisor') {
+                    cellClass = "text-green-200 font-bold";
                 } else if (displayVal.includes("M") || displayVal.includes("Morning")) {
-                    cellClass = "text-yellow-300 font-medium";
+                    cellClass = "text-yellow-200";
                 } else if (displayVal.includes("A") || displayVal.includes("Afternoon")) {
-                    cellClass = "text-blue-300 font-medium";
+                    cellClass = "text-blue-200";
                 } else if (displayVal.includes("N") || displayVal.includes("Night")) {
-                    cellClass = "text-purple-300 font-medium";
+                    cellClass = "text-purple-200";
                 }
                 
                 return `
-                <td class="roster-cell bg-gray-900 border-l border-b border-gray-800 p-2 text-center text-sm" data-day="${day}">
-                    <input type="text" class="duty-input w-full text-center bg-transparent focus:outline-none ${cellClass}" value="${fullText}" title="${fullText}" />
+                <td class="roster-cell border-l border-b border-gray-800 p-2 text-center text-sm relative group" data-day="${day}">
+                    <div class="flex flex-col items-center justify-center h-full">
+                        <span class="${cellClass}">${displayVal}</span>
+                        ${displayTime ? `<span class="text-[10px] text-gray-500 mt-0.5">${displayTime}</span>` : ''}
+                    </div>
                 </td>`;
             }).join('')}
         </tr>
@@ -243,7 +258,6 @@ window.openShiftConfigModal = function() {
         modal.classList.remove('hidden');
         modal.classList.add('flex');
         
-        // Populate Dropdown
         const select = document.getElementById('config-shift-select');
         const nameInput = document.getElementById('config-shift-name');
         const timeInput = document.getElementById('config-shift-time');
@@ -299,7 +313,6 @@ window.openStaffRequestModal = async function() {
     const modal = document.getElementById('staff-request-modal');
     if (!modal) return;
     
-    // Auto-fill Week Start
     const weekStartVal = document.getElementById('week-start-date').value;
     const weekStartInput = document.getElementById('request-week-start');
     if (weekStartInput) weekStartInput.value = weekStartVal;
@@ -307,7 +320,6 @@ window.openStaffRequestModal = async function() {
     modal.classList.remove('hidden');
     modal.classList.add('flex');
 
-    // Populate Shifts IMMEDIATELY
     const shiftSelect = document.getElementById('request-configured-shift');
     if (shiftSelect) {
         shiftSelect.innerHTML = '<option value="">-- Select Assigned Shift --</option>';
@@ -325,7 +337,6 @@ window.openStaffRequestModal = async function() {
         });
     }
     
-    // Populate Staff
     const select = document.getElementById('request-staff-select');
     if (select) {
         select.innerHTML = '<option>Loading...</option>';
@@ -447,8 +458,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     refreshIcons();
-    
-    // Safety check for slow icon loading
     setTimeout(refreshIcons, 500);
 
     // 1. SHIFT CONFIG SAVE
@@ -473,7 +482,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     required: baseCat.required 
                 };
                 
-                // SAVE TO LOCAL STORAGE
                 saveShiftsToStorage();
 
                 alert(`Added new shift "${name}" to ${baseCat.name} category.`);
@@ -583,7 +591,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if(res.ok && json.success) {
                     alert("Profile updated successfully! \n\nIMPORTANT: Click 'Regenerate Roster' to apply these changes to the current schedule.");
                     document.getElementById('single-staff-modal').classList.add('hidden');
-                    fetchStaffProfiles(); // Refresh cache
+                    fetchStaffProfiles(); 
                 } else {
                     alert("Failed to update profile: " + (json.message || "Unknown error"));
                 }
@@ -623,7 +631,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     alert("New staff added! Click 'Regenerate Roster' to include them.");
                     document.getElementById('add-staff-modal').classList.add('hidden');
                     addStaffForm.reset();
-                    fetchStaffProfiles(); // Refresh cache
+                    fetchStaffProfiles(); 
                 } else {
                     alert("Failed to add staff: " + (json.message || "Unknown error"));
                 }
