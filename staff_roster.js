@@ -384,6 +384,7 @@ window.openStaffRequestModal = async function() {
     const modal = document.getElementById('staff-request-modal');
     if (!modal) return;
     
+    // Auto-fill Week Start (Read-only)
     const weekStartVal = document.getElementById('week-start-date').value;
     const weekStartInput = document.getElementById('request-week-start');
     if (weekStartInput) weekStartInput.value = weekStartVal;
@@ -580,7 +581,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const type = document.getElementById('request-type').value;
             let reqString = "None"; 
-            const weekStart = document.getElementById('week-start-date').value;
+            // Use the MODAL's date input, not the main calendar!
+            const weekStart = document.getElementById('request-week-start').value;
 
             if (type === 'specific_day_duty') {
                 const startDate = document.getElementById('request-start-date').value;

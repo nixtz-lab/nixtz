@@ -3,13 +3,19 @@
  * Handles the logic for the dedicated Service Management Admin Panel.
  */
 
-// --- 1. CONFIGURATION FIX (CRITICAL) ---
+// --- 1. CONFIGURATION FIX ---
 if (typeof window.API_BASE_URL === 'undefined') {
-    // Leave empty if Nginx is configured, or use 'https://nixtz.com:3000' if not.
     window.API_BASE_URL = ''; 
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    // --- AUTHENTICATION CHECK (NEW) ---
+    // If no token exists, kick the user out immediately.
+    if (!window.getServiceAuthStatus()) {
+        window.checkServiceAccessAndRedirect('service_admin.html');
+        return; // Stop execution
+    }
+
     // 1. Initialize Icons
     if (typeof lucide !== 'undefined') lucide.createIcons();
     
@@ -25,6 +31,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 4. Attach Dropdown Close Listener
     document.addEventListener('click', closeDropdownOnOutsideClick);
+    
+    // 5. Update Header Banner
+    if (typeof window.updateServiceBanner === 'function') {
+        window.updateServiceBanner();
+    }
 });
 
 // ------------------------------------
@@ -70,8 +81,8 @@ const statusMap = {
 };
 
 async function fetchAnalytics() {
-    const tokenKey = window.SERVICE_TOKEN_KEY || 'nixtz_service_auth_token';
-    const token = localStorage.getItem(tokenKey);
+    // FIX: Ensure we use the string literal consistently to avoid ReferenceErrors
+    const token = localStorage.getItem('nixtz_service_auth_token');
     
     if (!token) return;
 
@@ -79,6 +90,15 @@ async function fetchAnalytics() {
         const response = await fetch(`${window.API_BASE_URL}/api/laundry/admin/analytics`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
+        
+        // Handle 403 Forbidden (Not an Admin)
+        if (response.status === 403) {
+             window.showMessage("Access Denied: Admin privileges required.", true);
+             // Optional: Redirect back to staff panel if they are just standard staff
+             setTimeout(() => window.location.href = 'laundry_staff.html', 1500);
+             return;
+        }
+
         const result = await response.json();
 
         if (response.ok && result.success) {
@@ -93,8 +113,7 @@ async function fetchAnalytics() {
 
 async function fetchAllRequests() {
     const tableBody = document.getElementById('all-requests-body');
-    const tokenKey = window.SERVICE_TOKEN_KEY || 'nixtz_service_auth_token';
-    const token = localStorage.getItem(tokenKey);
+    const token = localStorage.getItem('nixtz_service_auth_token');
 
     if (!tableBody || !token) return;
 
@@ -194,8 +213,7 @@ function renderRequestRow(request) {
 // ------------------------------------
 
 async function deleteRequest(id, department) {
-    const tokenKey = window.SERVICE_TOKEN_KEY || 'nixtz_service_auth_token';
-    const token = localStorage.getItem(tokenKey);
+    const token = localStorage.getItem('nixtz_service_auth_token');
     if (!token) return;
 
     const confirmationMessage = `Are you sure you want to PERMANENTLY delete the request from ${department}? This cannot be undone.`;
@@ -251,8 +269,7 @@ async function handleCreateStaffFormSubmit(e) {
         srole: role              
     }; 
     
-    const tokenKey = window.SERVICE_TOKEN_KEY || 'nixtz_service_auth_token';
-    const token = localStorage.getItem(tokenKey);
+    const token = localStorage.getItem('nixtz_service_auth_token');
 
     try {
         const response = await fetch(`${window.API_BASE_URL}/api/service/admin/create-staff-v2`, { 
