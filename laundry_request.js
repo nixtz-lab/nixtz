@@ -6,9 +6,11 @@
 // --- 1. CONFIGURATION FIX (CRITICAL) ---
 // This stops the "undefined/api/..." error visible in your screenshot.
 if (typeof window.API_BASE_URL === 'undefined') {
-    // If your backend is live (Nginx configured), leave this empty.
-    // If you are getting 404s and cannot fix Nginx, use: 'https://nixtz.com:3000'
+    // If your Nginx is configured correctly to forward /api, leave this empty:
     window.API_BASE_URL = ''; 
+    
+    // NOTE: If you still get "404 Not Found" after using this, 
+    // it means your Nginx server block is missing the /api proxy pass.
 }
 
 const itemsContainer = document.getElementById('items-container');
@@ -251,7 +253,7 @@ async function loadRequestHistory() {
         // Handle non-JSON responses (like 404 pages)
         const contentType = response.headers.get("content-type");
         if (!contentType || !contentType.includes("application/json")) {
-            throw new Error("Server returned non-JSON response (likely a 404). API_BASE_URL might be wrong.");
+            throw new Error("Server returned non-JSON response (likely a 404 or 500 error page).");
         }
 
         const result = await response.json();
@@ -279,6 +281,7 @@ async function loadRequestHistory() {
 // 6. INITIALIZATION
 // ------------------------------------
 function initLaundryRequestPage() {
+    // Rely on the service-specific auth check
     if (!window.getServiceAuthStatus()) {
         window.checkServiceAccessAndRedirect('laundry_request.html');
         return; 

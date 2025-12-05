@@ -1,6 +1,6 @@
 /**
  * staff_roster.js
- * FINAL STABLE VERSION. Fixes: Clean Display for Mgr/Sup, Background Colors, Persistence.
+ * FINAL STABLE VERSION. Fixes: Clean Display for Mgr/Sup (Shift ID + Time only), Background Colors, Persistence.
  */
 
 // Global constants and API endpoints
@@ -100,36 +100,45 @@ function addStaffRow(initialData = {}) {
                 const shiftInfo = dayData?.shifts[0] || {};
                 
                 // --- DISPLAY LOGIC ---
-                let displayVal = shiftInfo.jobRole || DAY_OFF_MARKER;
+                let rawRole = shiftInfo.jobRole || DAY_OFF_MARKER;
+                let displayVal = rawRole;
                 let displayTime = "";
                 let isManagerOrSup = (initialData.position === 'Manager' || initialData.position === 'Supervisor');
 
                 // If looking for "Day Off", handle it simply
-                if (displayVal.includes(DAY_OFF_MARKER) || displayVal.includes("Off") || displayVal.includes("หยุด")) {
+                if (rawRole.includes(DAY_OFF_MARKER) || rawRole.includes("Off") || rawRole.includes("หยุด")) {
                     displayVal = DAY_OFF_MARKER;
                 } else if (shiftInfo.shiftId) {
                     // It's a working shift
-                    const config = Object.values(CORE_SHIFTS).find(c => c.name === displayVal) || CORE_SHIFTS[shiftInfo.shiftId];
+                    const config = Object.values(CORE_SHIFTS).find(c => c.name === rawRole) || CORE_SHIFTS[shiftInfo.shiftId];
+                    let shiftIdToDisplay = shiftInfo.shiftId; // e.g., 1, 2, 3
 
+                    // If we found a config, use its properties
                     if (config) {
-                        displayTime = config.time || ""; 
+                        displayTime = config.time || "";
+                        shiftIdToDisplay = config.baseId || shiftInfo.shiftId;
                         
-                        // CUSTOM RULE: For Manager/Sup, show ONLY the shift Name (e.g. M1)
+                        // CUSTOM FORMATTING RULES
                         if (isManagerOrSup) {
-                            displayVal = config.name; 
+                            // Manager/Supervisor: Show ONLY Shift ID (e.g. "1")
+                            displayVal = `${shiftIdToDisplay}`;
                         } else {
-                            // For Normal staff, combine if different (e.g. "M1 (C4)")
-                            if (displayVal !== config.name) {
-                                displayVal = `${config.name} (${displayVal})`;
+                            // Normal Staff: Show "ShiftID Role" (e.g. "2 C5")
+                            // If rawRole is generic like "C5", show "2 C5"
+                            // If rawRole is specific like "M1", show "1 M1"
+                            if (rawRole !== config.name) {
+                                // rawRole is likely the job code (C5, C4)
+                                displayVal = `${shiftIdToDisplay} ${rawRole}`;
                             } else {
-                                displayVal = config.name;
+                                // rawRole matches config name (M1)
+                                displayVal = `${shiftIdToDisplay} ${config.name}`;
                             }
                         }
                     }
                 }
 
                 // Tooltip text (always shows full info)
-                const fullText = displayTime ? `${displayVal} \n${displayTime}` : displayVal;
+                const fullText = displayTime ? `${displayVal} (${displayTime})` : displayVal;
 
                 // Color Logic
                 let cellClass = "text-white";
@@ -139,19 +148,19 @@ function addStaffRow(initialData = {}) {
                     cellClass = "text-blue-200 font-bold";
                 } else if (initialData.position === 'Supervisor') {
                     cellClass = "text-green-200 font-bold";
-                } else if (displayVal.includes("M") || displayVal.includes("Morning")) {
+                } else if (displayVal.includes("M") || displayVal.includes("1")) { // Morning or ID 1
                     cellClass = "text-yellow-200";
-                } else if (displayVal.includes("A") || displayVal.includes("Afternoon")) {
+                } else if (displayVal.includes("A") || displayVal.includes("2")) { // Afternoon or ID 2
                     cellClass = "text-blue-200";
-                } else if (displayVal.includes("N") || displayVal.includes("Night")) {
+                } else if (displayVal.includes("N") || displayVal.includes("3")) { // Night or ID 3
                     cellClass = "text-purple-200";
                 }
                 
                 return `
                 <td class="roster-cell border-l border-b border-gray-800 p-2 text-center text-sm relative group" data-day="${day}">
                     <div class="flex flex-col items-center justify-center h-full">
-                        <span class="${cellClass}">${displayVal}</span>
-                        ${displayTime ? `<span class="text-[10px] text-gray-500 mt-0.5">${displayTime}</span>` : ''}
+                        <span class="${cellClass} text-lg">${displayVal}</span>
+                        ${displayTime ? `<span class="text-[10px] text-gray-500 mt-0.5">(${displayTime})</span>` : ''}
                     </div>
                 </td>`;
             }).join('')}
