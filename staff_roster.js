@@ -231,7 +231,7 @@ function updateDateHeaders(startDateString) {
 }
 window.updateDateHeaders = updateDateHeaders;
 
-// FIX: Implement working forceRosterRegeneration
+// FIX: Implement working forceRosterRegeneration with enhanced error reporting
 window.forceRosterRegeneration = async function() { 
     if (!currentWeekStartDate || !getAuthStatus()) {
         window.showMessage("Select a week start date and log in first.", true);
@@ -245,16 +245,27 @@ window.forceRosterRegeneration = async function() {
             headers: { 'Authorization': `Bearer ${localStorage.getItem(AUTH_TOKEN_KEY)}` },
         });
 
-        const result = await response.json();
+        let result;
+        try {
+            result = await response.json();
+        } catch (e) {
+            // Handle non-JSON response (e.g., server crash)
+            window.showMessage(`Error ${response.status}: Server returned an unexpected response. Check server logs.`, true);
+            console.error("Regeneration response error:", response.status, response.statusText);
+            return;
+        }
+
         if (response.ok && result.success) {
-            window.showMessage(result.message || 'Roster generated successfully.', false);
+            window.showMessage(result.message || 'Roster generated successfully. Reloading...', false);
             loadRoster(currentWeekStartDate); // Reload the new roster
         } else {
-            window.showMessage(result.message || 'Failed to generate roster.', true);
+            // Display specific API error message
+            const errorMsg = result.message || `API Error: Status ${response.status}. Check profiles or shifts.`;
+            window.showMessage(`Failed to generate: ${errorMsg}`, true);
         }
     } catch (error) {
-        window.showMessage("Network error during regeneration.", true);
-        console.error("Regeneration error:", error);
+        window.showMessage("Network error during regeneration. Is your local server running?", true);
+        console.error("Regeneration network error:", error);
     }
 };
 

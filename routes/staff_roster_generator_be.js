@@ -136,11 +136,11 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
                 const fixedDay = staff.fixedDayOff || 'None'; 
                 const isFixedDaySet = fixedDay !== 'None' && VALID_DAYS.includes(fixedDay);
                 
-                // CRITICAL FIX: Ensure the assignment ONLY happens for the matching day
+                // CRITICAL FIX: Ensure the assignment only happens for the matching day
                 if (isFixedDaySet && fixedDay === day) { 
                     assignment = { 
                         shiftId: null, 
-                        jobRole: 'Day Off (Fixed)', // Changed marker for clarity in this step
+                        jobRole: DAY_OFF_MARKER, // Using the standard marker
                         timeRange: DAY_OFF_MARKER,
                         color: color
                     };
