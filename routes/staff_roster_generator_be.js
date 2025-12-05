@@ -1,222 +1,169 @@
 // staff_roster_generator_be.js
 
-/**
- * REWRITTEN CORE DEFINITIONS for Stability
- */
-const SHIFTS = { 
-    1: { name: 'Morning', time: '07:00-16:00', roles: ['C1', 'C4', 'C3'], required: 6 }, 
-    2: { name: 'Afternoon', time: '13:30-22:30', roles: ['C1', 'C5', 'C3'], required: 5 }, 
-    3: { name: 'Night', time: '22:00-07:00', roles: ['C2', 'C1'], required: 3 }
-};
-
-const ROLE_COLORS = {
-    'Manager': '#FF0000',      
-    'Supervisor': '#FF0000',   
-    'Delivery': '#00B0F0',     
-    'Normal Staff': '#FFFFFF'  
+const SHIFTS = {
+    1: { name: 'Morning', time: '07:00-16:00', required: 6 },
+    2: { name: 'Afternoon', time: '13:30-22:30', required: 5 },
+    3: { name: 'Night', time: '22:00-07:00', required: 3 }
 };
 
 const DAYS_FULL = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const VALID_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const DAY_OFF_MARKER = 'หยุด'; 
 
-function generateWeeklyRoster(staffProfiles, weekStartDate) {
+/**
+ * Helper: Parse the specific request for a staff member for the current week.
+ */
+function getStaffRequest(profile, weekStartString) {
+    if (!profile.nextWeekHolidayRequest || profile.nextWeekHolidayRequest === 'None') return null;
     
-    // 1. Time Definitions
-    const MORNING_TIME = SHIFTS[1].time; 
-    const AFTERNOON_TIME = SHIFTS[2].time; 
-    const NIGHT_TIME = SHIFTS[3].time; 
-    const weekStartString = weekStartDate.toISOString().split('T')[0]; 
+    const parts = profile.nextWeekHolidayRequest.split(':');
+    // Ensure request is for THIS week
+    if (parts[0] !== weekStartString) return null;
 
-    // 2. Initialization
-    const weeklyRosterMap = new Map(staffProfiles.map(s => [s.employeeId, { ...s, weeklySchedule: new Array(7).fill({ shifts: [] }) }]));
-    
-    const isScheduled = (employeeId, dayIndex) => weeklyRosterMap.get(employeeId)?.weeklySchedule[dayIndex]?.shifts?.length > 0;
-
-    // Helper: Get Requests
-    function getWeeklyRequest(profile) {
-        if (!profile.nextWeekHolidayRequest || profile.nextWeekHolidayRequest === 'None') return { type: 'None' };
-        const parts = profile.nextWeekHolidayRequest.split(':');
-        
-        if (parts.length < 2 || parts[0] !== weekStartString) return { type: 'None' };
-        
-        if (parts.length === 2 && ['Morning', 'Afternoon', 'Night'].includes(parts[1])) {
-             return { type: 'ShiftChange', shift: parts[1] };
-        } 
-        
-        if (parts.length === 4) {
-            const [reqWeek, reqDay, reqShiftId, reqDutyRole] = parts;
-            return { type: 'SpecificAssignment', day: reqDay, shiftId: reqShiftId, dutyRole: reqDutyRole };
-        }
-
-        if (parts.length === 2) {
-             const val = parts[1];
-             if (VALID_DAYS.includes(val) || val === 'Sick Leave' || val === 'Full Week') {
-                return { type: 'Leave', day: val };
-             }
-        }
-        return { type: 'None' }
+    // 1. Weekly Shift Preference Change
+    if (parts.length === 2 && ['Morning', 'Afternoon', 'Night'].includes(parts[1])) {
+        return { type: 'ShiftChange', shift: parts[1] };
     }
+    // 2. Specific Day Off / Duty
+    if (parts.length === 4) {
+        return { type: 'Specific', day: parts[1], shiftId: parts[2], dutyRole: parts[3] };
+    }
+    // 3. Leave
+    if (parts.length === 2) {
+        return { type: 'Leave', day: parts[1] };
+    }
+    return null;
+}
+
+/**
+ * Core Function: Decide the shift for ONE staff member on ONE specific day.
+ * This function is isolated to prevent "leaking" status across days.
+ */
+function calculateDailyShift(staff, day, dayIndex, currentCounts, request) {
+    const fixedDayOff = (staff.fixedDayOff || 'None').trim();
+    const position = staff.position;
     
-    // Filter staff
-    let manager = staffProfiles.find(s => s.position === 'Manager');
-    let supervisors = staffProfiles.filter(s => s.position === 'Supervisor').sort((a, b) => a.shiftPreference.localeCompare(b.shiftPreference));
-    let deliveryDrivers = staffProfiles.filter(s => s.position === 'Delivery');
-    let allNormalStaff = staffProfiles.filter(s => s.position !== 'Manager' && s.position !== 'Supervisor' && s.position !== 'Delivery');
+    // --- PRIORITY 1: Specific Requests & Leave ---
+    if (request) {
+        if (request.type === 'Specific' && request.day === day) {
+            // If it's a specific assignment (Work or Off)
+            if (request.shiftId === 'STATUS_LEAVE') {
+                return { shiftId: null, jobRole: request.dutyRole, timeRange: DAY_OFF_MARKER };
+            }
+            const shift = SHIFTS[request.shiftId];
+            if (shift) {
+                // We need to count this towards the daily total
+                if (request.shiftId == 1) currentCounts.M++;
+                if (request.shiftId == 2) currentCounts.A++;
+                if (request.shiftId == 3) currentCounts.N++;
+                return { shiftId: request.shiftId, jobRole: request.dutyRole, timeRange: shift.time };
+            }
+        }
+        if (request.type === 'Leave' && (request.day === day || request.day === 'Full Week' || request.day === 'Sick Leave')) {
+            return { shiftId: null, jobRole: DAY_OFF_MARKER, timeRange: DAY_OFF_MARKER };
+        }
+    }
+
+    // --- PRIORITY 2: Fixed Day Off ---
+    // Strict check: Only if the current loop day matches the fixed day string
+    if (fixedDayOff !== 'None' && fixedDayOff === day) {
+        return { shiftId: null, jobRole: 'Day Off (Fixed)', timeRange: DAY_OFF_MARKER };
+    }
+
+    // --- PRIORITY 3: Role-Based Assignment ---
     
-    // 3. Main Loop: Day by Day
-    DAYS_FULL.forEach((day, dayIndex) => {
+    // 3a. Manager (Morning Default)
+    if (position === 'Manager') {
+        const pref = (request && request.type === 'ShiftChange') ? request.shift : 'Morning';
+        if (pref === 'Night') { currentCounts.N++; return { shiftId: 3, jobRole: 'C1 (Mgr)', timeRange: SHIFTS[3].time }; }
+        if (pref === 'Afternoon') { currentCounts.A++; return { shiftId: 2, jobRole: 'C1 (Mgr)', timeRange: SHIFTS[2].time }; }
+        currentCounts.M++; return { shiftId: 1, jobRole: 'C1 (Mgr)', timeRange: SHIFTS[1].time };
+    }
 
-        let countM = 0; 
-        let countA = 0; 
-        let countN = 0; 
-        let rolesAssigned = { M: {C1:0, C4:0, C3:0}, A: {C1:0, C5:0, C3:0}, N: {C2:0, C1:0} };
+    // 3b. Supervisor
+    if (position === 'Supervisor') {
+        const pref = (request && request.type === 'ShiftChange') ? request.shift : staff.shiftPreference;
+        if (pref === 'Afternoon') { currentCounts.A++; return { shiftId: 2, jobRole: 'C1 (Sup)', timeRange: SHIFTS[2].time }; }
+        if (pref === 'Night') { currentCounts.N++; return { shiftId: 3, jobRole: 'C1 (Sup)', timeRange: SHIFTS[3].time }; }
+        currentCounts.M++; return { shiftId: 1, jobRole: 'C1 (Sup)', timeRange: SHIFTS[1].time };
+    }
 
-        // --- STEP 0: ABSOLUTE PRIORITY - FIXED DAY OFF CHECK ---
-        // This block runs BEFORE any requests or assignments to guarantee fixed days off are respected.
-        staffProfiles.forEach(staff => {
-            const staffEntry = weeklyRosterMap.get(staff.employeeId);
-            const fixedDay = (staff.fixedDayOff || 'None').trim();
-            
-            // IF this is the staff's fixed day off, FORCE the day off assignment immediately.
-            if (fixedDay !== 'None' && VALID_DAYS.includes(fixedDay) && fixedDay === day) {
-                const color = ROLE_COLORS[staff.position] || '#FFFFFF';
-                staffEntry.weeklySchedule[dayIndex].shifts = [{ 
-                    shiftId: null, 
-                    jobRole: 'Day Off (Fixed)', 
-                    timeRange: DAY_OFF_MARKER,
-                    color: color
-                }];
-            }
-        });
+    // 3c. Delivery
+    if (position === 'Delivery') {
+        const pref = (request && request.type === 'ShiftChange') ? request.shift : staff.shiftPreference;
+        if (pref.includes('Morning')) { currentCounts.M++; return { shiftId: 1, jobRole: 'C3 (Del)', timeRange: SHIFTS[1].time }; }
+        currentCounts.A++; return { shiftId: 2, jobRole: 'C3 (Del)', timeRange: SHIFTS[2].time };
+    }
 
-        // --- STEP 1: REQUESTS & LEAVE (Only for staff not already assigned a Fixed Day Off) ---
-        staffProfiles.forEach(staff => {
-            if (isScheduled(staff.employeeId, dayIndex)) return; // Skip if Fixed Day Off already set
+    // 3d. Normal Staff (The fillers)
+    // Preference handling
+    const pref = (request && request.type === 'ShiftChange') ? request.shift : staff.shiftPreference;
 
-            const staffEntry = weeklyRosterMap.get(staff.employeeId);
-            const request = getWeeklyRequest(staff);
-            let assignment = null;
-            let color = ROLE_COLORS[staff.position] || '#FFF';
+    // Night Staff Check
+    if (pref === 'Night' && currentCounts.N < SHIFTS[3].required) {
+        currentCounts.N++;
+        return { shiftId: 3, jobRole: 'C2', timeRange: SHIFTS[3].time };
+    }
 
-            if (request.type === 'SpecificAssignment' && request.day === day) {
-                const shiftConfig = SHIFTS[request.shiftId] || {}; 
-                if (request.shiftId === 'STATUS_LEAVE') { 
-                     assignment = { shiftId: null, jobRole: request.dutyRole, timeRange: DAY_OFF_MARKER, color: '#B91C1C' };
-                } else if (shiftConfig) {
-                    assignment = { shiftId: request.shiftId, jobRole: request.dutyRole, timeRange: shiftConfig.time, color: color };
-                }
-            }
-            
-            if (!assignment && request.type === 'Leave') {
-                const isReqDay = request.day === day || request.day === 'Sick Leave' || request.day === 'Full Week';
-                if (isReqDay) {
-                    assignment = { shiftId: null, jobRole: DAY_OFF_MARKER, timeRange: DAY_OFF_MARKER, color: '#B91C1C' };
-                }
-            }
-            
-            if (assignment) {
-                staffEntry.weeklySchedule[dayIndex].shifts = [assignment];
-            }
-        });
+    // Morning Check (If preferred OR if Morning is low and Afternoon is full)
+    const needsMorning = currentCounts.M < SHIFTS[1].required;
+    const needsAfternoon = currentCounts.A < SHIFTS[2].required;
+
+    if (needsMorning && (pref === 'Morning' || !needsAfternoon)) {
+        currentCounts.M++;
+        return { shiftId: 1, jobRole: 'C4', timeRange: SHIFTS[1].time };
+    }
+
+    // Afternoon Check
+    if (needsAfternoon) {
+        currentCounts.A++;
+        return { shiftId: 2, jobRole: 'C5', timeRange: SHIFTS[2].time };
+    }
+
+    // Fallback: If no slots needed, they get a day off (or forced extra)
+    return { shiftId: null, jobRole: DAY_OFF_MARKER, timeRange: DAY_OFF_MARKER };
+}
 
 
-        // --- STEP 2: ASSIGN WORK SHIFTS (Only for unassigned staff) ---
-        
-        // 2a. Manager
-        if (manager && !isScheduled(manager.employeeId, dayIndex)) { 
-            const request = getWeeklyRequest(manager);
-            const pref = (request.type === 'ShiftChange') ? request.shift : 'Morning';
-            let sId = 1, t = MORNING_TIME;
-            
-            if (pref === 'Night') { sId = 3; t = NIGHT_TIME; countN++; } 
-            else if (pref === 'Afternoon') { sId = 2; t = AFTERNOON_TIME; countA++; }
-            else { countM++; } // Default Morning
-            
-            weeklyRosterMap.get(manager.employeeId).weeklySchedule[dayIndex].shifts.push({ 
-                shiftId: sId, jobRole: 'C1 (Mgr)', timeRange: t, color: ROLE_COLORS['Manager'] 
-            });
-        } 
-        
-        // 2b. Supervisors
-        supervisors.forEach(sup => {
-            if (isScheduled(sup.employeeId, dayIndex)) return;
-            
-            const request = getWeeklyRequest(sup);
-            const pref = (request.type === 'ShiftChange') ? request.shift : sup.shiftPreference;
-            let sId = 1, t = MORNING_TIME;
+function generateWeeklyRoster(staffProfiles, weekStartDate) {
+    const weekStartString = weekStartDate.toISOString().split('T')[0];
+    
+    // Sort staff to ensure Manager/Sup get first picks
+    const sortedStaff = [...staffProfiles].sort((a, b) => {
+        const ranks = { 'Manager': 1, 'Supervisor': 2, 'Delivery': 3, 'Normal Staff': 4 };
+        return (ranks[a.position] || 5) - (ranks[b.position] || 5);
+    });
 
-            if (pref === 'Afternoon') { sId = 2; t = AFTERNOON_TIME; countA++; }
-            else if (pref === 'Night') { sId = 3; t = NIGHT_TIME; countN++; } 
-            else { countM++; } // Default Morning
-            
-            weeklyRosterMap.get(sup.employeeId).weeklySchedule[dayIndex].shifts.push({ shiftId: sId, jobRole: 'C1 (Sup)', timeRange: t, color: ROLE_COLORS['Supervisor'] });
-        });
-
-        // 2c. Delivery Drivers
-        deliveryDrivers.forEach(driver => {
-            if (isScheduled(driver.employeeId, dayIndex)) return;
-
-            const request = getWeeklyRequest(driver);
-            const pref = (request.type === 'ShiftChange') ? request.shift : driver.shiftPreference; 
-            let sId = 1, t = MORNING_TIME;
-
-            if (pref.includes('Morning')) { countM++; rolesAssigned.M.C3++; }
-            else { sId = 2; t = AFTERNOON_TIME; countA++; rolesAssigned.A.C3++; }
-            
-            weeklyRosterMap.get(driver.employeeId).weeklySchedule[dayIndex].shifts.push({ shiftId: sId, jobRole: 'C3 (Del)', timeRange: t, color: ROLE_COLORS['Delivery'] });
-        });
-
-        // 2d. Normal Staff (Night)
-        let availableStaff = allNormalStaff.filter(s => !isScheduled(s.employeeId, dayIndex));
-        availableStaff.sort((a, b) => a.employeeId.localeCompare(b.employeeId));
-
-        availableStaff.forEach(staff => {
-            if (countN >= requiredNight || isScheduled(staff.employeeId, dayIndex)) return;
-            const request = getWeeklyRequest(staff);
-            const pref = (request.type === 'ShiftChange') ? request.shift : staff.shiftPreference;
-            
-            if (pref === 'Night') { 
-                weeklyRosterMap.get(staff.employeeId).weeklySchedule[dayIndex].shifts.push({ shiftId: 3, jobRole: 'C2', timeRange: NIGHT_TIME });
-                countN++;
-            }
-        });
-        
-        // 2e. Normal Staff (Day Fill-in)
-        let remainingDayStaff = availableStaff.filter(s => !isScheduled(s.employeeId, dayIndex));
-        let totalMorningStaff = countM;
-        let totalAfternoonStaff = countA;
-
-        remainingDayStaff.forEach(staff => {
-            const request = getWeeklyRequest(staff);
-            const pref = (request.type === 'ShiftChange') ? request.shift : staff.shiftPreference;
-            let assigned = false;
-
-            if ((pref === 'Morning' || totalMorningStaff < totalAfternoonStaff) && totalMorningStaff < SHIFTS[1].required) {
-                weeklyRosterMap.get(staff.employeeId).weeklySchedule[dayIndex].shifts.push({ shiftId: 1, jobRole: 'C4', timeRange: MORNING_TIME });
-                totalMorningStaff++;
-                assigned = true;
-            }
-            
-            if (!assigned && totalAfternoonStaff < SHIFTS[2].required) {
-                weeklyRosterMap.get(staff.employeeId).weeklySchedule[dayIndex].shifts.push({ shiftId: 2, jobRole: 'C5', timeRange: AFTERNOON_TIME });
-                totalAfternoonStaff++;
-                assigned = true;
-            } 
-            
-            if (!assigned) {
-                 weeklyRosterMap.get(staff.employeeId).weeklySchedule[dayIndex].shifts.push({ shiftId: null, jobRole: DAY_OFF_MARKER, timeRange: DAY_OFF_MARKER });
-            }
-        });
-
-    }); // End Day Loop
-
-    return Array.from(weeklyRosterMap.values()).map(staff => ({
-        employeeName: staff.name,
-        employeeId: staff.employeeId,
-        position: staff.position,
-        weeklySchedule: staff.weeklySchedule.map((ds, i) => ({ dayOfWeek: DAYS_FULL[i], shifts: ds.shifts || [] }))
+    // Structure to hold the result
+    const weeklyData = sortedStaff.map(s => ({
+        employeeName: s.name,
+        employeeId: s.employeeId,
+        position: s.position,
+        weeklySchedule: [] // We will push days here one by one
     }));
+
+    // Iterate Day by Day
+    DAYS_FULL.forEach((day, dayIndex) => {
+        
+        // Reset counts for THIS DAY only
+        let currentCounts = { M: 0, A: 0, N: 0 };
+
+        // Iterate Staff by Staff for THIS DAY
+        weeklyData.forEach((rosterEntry, staffIndex) => {
+            const profile = sortedStaff[staffIndex];
+            const request = getStaffRequest(profile, weekStartString);
+            
+            // Calculate the single cell
+            const shiftAssignment = calculateDailyShift(profile, day, dayIndex, currentCounts, request);
+            
+            // Push to that staff's schedule
+            rosterEntry.weeklySchedule.push({
+                dayOfWeek: day,
+                shifts: [shiftAssignment]
+            });
+        });
+    });
+
+    return weeklyData;
 }
 
 module.exports = { generateWeeklyRoster };
