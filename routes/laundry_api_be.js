@@ -5,7 +5,7 @@ const mongoose = require('mongoose');
 
 // --- MODEL IMPORT METHOD ---
 const LaundryRequest = mongoose.model('LaundryRequest'); 
-const User = mongoose.model('User'); 
+// Note: 'User' model import removed as we use the req.user attached by middleware
 // --- END MODEL IMPORT METHOD ---
 
 // --- USER ENDPOINTS (Request Submission) ---
@@ -20,13 +20,15 @@ router.post('/request', async (req, res) => {
     }
     
     try {
-        // Fetch user data from token payload (req.user)
-        const user = await User.findById(req.user.id).select('username');
-        if (!user) return res.status(404).json({ success: false, message: 'Requester not found.' });
+        // 🚨 FIX: Handle Service User vs Core User fields
+        // Since middleware attaches the user, we access properties directly.
+        // 'susername' is for ServiceUser, 'username' is for Core User.
+        const requesterName = req.user.susername || req.user.username || 'Unknown';
+        const requesterId = req.user._id || req.user.id;
 
         const newRequest = new LaundryRequest({
-            requesterId: req.user.id,
-            requesterUsername: user.username,
+            requesterId: requesterId,
+            requesterUsername: requesterName,
             department,
             contactExt,
             notes,
@@ -45,7 +47,9 @@ router.post('/request', async (req, res) => {
 // GET /api/laundry/user-requests - Get all requests made by the logged-in user
 router.get('/user-requests', async (req, res) => {
     try {
-        const requests = await LaundryRequest.find({ requesterId: req.user.id }).sort({ requestedAt: -1 });
+        // 🚨 FIX: Use correct ID reference
+        const requesterId = req.user._id || req.user.id;
+        const requests = await LaundryRequest.find({ requesterId: requesterId }).sort({ requestedAt: -1 });
         res.json({ success: true, data: requests });
     } catch (err) {
         console.error('Fetch User Requests Error:', err);
@@ -58,8 +62,10 @@ router.get('/user-requests', async (req, res) => {
 
 // GET /api/laundry/staff-view - Get all outstanding requests for staff processing
 router.get('/staff-view', async (req, res) => {
-    // 🚨 FIX: Role-Based Access Control check is performed here directly.
-    const role = req.user.role;
+    // 🚨 FIX: Role-Based Access Control
+    // Check 'srole' (Service User) OR 'role' (Core User)
+    const role = req.user.srole || req.user.role;
+    
     if (role !== 'admin' && role !== 'superadmin' && role !== 'standard') {
         return res.status(403).json({ success: false, message: 'Access denied. Staff role required.' });
     }
@@ -81,8 +87,9 @@ router.get('/staff-view', async (req, res) => {
 
 // PUT /api/laundry/update-status/:id - Update the status of a request
 router.put('/update-status/:id', async (req, res) => {
-    // 🚨 FIX: Role-Based Access Control check is performed here directly.
-    const role = req.user.role;
+    // 🚨 FIX: Role-Based Access Control
+    const role = req.user.srole || req.user.role;
+    
     if (role !== 'admin' && role !== 'superadmin' && role !== 'standard') {
         return res.status(403).json({ success: false, message: 'Access denied. Staff role required.' });
     }
@@ -103,7 +110,8 @@ router.put('/update-status/:id', async (req, res) => {
         
         if (status === 'Picked Up') {
             updateFields.pickedUpAt = new Date();
-            updateFields.processedBy = req.user.id; // Log staff member who marks it picked up
+            // 🚨 FIX: Log the ID of the staff member updating the request
+            updateFields.processedBy = req.user._id || req.user.id; 
         }
         if (status === 'Completed') {
             updateFields.completedAt = new Date();

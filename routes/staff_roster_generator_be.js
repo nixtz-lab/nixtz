@@ -72,19 +72,19 @@ function calculateDailyShift(staff, day, dayIndex, currentCounts, request) {
     // 3a. Manager (Morning Default)
     if (position === 'Manager') {
         const pref = (request && request.type === 'ShiftChange') ? request.shift : 'Morning';
-        // UPDATED: Return Shift ID as jobRole ('1', '2', '3') instead of 'C1 (Mgr)'
-        if (pref === 'Night') { currentCounts.N++; return { shiftId: 3, jobRole: '3', timeRange: SHIFTS[3].time }; }
-        if (pref === 'Afternoon') { currentCounts.A++; return { shiftId: 2, jobRole: '2', timeRange: SHIFTS[2].time }; }
-        currentCounts.M++; return { shiftId: 1, jobRole: '1', timeRange: SHIFTS[1].time };
+        // UPDATED: Return ' ' (space) as jobRole to avoid duplicate ID display (e.g., "1 1")
+        if (pref === 'Night') { currentCounts.N++; return { shiftId: 3, jobRole: ' ', timeRange: SHIFTS[3].time }; }
+        if (pref === 'Afternoon') { currentCounts.A++; return { shiftId: 2, jobRole: ' ', timeRange: SHIFTS[2].time }; }
+        currentCounts.M++; return { shiftId: 1, jobRole: ' ', timeRange: SHIFTS[1].time };
     }
 
     // 3b. Supervisor
     if (position === 'Supervisor') {
         const pref = (request && request.type === 'ShiftChange') ? request.shift : staff.shiftPreference;
-        // UPDATED: Return Shift ID as jobRole ('1', '2', '3') instead of 'C1 (Sup)'
-        if (pref === 'Afternoon') { currentCounts.A++; return { shiftId: 2, jobRole: '2', timeRange: SHIFTS[2].time }; }
-        if (pref === 'Night') { currentCounts.N++; return { shiftId: 3, jobRole: '3', timeRange: SHIFTS[3].time }; }
-        currentCounts.M++; return { shiftId: 1, jobRole: '1', timeRange: SHIFTS[1].time };
+        // UPDATED: Return ' ' (space) as jobRole to avoid duplicate ID display
+        if (pref === 'Afternoon') { currentCounts.A++; return { shiftId: 2, jobRole: ' ', timeRange: SHIFTS[2].time }; }
+        if (pref === 'Night') { currentCounts.N++; return { shiftId: 3, jobRole: ' ', timeRange: SHIFTS[3].time }; }
+        currentCounts.M++; return { shiftId: 1, jobRole: ' ', timeRange: SHIFTS[1].time };
     }
 
     // 3c. Delivery
