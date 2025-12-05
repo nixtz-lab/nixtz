@@ -160,6 +160,63 @@ function addStaffRow(initialData = {}) {
     rosterBody.insertAdjacentHTML('beforeend', staffRowHtml);
 }
 
+// --- NEW FUNCTION: CALCULATE AND RENDER TOTALS ---
+function updateFooterTotals(rosterData) {
+    const footer = document.querySelector('#roster-table tfoot');
+    if (!footer) return;
+
+    // Initialize counts: 1=Morning, 2=Afternoon, 3=Night
+    const totals = {
+        1: { Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0, Sun: 0 },
+        2: { Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0, Sun: 0 },
+        3: { Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0, Sun: 0 }
+    };
+
+    // Calculate totals from roster data
+    rosterData.forEach(staff => {
+        if (!staff.weeklySchedule) return;
+        staff.weeklySchedule.forEach(dayData => {
+            const day = dayData.dayOfWeek;
+            const shift = dayData.shifts && dayData.shifts[0];
+            
+            if (shift && shift.shiftId) {
+                let baseId = 0;
+                // Identify if it belongs to Morning(1), Afternoon(2), or Night(3)
+                if (CORE_SHIFTS[shift.shiftId]) {
+                    baseId = CORE_SHIFTS[shift.shiftId].baseId;
+                } else {
+                    // Fallback if ID is direct (1, 2, 3)
+                    baseId = parseInt(shift.shiftId);
+                }
+
+                // Increment if valid category
+                if (totals[baseId] && totals[baseId][day] !== undefined) {
+                    totals[baseId][day]++;
+                }
+            }
+        });
+    });
+
+    // Render HTML for Footer
+    let html = '';
+    const rows = [
+        { id: 1, label: 'Morning Total', color: 'text-yellow-400' },
+        { id: 2, label: 'Afternoon Total', color: 'text-blue-400' },
+        { id: 3, label: 'Night Total', color: 'text-purple-400' }
+    ];
+
+    rows.forEach(row => {
+        html += `<tr class="bg-gray-900 border-t border-gray-700 text-xs font-bold border-b border-gray-800">`;
+        html += `<td class="p-3 text-gray-400 uppercase">${row.label}</td>`;
+        DAYS.forEach(day => {
+            html += `<td class="p-3 text-center ${row.color} border-l border-gray-800">${totals[row.id][day]}</td>`;
+        });
+        html += `</tr>`;
+    });
+
+    footer.innerHTML = html;
+}
+
 async function loadRoster(startDateString) {
     if (!startDateString || !getAuthStatus()) return; 
     
@@ -177,8 +234,13 @@ async function loadRoster(startDateString) {
 
         if (response.ok && result.success && Array.isArray(result.data) && result.data.length > 0) {
             result.data.forEach(data => addStaffRow(data));
+            // Calculate and show totals at the bottom
+            updateFooterTotals(result.data);
         } else {
             rosterBody.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-gray-500">No roster found. Click "Regenerate" (Green Button).</td></tr>';
+            // Clear footer if empty
+            const footer = document.querySelector('#roster-table tfoot');
+            if(footer) footer.innerHTML = '';
         }
     } catch (error) {
         console.error("Load Roster Error:", error);

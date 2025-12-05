@@ -4,12 +4,12 @@
  */
 
 // --- 1. CONFIGURATION FIX (CRITICAL) ---
+// This stops the "undefined/api/..." error visible in your screenshot.
 if (typeof window.API_BASE_URL === 'undefined') {
-    // Leave empty if Nginx is configured, or use 'https://nixtz.com:3000' if not.
+    // If your backend is live (Nginx configured), leave this empty.
+    // If you are getting 404s and cannot fix Nginx, use: 'https://nixtz.com:3000'
     window.API_BASE_URL = ''; 
 }
-
-// const SERVICE_TOKEN_KEY = 'nixtz_service_auth_token'; // REMOVED: Defined globally or accessed directly
 
 const itemsContainer = document.getElementById('items-container');
 
@@ -55,7 +55,7 @@ function toggleUserDropdown() {
         const isHidden = dropdown.style.display === 'none' || dropdown.style.display === '';
         dropdown.style.display = isHidden ? 'block' : 'none';
         
-        // Re-render icons when opening, just in case they were hidden/not rendered
+        // Re-render icons when opening
         if (isHidden) createLucideIcons();
     }
 }
@@ -111,7 +111,6 @@ function createItemInput() {
         </button>
     `;
     
-    // Attach remove listener
     itemDiv.querySelector(`#${removeBtnId}`).addEventListener('click', () => {
         itemDiv.remove();
         if (itemsContainer.children.length === 1) {
@@ -155,7 +154,7 @@ async function handleFormSubmit(e) {
     }
 
     const payload = { department, contactExt, notes, items };
-    const token = localStorage.getItem('nixtz_service_auth_token'); // Manual string to avoid reference errors
+    const token = localStorage.getItem('nixtz_service_auth_token'); 
     
     if (!token) {
         window.showMessage("Authentication failed. Please log in.", true);
@@ -182,7 +181,7 @@ async function handleFormSubmit(e) {
             itemCounter = 0;
             itemsContainer.appendChild(createItemInput());
             itemsContainer.querySelector('.flex-shrink-0').disabled = true;
-            createLucideIcons(); // Refresh icons for new inputs
+            createLucideIcons(); 
 
             loadRequestHistory();
         } else {
@@ -252,7 +251,7 @@ async function loadRequestHistory() {
         // Handle non-JSON responses (like 404 pages)
         const contentType = response.headers.get("content-type");
         if (!contentType || !contentType.includes("application/json")) {
-            throw new Error("Server returned non-JSON response (likely a 404 or 500 error page).");
+            throw new Error("Server returned non-JSON response (likely a 404). API_BASE_URL might be wrong.");
         }
 
         const result = await response.json();
@@ -298,7 +297,7 @@ function initLaundryRequestPage() {
         addItemButton.addEventListener('click', () => {
             itemsContainer.appendChild(createItemInput());
             itemsContainer.querySelectorAll('.flex-shrink-0').forEach(btn => btn.disabled = false);
-            createLucideIcons(); // RENDER ICONS FOR NEW BUTTON
+            createLucideIcons(); 
         });
     }
 
