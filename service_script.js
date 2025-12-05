@@ -65,8 +65,9 @@ window.checkServiceAccessAndRedirect = (targetPage) => {
         // Use the newly defined global function
         window.showMessage("Access Denied. Please sign in to the service panel.", true);
         setTimeout(() => {
-            // Redirect to the service login page
-            window.location.href = `service_auth.html?service=true`;
+            // Redirect with a return parameter so we come back here after login
+            // Fix: Include the redirect parameter pointing to the target page
+            window.location.href = `service_auth.html?service=true&redirect=${targetPage}`;
         }, 500);
         return false;
     }
@@ -126,14 +127,21 @@ function updateServiceBanner() {
         
         // B. Show Username and Role (Inner Content)
         if (usernameDisplayElement) {
-            // Display: Username (Role) - The ID is usually the username in service context
+            // For staff pages, we might want bold roles, for request pages just the name is fine.
+            // This logic handles both gracefully.
+            if (usernameDisplayElement.innerHTML === '') {
+                 usernameDisplayElement.textContent = username; 
+            }
+            // If the element expects HTML (like on staff page), you can keep using innerHTML in specific page scripts
+            // or just set textContent here as a safe default.
+             // Display: Username (Role) - The ID is usually the username in service context
             const displayRole = role.charAt(0).toUpperCase() + role.slice(1);
             // Use different display content depending on the active container (Staff/Admin often show role, Request often shows just username)
             if (staffPageUserContainer) {
                 usernameDisplayElement.innerHTML = `${username} (<b>${displayRole}</b>)`; 
             } else {
                 // This targets the laundry_request page which just uses textContent
-                usernameDisplayElement.textContent = username;
+                 usernameDisplayElement.textContent = username;
             }
         }
         
@@ -207,11 +215,20 @@ async function handleServiceLogin(e) {
             localStorage.setItem('nixtz_service_user_role', result.role); 
             localStorage.setItem('nixtz_service_user_membership', result.membership || 'none'); 
             
-            showMsg("Service Login successful! Redirecting to Staff Panel.", false); 
+            showMsg("Service Login successful! Redirecting...", false); 
             
-            // 3. Redirect to the Staff Panel
+            // --- DYNAMIC REDIRECT FIX ---
+            // Check if there is a 'redirect' param in the URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const redirectTarget = urlParams.get('redirect');
+
             setTimeout(() => {
-                window.location.href = 'laundry_staff.html'; 
+                // If redirect param exists, go there. Otherwise default to staff panel.
+                if (redirectTarget) {
+                    window.location.href = redirectTarget;
+                } else {
+                    window.location.href = 'laundry_staff.html'; 
+                }
             }, 1000);
 
         } else {

@@ -26,7 +26,7 @@ window.showMessage = (message, isError = false) => {
     if (isError) {
         box.classList.add('bg-red-600');
     } else {
-        box.classList.add('bg-nixtz-secondary'); // Your success/primary color
+        box.classList.add('bg-nixtz-secondary'); // Use your success/primary color
     }
 
     text.textContent = message;
@@ -76,14 +76,96 @@ window.checkServiceAccessAndRedirect = (targetPage) => {
 };
 
 // Helper to use global showMessage or fallback to console.error
-// NOTE: This helper is now redundant since window.showMessage is defined, but retained for safety.
 const showMsg = (text, isError) => {
     if (typeof window.showMessage === 'function') {
         window.showMessage(text, isError); 
     } else {
-        console.error(`AUTH MSG (${isError ? 'ERROR' : 'INFO'}): ${text}`);
+        console.error(`AUTH MSG (${isError ? 'ERROR' : 'INFO'}): ${text}`); 
     }
 };
+
+// --- BANNER DISPLAY LOGIC (NEW FEATURE) ---
+
+/**
+ * Function to update the header banner based on the isolated service user session.
+ */
+function updateServiceBanner() {
+    // 1. Get isolated data from local storage
+    const token = localStorage.getItem(SERVICE_TOKEN_KEY);
+    const username = localStorage.getItem('nixtz_service_username'); 
+    const role = localStorage.getItem('nixtz_service_user_role'); 
+    
+    // --- Target IDs on your HTML pages (Checking for both possibilities) ---
+    const usernameDisplayElement = document.getElementById('username-display');
+    const requestPageUserContainer = document.getElementById('user-menu-container'); // Used by laundry_request.html
+    const staffPageUserContainer = document.getElementById('user-display-container'); // Used by laundry_staff.html, service_admin.html
+    
+    // Select the container that is actually present on the page
+    const activeUserContainer = requestPageUserContainer || staffPageUserContainer;
+    
+    const adminButton = document.getElementById('admin-button'); 
+    const staffPanelButton = document.getElementById('staff-panel-button'); 
+    const loginButtons = document.getElementById('auth-buttons-container'); 
+    const defaultLogoutButton = document.getElementById('default-logout-button');
+    // ----------------------------------------------------
+
+    if (token && username && role) {
+        // Logged In: Hide login/default logout, show user data
+        
+        // A. Update Visibility
+        if (activeUserContainer) {
+            // Set to 'flex' as Tailwind uses it for header alignment
+            activeUserContainer.style.display = 'flex'; 
+        }
+        if (loginButtons) {
+            loginButtons.style.display = 'none';
+        }
+        if (defaultLogoutButton) {
+            defaultLogoutButton.style.display = 'none'; 
+        }
+        
+        // B. Show Username and Role (Inner Content)
+        if (usernameDisplayElement) {
+            // Display: Username (Role) - The ID is usually the username in service context
+            const displayRole = role.charAt(0).toUpperCase() + role.slice(1);
+            // Use different display content depending on the active container (Staff/Admin often show role, Request often shows just username)
+            if (staffPageUserContainer) {
+                usernameDisplayElement.innerHTML = `${username} (<b>${displayRole}</b>)`; 
+            } else {
+                // This targets the laundry_request page which just uses textContent
+                usernameDisplayElement.textContent = username;
+            }
+        }
+        
+        // C. Check Role and Conditionally Show Admin/Staff Panel Button
+        const isAdmin = ['admin', 'superadmin'].includes(role);
+        
+        if (adminButton) {
+            if (isAdmin) {
+                adminButton.style.display = 'block';
+            } else {
+                adminButton.style.display = 'none'; 
+            }
+        }
+        // Staff Panel Button (for request page and general visibility)
+        if (staffPanelButton) {
+             if (['standard', 'admin', 'superadmin'].includes(role)) {
+                staffPanelButton.style.display = 'block';
+            } else {
+                staffPanelButton.style.display = 'none'; 
+            }
+        }
+    } else {
+        // Not Logged In: Show login/default logout. Hide user menu and staff buttons.
+        if (activeUserContainer) activeUserContainer.style.display = 'none';
+        if (adminButton) adminButton.style.display = 'none';
+        if (staffPanelButton) staffPanelButton.style.display = 'none';
+        if (loginButtons) loginButtons.style.display = 'flex'; 
+        if (defaultLogoutButton) defaultLogoutButton.style.display = 'block'; 
+    }
+}
+window.updateServiceBanner = updateServiceBanner;
+
 
 // --- SERVICE LOGIN FORM HANDLER ---
 
@@ -91,72 +173,80 @@ const showMsg = (text, isError) => {
  * Handles the service login process (designed to run on service_auth.html).
  */
 async function handleServiceLogin(e) {
-    e.preventDefault();
+    e.preventDefault(); 
     
-    // Assumes the HTML uses IDs: login-email (for ID/Username) and login-password
-    const loginValue = document.getElementById('login-email')?.value.trim();
-    const password = document.getElementById('login-password')?.value.trim();
+    const loginValue = document.getElementById('login-email')?.value.trim(); 
+    const password = document.getElementById('login-password')?.value.trim(); 
 
     if (!loginValue || !password) {
-        return showMsg("Please enter your Employee ID/Username and password.", true);
+        return showMsg("Please enter your Employee ID/Username and password.", true); 
     }
     
     // Prepare Payload
-    const data = { email: loginValue, password: password };
+    const data = { email: loginValue, password: password }; 
     
     // CRITICAL FIX: Use the dedicated service login route
     const url = `${window.API_BASE_URL}/api/serviceauth/login`; 
     
     try {
         const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data),
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify(data), 
         });
 
-        const result = await response.json();
+        const result = await response.json(); 
         
         if (response.ok && result.success) {
             
             // 1. Save session data using the dedicated SERVICE TOKEN KEY
-            localStorage.setItem(SERVICE_TOKEN_KEY, result.token);
+            localStorage.setItem(SERVICE_TOKEN_KEY, result.token); 
             
             // 2. ISOLATE PROFILE DATA using nixtz_service_ prefix
-            localStorage.setItem('nixtz_service_username', result.username);
-            localStorage.setItem('nixtz_service_user_role', result.role);
-            localStorage.setItem('nixtz_service_user_membership', result.membership || 'none');
+            localStorage.setItem('nixtz_service_username', result.username); 
+            localStorage.setItem('nixtz_service_user_role', result.role); 
+            localStorage.setItem('nixtz_service_user_membership', result.membership || 'none'); 
             
-            showMsg("Service Login successful! Redirecting to Staff Panel.", false);
+            showMsg("Service Login successful! Redirecting to Staff Panel.", false); 
             
             // 3. Redirect to the Staff Panel
             setTimeout(() => {
-                window.location.href = 'laundry_staff.html';
+                window.location.href = 'laundry_staff.html'; 
             }, 1000);
 
         } else {
-            showMsg(result.message || 'Access denied. Invalid credentials.', true);
+            showMsg(result.message || 'Access denied. Invalid credentials.', true); 
         }
 
     } catch (error) {
-        console.error('Service Auth Error:', error);
-        showMsg('Network error. Check server status.', true);
+        console.error('Service Auth Error:', error); 
+        showMsg('Network error. Check server status.', true); 
     }
 }
 window.handleServiceLogin = handleServiceLogin;
 
+// Helper function for service page logout
+window.handleServiceLogout = () => {
+    localStorage.removeItem(SERVICE_TOKEN_KEY);
+    localStorage.removeItem('nixtz_service_username');
+    localStorage.removeItem('nixtz_service_user_role');
+    localStorage.removeItem('nixtz_service_user_membership');
+    window.location.href = 'service_auth.html';
+};
+
 
 // --- INITIAL SETUP ---
 document.addEventListener('DOMContentLoaded', () => {
-    const loginForm = document.getElementById('login-form');
+    const loginForm = document.getElementById('login-form'); 
     
     if (loginForm) {
         // --- Logic specific to service_auth.html ---
-        const urlParams = new URLSearchParams(window.location.search);
-        const isServiceRedirect = urlParams.get('service') === 'true';
+        const urlParams = new URLSearchParams(window.location.search); 
+        const isServiceRedirect = urlParams.get('service') === 'true'; 
 
         if (isServiceRedirect) {
             // Hijack the form to use service login logic
-            loginForm.addEventListener('submit', handleServiceLogin);
+            loginForm.addEventListener('submit', handleServiceLogin); 
         }
     }
 });

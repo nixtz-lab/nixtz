@@ -30,6 +30,7 @@
 </head>
 <body class="bg-nixtz-bg font-sans min-h-screen flex flex-col text-white">
 
+    <!-- HEADER: Exact structural match to laundry_staff.html -->
     <header class="bg-nixtz-bg shadow-2xl sticky top-0 z-50 border-b border-gray-800">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
             <div class="flex items-center space-x-4">
@@ -48,13 +49,12 @@
                 
                 <!-- 1. LOGIN BUTTON (Visible when NOT logged in) -->
                 <div id="auth-buttons-container" class="flex items-center space-x-4 sm:space-x-6">
-                    <a href="service_auth.html" class="bg-gray-800 hover:bg-gray-700 text-white font-bold py-1.5 px-4 rounded-full shadow-lg transition duration-300 transform hover:scale-105 border border-gray-700 text-sm">
+                    <a href="service_auth.html?service=true&redirect=laundry_request.html" class="bg-gray-800 hover:bg-gray-700 text-white font-bold py-1.5 px-4 rounded-full shadow-lg transition duration-300 transform hover:scale-105 border border-gray-700 text-sm">
                         Login
                     </a>
                 </div>
 
-                <!-- 2. USER DISPLAY CONTAINER (Standardized to match Staff Page ID) -->
-                <!-- Uses 'user-display-container' so the global script finds it -->
+                <!-- 2. USER DISPLAY CONTAINER (Matches Staff Page ID) -->
                 <div id="user-display-container" class="relative group" style="display: none;">
                     
                     <button id="user-display-button" 
@@ -76,18 +76,33 @@
                             <i data-lucide="key" class="w-4 h-4 mr-2 inline"></i> Change Password
                         </a>
 
-                        <button id="logout-button" onclick="window.handleServiceLogout()" 
+                        <button id="logout-dropdown-button" onclick="window.handleServiceLogout()" 
                                 class="w-full flex items-center text-left text-sm text-red-400 hover:text-red-500 transition duration-200 font-medium py-2 px-3 rounded-lg hover:bg-gray-700 mt-2 border-t border-gray-700/50">
                             <i data-lucide="log-out" class="w-4 h-4 mr-2 inline"></i> Logout
                         </button>
                     </div>
                 </div>
 
-                <!-- 3. STAFF PANEL BUTTON (Visible only if authorized) -->
+                <!-- 3. SERVICE ADMIN BUTTON (Matches Staff Page ID 'admin-button') -->
+                <a href="service_admin.html" 
+                   id="admin-button" 
+                   style="display: none;" 
+                   class="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-1.5 px-4 rounded-full shadow-lg transition duration-300 text-sm border border-gray-700">
+                    Service Admin
+                </a>
+
+                <!-- 4. STAFF PANEL BUTTON (Visible only if authorized) -->
                 <a href="laundry_staff.html" id="staff-panel-button" style="display: none;" 
                    class="bg-nixtz-secondary hover:bg-[#0da070] text-white font-semibold py-1.5 px-4 rounded-full shadow-lg transition duration-300 text-sm border border-gray-700">
                     Staff Panel
                 </a>
+                
+                <!-- 5. DEFAULT LOGOUT BUTTON (Matches Staff Page ID 'default-logout-button') -->
+                <button id="default-logout-button" onclick="window.handleServiceLogout()" style="display: none;"
+                         class="bg-red-700 hover:bg-red-600 text-white font-semibold py-1.5 px-4 rounded-full shadow-lg transition duration-300 text-sm border border-gray-700">
+                    Logout
+                </button>
+
             </div>
             </div>
     </header>
@@ -141,7 +156,7 @@
     <script src="laundry_request.js"></script>
     
     <script>
-        // Final Initialization Block
+        // Final Initialization Block (minimal and correct)
         document.addEventListener('DOMContentLoaded', () => {
             if (typeof lucide !== 'undefined') lucide.createIcons();
             

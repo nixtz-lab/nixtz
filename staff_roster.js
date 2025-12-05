@@ -1,6 +1,6 @@
 /**
  * staff_roster.js
- * FINAL STABLE VERSION. Fixes: Icons, Generate Button, Fixed Day Off logic, and Shift Config form.
+ * FINAL STABLE VERSION. Fixes: Shift Config Form, Icons, Generate Button & Fixed Day Off logic.
  */
 
 // Global constants and API endpoints
@@ -11,6 +11,14 @@ const PROFILE_API_URL = `${window.API_BASE_URL}/api/staff/profile`;
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const DAY_OFF_MARKER = 'หยุด'; 
 const AUTH_TOKEN_KEY = localStorage.getItem('nixtz_auth_token') ? 'nixtz_auth_token' : 'tmt_auth_token'; 
+
+// --- CORE SHIFTS DEFINITION ---
+// Used for populating the config modal
+const CORE_SHIFTS = { 
+    1: { name: 'Morning', time: '07:00-16:00', required: 6 }, 
+    2: { name: 'Afternoon', time: '13:30-22:30', required: 5 },
+    3: { name: 'Night', time: '22:00-07:00', required: 3 },
+};
 
 // --- AUTHENTICATION ---
 function getAuthStatus() { return !!localStorage.getItem(AUTH_TOKEN_KEY); }
@@ -158,21 +166,48 @@ window.handleDateChange = function(input) {
     loadRoster(monday);
 };
 
-// 5. MODAL LOGIC (FIXED BUTTONS)
+// 5. MODAL LOGIC (FIXED SHIFT CONFIG)
 let staffCache = [];
 
-// Fix: Expose these globally so HTML onclick works
+// FIX: Populate Shift Config Dropdown
 window.openShiftConfigModal = function() {
     const modal = document.getElementById('shift-config-modal');
     if (modal) {
         modal.classList.remove('hidden');
         modal.classList.add('flex');
+        
+        // Populate the dropdown
+        const select = document.getElementById('config-shift-select');
+        const nameInput = document.getElementById('config-shift-name');
+        const timeInput = document.getElementById('config-shift-time');
+        
+        if(select && select.options.length <= 1) { // Only populate if empty
+            select.innerHTML = '<option value="">-- Select Shift Slot --</option>';
+            Object.keys(CORE_SHIFTS).forEach(id => {
+                const shift = CORE_SHIFTS[id];
+                const option = document.createElement('option');
+                option.value = id;
+                option.textContent = `Shift ${id}: ${shift.name}`;
+                select.appendChild(option);
+            });
+            
+            // Add listener to auto-fill inputs when shift is selected
+            select.onchange = function() {
+                const shiftId = this.value;
+                if(shiftId && CORE_SHIFTS[shiftId]) {
+                    nameInput.value = CORE_SHIFTS[shiftId].name;
+                    timeInput.value = CORE_SHIFTS[shiftId].time;
+                } else {
+                    nameInput.value = '';
+                    timeInput.value = '';
+                }
+            };
+        }
     } else {
         console.error("Shift config modal not found in DOM");
     }
 };
 
-// Fix: Update button logic (opens Staff Request Modal)
 window.openStaffRequestModal = async function() {
     const modal = document.getElementById('staff-request-modal');
     if (!modal) return;
@@ -180,11 +215,10 @@ window.openStaffRequestModal = async function() {
     modal.classList.remove('hidden');
     modal.classList.add('flex');
     
-    // Populate dropdown if needed
     const select = document.getElementById('request-staff-select');
-    if (select && select.options.length <= 1) {
+    if (select) {
         select.innerHTML = '<option>Loading...</option>';
-        await fetchStaffProfiles(); // Ensure cache is loaded
+        await fetchStaffProfiles(); 
         select.innerHTML = '<option value="">-- Select Staff --</option>';
         staffCache.forEach(s => {
             const opt = document.createElement('option');
@@ -203,7 +237,7 @@ window.showAddStaffModal = () => {
     }
 };
 
-// Fix: Fetch staff helper function
+// Fetch staff helper function
 async function fetchStaffProfiles() {
     try {
         const res = await fetch(PROFILE_API_URL, { headers: { 'Authorization': `Bearer ${localStorage.getItem(AUTH_TOKEN_KEY)}` } });
@@ -231,7 +265,6 @@ window.openStaffListModal = async () => {
     await fetchStaffProfiles();
     
     if(staffCache.length > 0) {
-        // Restored original card style for staff list
         container.innerHTML = staffCache.map(s => `
             <div class="flex justify-between items-center p-3 bg-gray-800 rounded-lg border border-gray-700 hover:border-nixtz-primary transition-colors duration-200">
                 <div class="flex flex-col">
@@ -243,7 +276,6 @@ window.openStaffListModal = async () => {
                 </button>
             </div>
         `).join('');
-        // Re-render icons inside the modal
         if (window.lucide) window.lucide.createIcons();
     } else {
         container.innerHTML = '<p class="text-center text-gray-500 py-4">No staff found.</p>';
@@ -254,7 +286,6 @@ window.openEditProfileModal = (id) => {
     const s = staffCache.find(x => x.employeeId === id);
     if(!s) return;
     
-    // Use the specific IDs from your Edit Modal HTML
     const titleEl = document.getElementById('single-staff-title');
     if(titleEl) titleEl.textContent = `Edit Profile: ${s.name}`;
     
@@ -282,7 +313,6 @@ window.openEditProfileModal = (id) => {
         modal.classList.add('flex');
     }
     
-    // Hide the list modal so they don't overlap awkwardly
     document.getElementById('staff-list-modal')?.classList.add('hidden');
 };
 
@@ -299,17 +329,16 @@ document.addEventListener('DOMContentLoaded', () => {
         window.handleDateChange(d);
     }
 
-    // Initialize Global Icons (Sidebar, Header, etc.)
+    // Initialize Global Icons
     if (window.lucide) window.lucide.createIcons();
 
-    // Shift Config Form Logic (Mock implementation to satisfy UI)
+    // Fix: Add listener for Shift Config form
     const shiftForm = document.getElementById('shift-config-form');
     if(shiftForm) {
         shiftForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            // In a real app, you would POST this to an API.
-            // For now, we mock success to close the modal.
-            alert("Shift configuration saved (Mock Mode).");
+            // In a real app, send POST request here.
+            alert("Shift configuration updated (Mock Success).");
             document.getElementById('shift-config-modal').classList.add('hidden');
         });
     }
