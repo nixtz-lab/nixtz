@@ -99,19 +99,30 @@ function renderUserList(users) {
     const container = document.getElementById('active-users-list');
     if (!container) return;
 
-    const rows = users.map(user => `
+    const rows = users.map(user => {
+        // --- SAFEGUARD FIX STARTS HERE ---
+        // We check if 'user.suser' (the login account) exists before accessing 'srole'.
+        // If the login account was deleted but the staff profile remains, we handle it gracefully.
+        
+        const role = user.suser ? user.suser.srole : 'unknown';
+        
+        let roleColor = 'bg-gray-700 text-gray-300';
+        if (role === 'admin') roleColor = 'bg-purple-600 text-white';
+        if (role === 'request_only') roleColor = 'bg-blue-600 text-white'; // Color for your new role
+
+        return `
         <tr class="bg-gray-900 border-b border-gray-800 hover:bg-gray-800 transition">
             <td class="px-4 py-3 font-medium text-white">${user.sname}</td>
             <td class="px-4 py-3 text-gray-400">${user.semployeeId}</td>
             <td class="px-4 py-3 text-gray-400">${user.sdepartment}</td>
             <td class="px-4 py-3">
-                <span class="px-2 py-1 text-xs font-bold rounded-full ${user.suser.srole === 'admin' ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-300'}">
-                    ${user.suser.srole.toUpperCase()}
+                <span class="px-2 py-1 text-xs font-bold rounded-full ${roleColor}">
+                    ${role.toUpperCase()}
                 </span>
             </td>
             <td class="px-4 py-3 text-sm text-gray-500">${user.serviceScope}</td>
         </tr>
-    `).join('');
+    `}).join('');
 
     container.innerHTML = `
         <div class="overflow-x-auto rounded-lg">
