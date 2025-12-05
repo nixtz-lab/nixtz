@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initLaundryStaffPage();
     
     // CRITICAL FIX: Run the global banner display logic from service_script.js
+    // This function is now defined ONLY in service_script.js and is called here.
     if (typeof window.updateServiceBanner === 'function') {
         window.updateServiceBanner();
     }
@@ -81,11 +82,13 @@ function closeDropdownOnOutsideClick(event) {
     const userContainer = document.getElementById('user-display-container');
     const dropdown = document.getElementById('user-dropdown');
     
-    // Only hide if the dropdown is visible and the click is NOT inside the container
     if (dropdown && userContainer && dropdown.style.display === 'block' && !userContainer.contains(event.target)) {
         dropdown.style.display = 'none';
     }
 }
+
+
+// --- NOTE: The conflicting local updateServiceBanner() function has been removed from this file. ---
 
 
 // ------------------------------------

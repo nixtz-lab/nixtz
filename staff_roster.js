@@ -235,9 +235,15 @@ window.openStaffRequestModal = async function() {
     const modal = document.getElementById('staff-request-modal');
     if (!modal) return;
     
+    // Auto-fill Week Start (Read-only)
+    const weekStartVal = document.getElementById('week-start-date').value;
+    const weekStartInput = document.getElementById('request-week-start');
+    if (weekStartInput) weekStartInput.value = weekStartVal;
+
     modal.classList.remove('hidden');
     modal.classList.add('flex');
     
+    // 1. Populate Staff Dropdown
     const select = document.getElementById('request-staff-select');
     if (select) {
         select.innerHTML = '<option>Loading...</option>';
@@ -251,8 +257,28 @@ window.openStaffRequestModal = async function() {
             select.add(opt);
         });
     }
+
+    // 2. Populate Shift Configuration Dropdown (from CORE_SHIFTS)
+    const shiftSelect = document.getElementById('request-configured-shift');
+    if (shiftSelect) {
+        shiftSelect.innerHTML = '<option value="">-- Select Assigned Shift --</option>';
+        // Add Day Off option
+        const offOpt = document.createElement('option');
+        offOpt.value = "STATUS_LEAVE";
+        offOpt.text = "Status: Day Off / Leave";
+        shiftSelect.add(offOpt);
+
+        Object.keys(CORE_SHIFTS).forEach(id => {
+            const s = CORE_SHIFTS[id];
+            const opt = document.createElement('option');
+            // Store baseId and name for generator
+            opt.value = `${s.baseId}|${s.name}`; 
+            opt.text = `${s.name} (${s.time})`;
+            shiftSelect.add(opt);
+        });
+    }
     
-    if(window.toggleRequestFields) window.toggleRequestFields('none_clear');
+    if(window.toggleRequestFields) window.toggleRequestFields('specific_day_duty'); // Default to new type
 };
 
 window.toggleRequestFields = function(val) {
@@ -408,10 +434,22 @@ document.addEventListener('DOMContentLoaded', () => {
             const weekStart = document.getElementById('week-start-date').value;
 
             if (type === 'specific_day_duty') {
-                const rDate = document.getElementById('request-date').value;
-                const rShift = document.getElementById('request-shift-id').value;
-                const rRole = document.getElementById('request-duty-role').value;
-                reqString = `${weekStart}:${rDate}:${rShift}:${rRole}`;
+                const startDate = document.getElementById('request-start-date').value;
+                const endDate = document.getElementById('request-end-date').value;
+                const shiftValue = document.getElementById('request-configured-shift').value;
+                
+                let rShift = "STATUS_LEAVE";
+                let rRole = "Leave";
+
+                if (shiftValue && shiftValue !== "STATUS_LEAVE") {
+                    const parts = shiftValue.split('|');
+                    rShift = parts[0]; 
+                    rRole = parts[1];  
+                }
+
+                // New Format: WeekStart:DateRange:ShiftID:Role
+                // We'll let the generator handle parsing "DateRange" (e.g. 2025-01-01|2025-01-05)
+                reqString = `${weekStart}:${startDate}|${endDate}:${rShift}:${rRole}`;
             } 
             else if (type === 'weekly_shift_pref') {
                 const newShift = document.getElementById('request-new-shift').value;

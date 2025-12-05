@@ -25,7 +25,7 @@ tailwind.config = {
 </script>
 <link rel="stylesheet" href="style.css">
 <script src="https://unpkg.com/lucide@latest"></script>
-<script src="script.js"></script> 
+<script src="staff_roster.js" defer></script> 
 <style>
     /* Custom styles for the table cells to manage input appearance */
     .roster-cell {
@@ -34,7 +34,7 @@ tailwind.config = {
         position: relative;
         cursor: pointer;
     }
-    .roster-cell input, .roster-cell select {
+    .duty-input {
         background-color: transparent;
         border: none;
         width: 100%;
@@ -50,32 +50,6 @@ tailwind.config = {
         text-align: center;
         color: #94A3B8; /* Slate 400 */
     }
-    .shift-dropdown {
-        position: absolute;
-        top: 100%;
-        left: 0;
-        z-index: 50;
-        width: 160px;
-        background-color: #334155; /* Slate 700 */
-        border: 1px solid #475569;
-        border-radius: 8px;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
-        padding: 8px;
-    }
-    .dropdown-button {
-        display: block;
-        width: 100%;
-        padding: 6px 10px;
-        text-align: left;
-        color: white;
-        font-size: 13px;
-        border-radius: 4px;
-        transition: background-color 0.1s;
-    }
-    .dropdown-button:hover {
-        background-color: #4F46E5; /* nixtz-primary */
-    }
-    /* Style for the day/date header */
     .day-header {
         display: block;
         font-weight: bold;
@@ -170,9 +144,7 @@ tailwind.config = {
                     <i data-lucide="settings" class="w-5 h-5 mr-1"></i> Shift Config
                 </button>
                 
-                <button onclick="openShiftConfigModal()" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-full shadow-md transition duration-200 flex items-center">
-                    <i data-lucide="list" class="w-5 h-5 mr-1"></i> Shift List
-                </button>
+                <!-- REMOVED: Redundant Shift List Button -->
             </div>
 
             <div class="flex items-center space-x-4 w-full md:w-auto">
@@ -405,32 +377,52 @@ tailwind.config = {
                 <label for="request-type" class="block text-sm font-medium text-gray-400 mb-1">Update Type</label>
                 <select id="request-type" onchange="toggleRequestFields(this.value)"
                         class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition duration-200">
-                    <option value="holiday">Holiday/Annual Leave Request</option>
-                    <option value="sick_leave">Sick Leave Request</option>
-                    <option value="shift_change">Temporary Shift Preference Change</option>
                     <option value="none_clear">None (Clear All Temporary Requests)</option>
+                    <option value="specific_day_duty">Assign Specific Duty/Day/Leave</option>
+                    <option value="weekly_shift_pref">Override Weekly Shift Preference</option>
                 </select>
             </div>
 
-            <div id="holiday-fields" class="space-y-4">
-                <p class="text-xs text-gray-500">Select the specific day off. The system will automatically find the Monday start date for that week.</p>
+            <div id="specific-assignment-fields" class="space-y-4 hidden">
+                <h4 class="text-md font-semibold text-gray-300 border-b border-gray-700 pb-1 pt-2">Assign Duty or Day Off for a Specific Day</h4>
+
                 <div>
-                    <label for="request-single-date" class="block text-sm font-medium text-gray-400 mb-1">Date Requested (Any Day)</label>
-                    <input type="date" id="request-single-date" required
+                    <label for="request-date" class="block text-sm font-medium text-gray-400 mb-1">Date Requested (Any Day)</label>
+                    <input type="date" id="request-date" required
                            class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition duration-200">
                 </div>
-            </div>
 
-            <div id="shift-change-fields" class="space-y-4 hidden">
+                <div>
+                    <label for="request-shift-id" class="block text-sm font-medium text-gray-400 mb-1">Shift Type / Day Off Status</label>
+                    <select id="request-shift-id" required
+                            onchange="updateShiftRoleDropdown()"
+                            class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition duration-200">
+                        </select>
+                </div>
+                
+                <div id="duty-role-container">
+                    <label for="request-duty-role" class="block text-sm font-medium text-gray-400 mb-1">Duty / Job Role</label>
+                    <select id="request-duty-role" required
+                            class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition duration-200">
+                        </select>
+                </div>
+                
+                <div>
+                    <label for="request-time-range" class="block text-sm font-medium text-gray-400 mb-1">Time Range</label>
+                    <input type="text" id="request-time-range" disabled 
+                           class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-gray-500 cursor-not-allowed">
+                </div>
+            </div>
+            <div id="shift-pref-fields" class="space-y-4 hidden">
                 <p class="text-xs text-gray-500">The shift selected here will temporarily override the employee's **Default Shift Preference** for the selected week only.</p>
                 <div>
                     <label for="shift-change-week-start" class="block text-sm font-medium text-gray-400 mb-1">Date Requested (Any Day of Week)</label>
-                    <input type="date" id="shift-change-week-start" required
+                    <input type="date" id="shift-change-week-start" 
                            class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition duration-200">
                 </div>
                 <div>
                     <label for="request-new-shift" class="block text-sm font-medium text-gray-400 mb-1">New Shift Preference for the Week</label>
-                    <select id="request-new-shift" required
+                    <select id="request-new-shift"
                             class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition duration-200">
                         <option value="Morning">Morning</option>
                         <option value="Afternoon">Afternoon</option>
@@ -441,7 +433,7 @@ tailwind.config = {
             
             <div id="none-clear-message" class="space-y-4 hidden">
                 <p class="text-sm text-yellow-400 font-semibold">
-                    This action will permanently clear the `nextWeekHolidayRequest` field on the staff profile, ensuring the staff member is scheduled using their standard default shift and fixed day off preferences from now on.
+                    This action will permanently clear the `nextWeekHolidayRequest` field on the staff profile.
                 </p>
             </div>
             
