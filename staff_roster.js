@@ -1,6 +1,6 @@
 /**
  * staff_roster.js
- * FINAL STABLE VERSION. Fixes: Shift Config UI (ID vs Name separation), Icons, Generate & Fixed Day Off.
+ * FINAL STABLE VERSION. Fixes: Adding new shifts without overwriting, Shift Config UI, Icons.
  */
 
 // Global constants and API endpoints
@@ -12,14 +12,20 @@ const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const DAY_OFF_MARKER = 'หยุด'; 
 const AUTH_TOKEN_KEY = localStorage.getItem('nixtz_auth_token') ? 'nixtz_auth_token' : 'tmt_auth_token'; 
 
-// --- CORE SHIFTS DEFINITION ---
-// ID: Fixed internal ID for the Generator
-// Category: The fixed time slot description
-// Name: The editable label (M1, M2, etc.)
-const CORE_SHIFTS = { 
-    1: { category: 'Morning', name: 'M1', time: '07:00-16:00', required: 6, roles: ['C1', 'C4', 'C3'] }, 
-    2: { category: 'Afternoon', name: 'A1', time: '13:30-22:30', required: 5, roles: ['C1', 'C5', 'C3'] },
-    3: { category: 'Night', name: 'N1', time: '22:00-07:00', required: 3, roles: ['C2', 'C1'] },
+// --- BASE CATEGORIES (The Fixed 1, 2, 3) ---
+const BASE_CATEGORIES = {
+    1: { name: 'Morning', defaultTime: '07:00-16:00', required: 6, roles: ['C1', 'C4', 'C3'] },
+    2: { name: 'Afternoon', defaultTime: '13:30-22:30', required: 5, roles: ['C1', 'C5', 'C3'] },
+    3: { name: 'Night', defaultTime: '22:00-07:00', required: 3, roles: ['C2', 'C1'] }
+};
+
+// --- ACTIVE SHIFTS (Editable List) ---
+// We start with one default per category, but you can add more.
+// Keys can be anything unique.
+let CORE_SHIFTS = { 
+    '1': { baseId: 1, category: 'Morning', name: 'M1', time: '07:00-16:00', required: 6 }, 
+    '2': { baseId: 2, category: 'Afternoon', name: 'A1', time: '13:30-22:30', required: 5 },
+    '3': { baseId: 3, category: 'Night', name: 'N1', time: '22:00-07:00', required: 3 },
 };
 
 // --- AUTHENTICATION ---
@@ -170,28 +176,28 @@ window.openShiftConfigModal = function() {
         modal.classList.remove('hidden');
         modal.classList.add('flex');
         
-        // Populate Dropdown with Fixed Categories
+        // 1. Populate Dropdown with BASE CATEGORIES (Fixed 1, 2, 3)
         const select = document.getElementById('config-shift-select');
         const nameInput = document.getElementById('config-shift-name');
         const timeInput = document.getElementById('config-shift-time');
         
         if(select) {
-            select.innerHTML = '<option value="">-- Select Shift ID (Category) --</option>';
-            Object.keys(CORE_SHIFTS).forEach(id => {
-                const shift = CORE_SHIFTS[id];
+            select.innerHTML = '<option value="">-- Add New to Category --</option>';
+            Object.keys(BASE_CATEGORIES).forEach(id => {
+                const base = BASE_CATEGORIES[id];
                 const option = document.createElement('option');
                 option.value = id;
-                // Show ID and Fixed Category Name (e.g., "ID 1 - Morning")
-                option.textContent = `ID ${id} - ${shift.category}`; 
+                option.textContent = `Category ${id}: ${base.name}`; 
                 select.appendChild(option);
             });
             
+            // On Change: Reset inputs or set defaults based on category
             select.onchange = function() {
-                const shiftId = this.value;
-                if(shiftId && CORE_SHIFTS[shiftId]) {
-                    // Fill editable fields
-                    nameInput.value = CORE_SHIFTS[shiftId].name; // Editable Name (M1, etc)
-                    timeInput.value = CORE_SHIFTS[shiftId].time;
+                const baseId = this.value;
+                if(baseId && BASE_CATEGORIES[baseId]) {
+                    nameInput.value = ""; // Clear name so user types a new one (e.g., M2)
+                    nameInput.placeholder = `e.g., ${baseId === '1' ? 'M2' : baseId === '2' ? 'A2' : 'N2'}`;
+                    timeInput.value = BASE_CATEGORIES[baseId].defaultTime;
                 } else {
                     nameInput.value = '';
                     timeInput.value = '';
@@ -199,26 +205,30 @@ window.openShiftConfigModal = function() {
             };
         }
 
-        // Render List with Clear Separation
-        const listContainer = document.getElementById('configured-shift-list');
-        if (listContainer) {
-            listContainer.innerHTML = '';
-            Object.keys(CORE_SHIFTS).forEach(id => {
-                const s = CORE_SHIFTS[id];
-                listContainer.innerHTML += `
-                    <div class="flex justify-between items-center bg-gray-700 p-2 rounded border border-gray-600 mb-2">
-                        <div>
-                            <span class="text-xs text-gray-400 uppercase tracking-wider">ID ${id}: ${s.category}</span>
-                            <span class="text-white font-bold block text-lg">${s.name}</span>
-                            <div class="text-xs text-gray-300">${s.time} (Req: ${s.required})</div>
-                        </div>
-                        <span class="text-nixtz-secondary text-xs bg-nixtz-secondary/10 px-2 py-1 rounded">Active</span>
-                    </div>
-                `;
-            });
-        }
+        // 2. Render List of ALL Configured Shifts
+        renderShiftList();
     }
 };
+
+function renderShiftList() {
+    const listContainer = document.getElementById('configured-shift-list');
+    if (listContainer) {
+        listContainer.innerHTML = '';
+        Object.keys(CORE_SHIFTS).forEach(uniqueId => {
+            const s = CORE_SHIFTS[uniqueId];
+            listContainer.innerHTML += `
+                <div class="flex justify-between items-center bg-gray-700 p-2 rounded border border-gray-600 mb-2">
+                    <div>
+                        <span class="text-xs text-gray-400 uppercase tracking-wider">Cat ${s.baseId}: ${s.category}</span>
+                        <span class="text-white font-bold block text-lg">${s.name}</span>
+                        <div class="text-xs text-gray-300">${s.time} (Req: ${s.required})</div>
+                    </div>
+                    <span class="text-nixtz-secondary text-xs bg-nixtz-secondary/10 px-2 py-1 rounded">Active</span>
+                </div>
+            `;
+        });
+    }
+}
 
 // 2. Staff Update/Request Logic
 window.openStaffRequestModal = async function() {
@@ -344,21 +354,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (window.lucide) window.lucide.createIcons();
 
+    // Fix: Handle Shift Config Save as ADDITION
     const shiftForm = document.getElementById('shift-config-form');
     if(shiftForm) {
         shiftForm.addEventListener('submit', (e) => {
             e.preventDefault();
             
-            const id = document.getElementById('config-shift-select').value;
+            const baseId = document.getElementById('config-shift-select').value;
             const name = document.getElementById('config-shift-name').value;
             const time = document.getElementById('config-shift-time').value;
             
-            if(CORE_SHIFTS[id]) {
-                CORE_SHIFTS[id].name = name;
-                CORE_SHIFTS[id].time = time;
+            if(BASE_CATEGORIES[baseId]) {
+                // Generate a new Unique ID
+                const newId = `custom_${Date.now()}`;
+                const baseCat = BASE_CATEGORIES[baseId];
                 
-                alert(`Shift ID ${id} (${CORE_SHIFTS[id].category}) updated to name: "${name}"`);
-                document.getElementById('shift-config-modal').classList.add('hidden');
+                // Add to CORE_SHIFTS instead of overwriting
+                CORE_SHIFTS[newId] = {
+                    baseId: parseInt(baseId),
+                    category: baseCat.name,
+                    name: name,
+                    time: time,
+                    required: baseCat.required // Inherit default requirement
+                };
+                
+                alert(`Added new shift "${name}" to ${baseCat.name} category.`);
+                renderShiftList(); // Refresh list to show new shift
+                
+                // Reset form inputs for next addition
+                document.getElementById('config-shift-name').value = "";
+                // document.getElementById('shift-config-modal').classList.add('hidden'); // Optional: Close modal
+            } else {
+                alert("Please select a valid Shift Category.");
             }
         });
     }
