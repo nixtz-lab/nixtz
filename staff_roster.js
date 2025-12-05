@@ -1,6 +1,6 @@
 /**
  * staff_roster.js
- * FINAL STABLE VERSION. Fixes: Shift Config List, Roles, Icons, Generate Button & Fixed Day Off.
+ * FINAL STABLE VERSION. Fixes: Form Saving (Shift & Requests), Icons, Generate & Fixed Day Off.
  */
 
 // Global constants and API endpoints
@@ -12,8 +12,8 @@ const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const DAY_OFF_MARKER = 'หยุด'; 
 const AUTH_TOKEN_KEY = localStorage.getItem('nixtz_auth_token') ? 'nixtz_auth_token' : 'tmt_auth_token'; 
 
-// --- CORE SHIFTS DEFINITION (Updated with Roles) ---
-// This ensures the frontend matches the backend generator logic
+// --- CORE SHIFTS DEFINITION ---
+// This acts as the local state for shifts.
 const CORE_SHIFTS = { 
     1: { name: 'Morning', time: '07:00-16:00', required: 6, roles: ['C1', 'C4', 'C3'] }, 
     2: { name: 'Afternoon', time: '13:30-22:30', required: 5, roles: ['C1', 'C5', 'C3'] },
@@ -42,12 +42,10 @@ function updateAuthUI() {
 
 // --- CORE ROSTER FUNCTIONS ---
 
-// 1. ADD ROW
 function addStaffRow(initialData = {}) {
     const rosterBody = document.getElementById('roster-body');
     if (!rosterBody) return;
     
-    // Clear placeholder
     if (rosterBody.innerHTML.includes('Click Regenerate') || rosterBody.innerHTML.includes('Loading')) {
         rosterBody.innerHTML = '';
     }
@@ -58,7 +56,6 @@ function addStaffRow(initialData = {}) {
                 ${initialData.employeeName} <span class="text-xs text-gray-500">(${initialData.employeeId})</span>
             </td>
             ${DAYS.map(day => {
-                // Find shift for this day
                 const dayData = initialData.weeklySchedule?.find(d => d.dayOfWeek === day);
                 const shiftInfo = dayData?.shifts[0] || {};
                 const val = shiftInfo.jobRole || DAY_OFF_MARKER;
@@ -73,7 +70,6 @@ function addStaffRow(initialData = {}) {
     rosterBody.insertAdjacentHTML('beforeend', staffRowHtml);
 }
 
-// 2. LOAD ROSTER
 async function loadRoster(startDateString) {
     if (!startDateString || !getAuthStatus()) return; 
     
@@ -87,7 +83,7 @@ async function loadRoster(startDateString) {
         });
         const result = await response.json();
 
-        rosterBody.innerHTML = ''; // Clear loading
+        rosterBody.innerHTML = ''; 
 
         if (response.ok && result.success && Array.isArray(result.data) && result.data.length > 0) {
             result.data.forEach(data => addStaffRow(data));
@@ -98,11 +94,9 @@ async function loadRoster(startDateString) {
         console.error("Load Roster Error:", error);
         rosterBody.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-red-500">Connection Error.</td></tr>';
     }
-    // Refresh icons just in case rows contain them in future
     if (window.lucide) window.lucide.createIcons();
 }
 
-// 3. REGENERATE ROSTER
 window.forceRosterRegeneration = async function() {
     const dateInput = document.getElementById('week-start-date');
     const dateVal = dateInput ? dateInput.value : null;
@@ -115,7 +109,6 @@ window.forceRosterRegeneration = async function() {
     const confirmGen = confirm(`Generate NEW roster for week starting ${dateVal}? This will overwrite existing data.`);
     if (!confirmGen) return;
 
-    // Show loading indicator
     const btn = document.querySelector('button[title="Regenerate Roster"]'); 
     if(btn) btn.disabled = true;
 
@@ -128,7 +121,7 @@ window.forceRosterRegeneration = async function() {
         const result = await response.json();
         
         if (response.ok && result.success) {
-            loadRoster(dateVal); // Immediate reload
+            loadRoster(dateVal); 
         } else {
             alert("Generation Failed: " + (result.message || "Unknown error"));
         }
@@ -140,7 +133,7 @@ window.forceRosterRegeneration = async function() {
     }
 };
 
-// 4. UTILS
+// --- UTILS ---
 window.snapToMonday = function(dateString) {
     const date = new Date(dateString);
     const day = date.getDay(); 
@@ -154,7 +147,6 @@ window.handleDateChange = function(input) {
     const monday = window.snapToMonday(input.value);
     if(input.value !== monday) input.value = monday;
     
-    // Update headers
     const start = new Date(monday);
     DAYS.forEach((d, i) => {
         const curr = new Date(start);
@@ -166,17 +158,17 @@ window.handleDateChange = function(input) {
     loadRoster(monday);
 };
 
-// 5. MODAL LOGIC (FIXED CONFIG POPULATION)
+// --- FORM & MODAL LOGIC ---
 let staffCache = [];
 
-// FIX: Populate Shift Config Dropdown AND List
+// 1. Shift Config Logic
 window.openShiftConfigModal = function() {
     const modal = document.getElementById('shift-config-modal');
     if (modal) {
         modal.classList.remove('hidden');
         modal.classList.add('flex');
         
-        // 1. Populate Dropdown Options
+        // Populate dropdown
         const select = document.getElementById('config-shift-select');
         const nameInput = document.getElementById('config-shift-name');
         const timeInput = document.getElementById('config-shift-time');
@@ -191,7 +183,6 @@ window.openShiftConfigModal = function() {
                 select.appendChild(option);
             });
             
-            // Add listener to auto-fill inputs
             select.onchange = function() {
                 const shiftId = this.value;
                 if(shiftId && CORE_SHIFTS[shiftId]) {
@@ -204,30 +195,27 @@ window.openShiftConfigModal = function() {
             };
         }
 
-        // 2. Populate "Current Shifts" List (The missing part!)
+        // Render List
         const listContainer = document.getElementById('configured-shift-list');
         if (listContainer) {
             listContainer.innerHTML = '';
             Object.keys(CORE_SHIFTS).forEach(id => {
                 const s = CORE_SHIFTS[id];
                 listContainer.innerHTML += `
-                    <div class="flex justify-between items-center bg-gray-700 p-2 rounded border border-gray-600">
+                    <div class="flex justify-between items-center bg-gray-700 p-2 rounded border border-gray-600 mb-2">
                         <div>
                             <span class="text-white font-bold block">Shift ${id}: ${s.name}</span>
                             <div class="text-xs text-gray-400">${s.time} (Req: ${s.required})</div>
-                            <div class="text-xs text-nixtz-primary mt-1">Roles: ${s.roles.join(', ')}</div>
                         </div>
                         <span class="text-nixtz-secondary text-xs bg-nixtz-secondary/10 px-2 py-1 rounded">Active</span>
                     </div>
                 `;
             });
         }
-
-    } else {
-        console.error("Shift config modal not found in DOM");
     }
 };
 
+// 2. Staff Update/Request Logic
 window.openStaffRequestModal = async function() {
     const modal = document.getElementById('staff-request-modal');
     if (!modal) return;
@@ -236,18 +224,35 @@ window.openStaffRequestModal = async function() {
     modal.classList.add('flex');
     
     const select = document.getElementById('request-staff-select');
+    // Always refresh staff list on open to ensure we have latest IDs
     if (select) {
         select.innerHTML = '<option>Loading...</option>';
         await fetchStaffProfiles(); 
         select.innerHTML = '<option value="">-- Select Staff --</option>';
         staffCache.forEach(s => {
             const opt = document.createElement('option');
-            opt.value = s.employeeId;
+            opt.value = s.employeeId; 
             opt.text = `${s.name} (${s.employeeId})`;
+            // Store the full mongo ID in a data attribute if needed, but employeeId is cleaner for display
+            opt.setAttribute('data-mongo-id', s._id); 
             select.add(opt);
         });
     }
+    
+    // Reset toggle
+    if(window.toggleRequestFields) window.toggleRequestFields('none_clear');
 };
+
+// Helper: Toggle form fields based on type
+window.toggleRequestFields = function(val) {
+    document.getElementById('specific-assignment-fields').classList.add('hidden');
+    document.getElementById('shift-pref-fields').classList.add('hidden');
+    document.getElementById('none-clear-message').classList.add('hidden');
+    
+    if (val === 'specific_day_duty') document.getElementById('specific-assignment-fields').classList.remove('hidden');
+    else if (val === 'weekly_shift_pref') document.getElementById('shift-pref-fields').classList.remove('hidden');
+    else document.getElementById('none-clear-message').classList.remove('hidden');
+}
 
 window.showAddStaffModal = () => {
     const modal = document.getElementById('add-staff-modal');
@@ -257,7 +262,6 @@ window.showAddStaffModal = () => {
     }
 };
 
-// Fetch staff helper function
 async function fetchStaffProfiles() {
     try {
         const res = await fetch(PROFILE_API_URL, { headers: { 'Authorization': `Bearer ${localStorage.getItem(AUTH_TOKEN_KEY)}` } });
@@ -286,7 +290,7 @@ window.openStaffListModal = async () => {
     
     if(staffCache.length > 0) {
         container.innerHTML = staffCache.map(s => `
-            <div class="flex justify-between items-center p-3 bg-gray-800 rounded-lg border border-gray-700 hover:border-nixtz-primary transition-colors duration-200">
+            <div class="flex justify-between items-center p-3 bg-gray-800 rounded-lg border border-gray-700 hover:border-nixtz-primary transition-colors duration-200 mb-2">
                 <div class="flex flex-col">
                     <span class="text-white font-semibold text-sm">${s.name}</span>
                     <span class="text-xs text-gray-400">${s.position} (${s.employeeId})</span>
@@ -309,23 +313,12 @@ window.openEditProfileModal = (id) => {
     const titleEl = document.getElementById('single-staff-title');
     if(titleEl) titleEl.textContent = `Edit Profile: ${s.name}`;
     
-    const idField = document.getElementById('edit-profile-id');
-    if(idField) idField.value = s._id;
-    
-    const nameField = document.getElementById('edit-staff-name');
-    if(nameField) nameField.value = s.name;
-    
-    const empIdField = document.getElementById('edit-staff-id');
-    if(empIdField) empIdField.value = s.employeeId;
-    
-    const posField = document.getElementById('edit-staff-position');
-    if(posField) posField.value = s.position;
-    
-    const prefField = document.getElementById('edit-staff-shift-preference');
-    if(prefField) prefField.value = s.shiftPreference;
-    
-    const dayOffField = document.getElementById('edit-staff-fixed-dayoff');
-    if(dayOffField) dayOffField.value = s.fixedDayOff;
+    document.getElementById('edit-profile-id').value = s._id;
+    document.getElementById('edit-staff-name').value = s.name;
+    document.getElementById('edit-staff-id').value = s.employeeId;
+    document.getElementById('edit-staff-position').value = s.position;
+    document.getElementById('edit-staff-shift-preference').value = s.shiftPreference;
+    document.getElementById('edit-staff-fixed-dayoff').value = s.fixedDayOff;
 
     const modal = document.getElementById('single-staff-modal');
     if(modal) {
@@ -336,11 +329,11 @@ window.openEditProfileModal = (id) => {
     document.getElementById('staff-list-modal')?.classList.add('hidden');
 };
 
-// --- INIT ---
+// --- INIT & EVENT LISTENERS ---
 document.addEventListener('DOMContentLoaded', () => {
     updateAuthUI();
     
-    // Set initial date to this Monday
+    // Set initial date
     const today = new Date();
     const d = document.getElementById('week-start-date');
     if(d) {
@@ -349,17 +342,92 @@ document.addEventListener('DOMContentLoaded', () => {
         window.handleDateChange(d);
     }
 
-    // Initialize Global Icons
     if (window.lucide) window.lucide.createIcons();
 
-    // Fix: Add listener for Shift Config form
+    // 1. Handle Shift Config Form Submit
     const shiftForm = document.getElementById('shift-config-form');
     if(shiftForm) {
         shiftForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            // In a real app, send POST request here.
-            alert("Shift configuration updated (Mock Success).");
-            document.getElementById('shift-config-modal').classList.add('hidden');
+            
+            const id = document.getElementById('config-shift-select').value;
+            const name = document.getElementById('config-shift-name').value;
+            const time = document.getElementById('config-shift-time').value;
+            
+            if(CORE_SHIFTS[id]) {
+                // Update Local State
+                CORE_SHIFTS[id].name = name;
+                CORE_SHIFTS[id].time = time;
+                
+                alert(`Shift ${id} updated to "${name}" locally. Re-open config to see changes.`);
+                document.getElementById('shift-config-modal').classList.add('hidden');
+                // Optional: Reload roster or refresh UI elements dependent on this
+            }
+        });
+    }
+
+    // 2. Handle Staff Request (Update) Form Submit
+    const requestForm = document.getElementById('staff-request-form');
+    if(requestForm) {
+        requestForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // Get Mongo ID from the selected option's data attribute or cache
+            const empId = document.getElementById('request-staff-select').value;
+            const staffMember = staffCache.find(s => s.employeeId === empId);
+            
+            if(!staffMember || !staffMember._id) {
+                alert("Error: Please select a valid staff member.");
+                return;
+            }
+
+            const type = document.getElementById('request-type').value;
+            let reqString = "None"; // Default to clearing
+
+            // Build string format: ISO:Day:ShiftID:Role OR ISO:ShiftName OR ISO:Day
+            // Note: We need the week start string (Monday YYYY-MM-DD)
+            const weekStart = document.getElementById('week-start-date').value;
+
+            if (type === 'specific_day_duty') {
+                const rDate = document.getElementById('request-date').value;
+                const rShift = document.getElementById('request-shift-id').value;
+                const rRole = document.getElementById('request-duty-role').value;
+                // Simplified day check: extract Mon/Tue etc from date if needed, but here we just store raw data
+                // The Generator expects: WeekStart:Date:ShiftId:Role
+                reqString = `${weekStart}:${rDate}:${rShift}:${rRole}`;
+            } 
+            else if (type === 'weekly_shift_pref') {
+                const newShift = document.getElementById('request-new-shift').value;
+                reqString = `${weekStart}:${newShift}`;
+            }
+
+            // Send PUT to profile API
+            try {
+                const res = await fetch(`${PROFILE_API_URL}/${staffMember._id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem(AUTH_TOKEN_KEY)}`
+                    },
+                    body: JSON.stringify({ 
+                        name: staffMember.name, // Required by PUT validation
+                        position: staffMember.position, 
+                        employeeId: staffMember.employeeId,
+                        nextWeekHolidayRequest: reqString 
+                    })
+                });
+                
+                const json = await res.json();
+                if(res.ok && json.success) {
+                    alert("Request saved! Please REGENERATE the roster to see changes.");
+                    document.getElementById('staff-request-modal').classList.add('hidden');
+                } else {
+                    alert("Failed to save: " + (json.message || "Unknown error"));
+                }
+            } catch(err) {
+                console.error(err);
+                alert("Network error saving request.");
+            }
         });
     }
 });

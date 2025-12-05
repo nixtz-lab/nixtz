@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+<<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nixtz | Laundry Request</title>
+    <title>Nixtz | Laundry Staff Panel</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -31,7 +31,6 @@
 </head>
 <body class="bg-nixtz-bg font-sans min-h-screen flex flex-col text-white">
 
-    <!-- HEADER: Standardized structure matching Staff Page -->
     <header class="bg-nixtz-bg shadow-2xl sticky top-0 z-50 border-b border-gray-800">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
             <div class="flex items-center space-x-4">
@@ -40,15 +39,14 @@
                         src="images/nixtz_logo.png"
                         alt="Nixtz Logo"
                         class="h-10 w-auto rounded-md"
-                        onerror="this.src='https://placehold.co/40x40/4F46E5/ffffff?text=N'"
+                        onerror="this.src='https://placehold.co/40x40/10B981/ffffff?text=N'"
                     >
-                    <span class="text-xl font-bold text-white ml-2">Laundry Service</span>
+                    <span class="text-xl font-bold text-white ml-2">Laundry Staff Panel</span>
                 </a>
             </div>
             
             <div class="flex items-center space-x-4">
                 
-                <!-- 1. USER DISPLAY CONTAINER (Matches Staff Page ID 'user-display-container') -->
                 <div id="user-display-container" class="relative group" style="display: none;">
                     
                     <button id="user-display-button" 
@@ -76,8 +74,6 @@
                         </button>
                     </div>
                 </div>
-
-                <!-- 2. SERVICE ADMIN BUTTON (Hidden by default, shown by JS if admin) -->
                 <a href="service_admin.html" 
                    id="admin-button" 
                    style="display: none;" 
@@ -85,33 +81,21 @@
                     Service Admin
                 </a>
 
-                <!-- 3. STAFF PANEL BUTTON (Hidden by default, shown by JS if staff) -->
-                <a href="laundry_staff.html" id="staff-panel-button" style="display: none;" 
-                   class="bg-nixtz-secondary hover:bg-[#0da070] text-white font-semibold py-1.5 px-4 rounded-full shadow-lg transition duration-300 text-sm border border-gray-700">
-                    Staff Panel
+                <a href="laundry_request.html" class="bg-nixtz-primary hover:bg-[#3f3bbf] text-white font-semibold py-1.5 px-4 rounded-full shadow-lg transition duration-300 text-sm border border-gray-700">
+                    User Request Form
                 </a>
-
-                <!-- 4. LOGIN BUTTON (Visible when NOT logged in) -->
-                <!-- CRITICAL FIX: Added redirect parameter to login link -->
-                <div id="auth-buttons-container" class="flex items-center space-x-4 sm:space-x-6">
-                    <a href="service_auth.html?service=true&redirect=laundry_request.html" class="bg-gray-800 hover:bg-gray-700 text-white font-bold py-1.5 px-4 rounded-full shadow-lg transition duration-300 transform hover:scale-105 border border-gray-700 text-sm">
-                        Login
-                    </a>
-                </div>
                 
-                <!-- 5. DEFAULT LOGOUT (Visible when NOT logged in but somehow token exists - safety fallback) -->
-                <button id="default-logout-button" onclick="window.handleServiceLogout()" style="display: none;"
+                <button id="default-logout-button" onclick="window.handleServiceLogout()"
                          class="bg-red-700 hover:bg-red-600 text-white font-semibold py-1.5 px-4 rounded-full shadow-lg transition duration-300 text-sm border border-gray-700">
                     Logout
                 </button>
             </div>
             </div>
     </header>
-    
-    <div id="message-box" class="fixed top-4 right-4 bg-nixtz-primary text-white p-4 rounded-lg shadow-2xl z-[9999] hidden opacity-0 transition-opacity duration-300">
+    <div id="message-box" class="fixed top-4 right-4 bg-nixtz-secondary text-white p-4 rounded-lg shadow-2xl z-[9999] hidden opacity-0 transition-opacity duration-300">
         <p id="message-text" class="font-semibold"></p>
     </div>
-
+    
     <main class="flex-grow p-4 md:p-8 max-w-7xl mx-auto w-full">
         <h1 class="text-3xl font-extrabold mb-8 text-center text-nixtz-secondary">Submit New Laundry Request</h1>
 
