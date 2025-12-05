@@ -42,20 +42,9 @@
                     >
                     <span class="text-xl font-bold text-white ml-2">Laundry Service</span>
                 </a>
-                
-                <a href="laundry_staff.html" id="staff-panel-button" style="display: none;" 
-                   class="bg-nixtz-secondary hover:bg-[#0da070] text-white font-semibold py-1.5 px-4 rounded-full shadow-lg transition duration-300 text-sm border border-gray-700">
-                    Staff Panel
-                </a>
             </div>
             
             <div class="flex items-center space-x-4">
-                
-                <div id="auth-buttons-container" class="flex items-center space-x-4 sm:space-x-6">
-                    <a href="service_auth.html" class="bg-gray-800 hover:bg-gray-700 text-white font-bold py-1.5 px-4 rounded-full shadow-lg transition duration-300 transform hover:scale-105 border border-gray-700 text-sm">
-                        Login
-                    </a>
-                </div>
                 
                 <div id="user-menu-container" class="relative group" style="display: none;"> 
                     
@@ -63,7 +52,7 @@
                             onclick="toggleUserDropdown()"
                             class="flex items-center space-x-2 p-2 rounded-full bg-nixtz-card border border-gray-600 hover:bg-gray-700 transition duration-200">
                         <i data-lucide="user" class="w-5 h-5 text-nixtz-secondary"></i>
-                        <span id="username-display" class="font-semibold text-sm text-gray-200">User</span>
+                        <span id="username-display" class="font-semibold text-sm text-gray-200"></span> 
                     </button>
 
                     <div id="user-dropdown" 
@@ -83,6 +72,17 @@
                             <i data-lucide="log-out" class="w-4 h-4 mr-2 inline"></i> Logout
                         </button>
                     </div>
+                </div>
+                
+                <a href="laundry_staff.html" id="staff-panel-button" style="display: none;" 
+                   class="bg-nixtz-secondary hover:bg-[#0da070] text-white font-semibold py-1.5 px-4 rounded-full shadow-lg transition duration-300 text-sm border border-gray-700">
+                    Staff Panel
+                </a>
+
+                <div id="auth-buttons-container" class="flex items-center space-x-4 sm:space-x-6">
+                    <a href="service_auth.html" class="bg-gray-800 hover:bg-gray-700 text-white font-bold py-1.5 px-4 rounded-full shadow-lg transition duration-300 transform hover:scale-105 border border-gray-700 text-sm">
+                        Login
+                    </a>
                 </div>
             </div>
             </div>

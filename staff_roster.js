@@ -9,30 +9,12 @@ const API_URL = `${window.API_BASE_URL}/api/staff/roster`;
 const PROFILE_API_URL = `${window.API_BASE_URL}/api/staff/profile`; // Endpoint for fetching ALL staff profiles
 const LEAVE_HISTORY_API_URL = `${window.API_BASE_URL}/api/staff/leave/history`; 
 
-// --- CORE SHIFTS: REPLICATED FROM GENERATOR ---
-let CORE_SHIFTS = { 
-    1: { name: 'Morning', time: '07:00-16:00', baseShiftId: 1, required: 6, roles: ['C1', 'C4', 'C3'] }, 
-    2: { name: 'Afternoon', time: '13:30-22:30', baseShiftId: 2, required: 5, roles: ['C1', 'C5', 'C3'] },
-    3: { name: 'Night', time: '22:00-07:00', baseShiftId: 3, required: 3, roles: ['C2', 'C1'] },
-};
-let SUB_SHIFTS = []; 
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const DAY_OFF_MARKER = 'หยุด'; 
-
-function getAllShifts() {
-    const all = { ...CORE_SHIFTS };
-    SUB_SHIFTS.forEach(sub => {
-        const uniqueId = sub.id; 
-        all[uniqueId] = sub;
-    });
-    return all;
-}
-
-
 let currentRosterData = []; 
 let currentWeekStartDate = null;
 let staffProfilesCache = []; // Global cache for staff profiles
 const AUTH_TOKEN_KEY = localStorage.getItem('nixtz_auth_token') ? 'nixtz_auth_token' : 'tmt_auth_token'; 
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const DAY_OFF_MARKER = 'หยุด'; 
 
 // --- AUTHENTICATION AND UI STATE HANDLER ---
 
