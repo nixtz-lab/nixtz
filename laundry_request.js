@@ -3,25 +3,36 @@
  * Handles the logic for the user-facing laundry request submission form and history display.
  */
 
+// --- 1. CONFIGURATION FIX ---
+// Fixes the "undefined/api/..." error by setting a default URL if one is missing.
+if (typeof window.API_BASE_URL === 'undefined') {
+    // Use an empty string '' for relative paths (e.g., /api/laundry...)
+    // Or set your full backend URL here: 'https://api.nixtz.com'
+    window.API_BASE_URL = ''; 
+}
+
+// REMOVED: Service token key is already defined in service_script.js
+// const SERVICE_TOKEN_KEY = 'nixtz_service_auth_token'; 
+
+const itemsContainer = document.getElementById('items-container');
+
 document.addEventListener('DOMContentLoaded', () => {
-    // Ensure Lucide icons are initialized
-    createLucideIcons(); 
+    // Ensure Lucide icons are initialized immediately
+    createLucideIcons();
+    
+    // Initialize the page logic
     initLaundryRequestPage();
     
-    // Attach event listeners for the header UI (Dropdown close on outside click)
+    // Attach event listeners for the header UI
     document.addEventListener('click', closeDropdownOnOutsideClick);
 });
 
-// const SERVICE_TOKEN_KEY = 'nixtz_service_auth_token'; // Define key locally for API calls
-const itemsContainer = document.getElementById('items-container');
-
-// Helper function to create Lucide icons if they exist globally
+// Helper function to create Lucide icons safely
 function createLucideIcons() {
     if (typeof lucide !== 'undefined' && typeof lucide.createIcons === 'function') {
         lucide.createIcons();
     }
 }
-
 
 // --- Core Application Logic ---
 
@@ -38,32 +49,26 @@ function getStatusColor(status) {
 }
 
 // ------------------------------------
-// 1. HEADER BANNER UI & DROPDOWN LOGIC
+// 2. HEADER BANNER UI & DROPDOWN LOGIC
 // ------------------------------------
 
-/**
- * Function to toggle the user dropdown menu
- */
 function toggleUserDropdown() {
     const dropdown = document.getElementById('user-dropdown');
     if (dropdown) {
-        dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+        const isHidden = dropdown.style.display === 'none' || dropdown.style.display === '';
+        dropdown.style.display = isHidden ? 'block' : 'none';
+        
+        // Re-render icons when opening, just in case they were hidden/not rendered
+        if (isHidden) createLucideIcons();
     }
 }
-window.toggleUserDropdown = toggleUserDropdown; // Expose globally for HTML onclick event
+window.toggleUserDropdown = toggleUserDropdown; 
 
-
-/**
- * Closes the user dropdown if the click occurred outside the container.
- * UPDATED: Uses 'user-display-container' to match the new HTML structure.
- */
 function closeDropdownOnOutsideClick(event) {
-    // FIX: This now matches the ID used in the staff page & updated request page
     const userContainer = document.getElementById('user-display-container');
     const dropdown = document.getElementById('user-dropdown');
     const displayButton = document.getElementById('user-display-button');
 
-    // Only hide if the click was not on the button AND the menu is currently visible
     if (dropdown && dropdown.style.display === 'block' && 
         userContainer && !userContainer.contains(event.target) && 
         !displayButton.contains(event.target)) {
@@ -73,7 +78,7 @@ function closeDropdownOnOutsideClick(event) {
 }
 
 // ------------------------------------
-// 2. DYNAMIC ITEM INPUT MANAGEMENT
+// 3. DYNAMIC ITEM INPUT MANAGEMENT
 // ------------------------------------
 let itemCounter = 0;
 
@@ -104,7 +109,7 @@ function createItemInput() {
             <label for="${id}-details" class="block text-xs font-medium text-gray-400">Details (Stain, etc.)</label>
             <input type="text" id="${id}-details" class="w-full px-3 py-1.5 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:border-nixtz-primary transition" placeholder="Optional notes">
         </div>
-        <button type="button" id="${removeBtnId}" class="flex-shrink-0 mt-4 sm:mt-5 text-red-400 hover:text-red-500 transition">
+        <button type="button" id="${removeBtnId}" class="flex-shrink-0 mt-4 sm:mt-5 text-red-400 hover:text-red-500 transition" title="Remove Item">
             <i data-lucide="x" class="w-5 h-5"></i>
         </button>
     `;
@@ -112,7 +117,6 @@ function createItemInput() {
     // Attach remove listener
     itemDiv.querySelector(`#${removeBtnId}`).addEventListener('click', () => {
         itemDiv.remove();
-        // Re-check to enable/disable remove button if only one is left
         if (itemsContainer.children.length === 1) {
             itemsContainer.querySelector('.flex-shrink-0').disabled = true;
         }
@@ -122,7 +126,7 @@ function createItemInput() {
 }
 
 // ------------------------------------
-// 3. FORM SUBMISSION
+// 4. FORM SUBMISSION
 // ------------------------------------
 async function handleFormSubmit(e) {
     e.preventDefault();
@@ -132,7 +136,6 @@ async function handleFormSubmit(e) {
     const contactExt = document.getElementById('contact-ext').value.trim();
     const notes = document.getElementById('notes').value.trim();
     
-    // Collect item data
     const items = [];
     itemsContainer.querySelectorAll('[id^="item-"]').forEach(itemDiv => {
         const idPrefixMatch = itemDiv.id.match(/item-(\d+)/);
@@ -150,16 +153,15 @@ async function handleFormSubmit(e) {
     });
 
     if (items.length === 0) {
-        window.showMessage("Please add at least one item with a quantity greater than zero.", true);
+        window.showMessage("Please add at least one item.", true);
         return;
     }
 
     const payload = { department, contactExt, notes, items };
-    const token = localStorage.getItem(SERVICE_TOKEN_KEY); // Use SERVICE KEY
+    const token = localStorage.getItem('nixtz_service_auth_token'); // Manual string to avoid reference errors
     
     if (!token) {
         window.showMessage("Authentication failed. Please log in.", true);
-        // Force redirect using the service check
         window.checkServiceAccessAndRedirect('laundry_request.html');
         return;
     }
@@ -179,22 +181,17 @@ async function handleFormSubmit(e) {
         if (response.ok && result.success) {
             window.showMessage(result.message, false);
             form.reset();
-            // Clear and reset item inputs
             itemsContainer.innerHTML = '';
             itemCounter = 0;
             itemsContainer.appendChild(createItemInput());
             itemsContainer.querySelector('.flex-shrink-0').disabled = true;
-            createLucideIcons(); // Recreate icons for new elements
+            createLucideIcons(); // Refresh icons for new inputs
 
-            // Refresh history list
             loadRequestHistory();
         } else {
-            // Check for specific unauthorized status
             if (response.status === 401 || response.status === 403) {
-                 window.showMessage("Session expired or access denied. Please log in again.", true);
-                 // CRITICAL: Clear potentially stale token and redirect
+                 window.showMessage("Session expired. Please log in again.", true);
                  if (typeof window.handleServiceLogout === 'function') window.handleServiceLogout(); 
-                 window.checkServiceAccessAndRedirect('laundry_request.html'); 
                  return;
             }
             window.showMessage(result.message || 'Failed to submit request.', true);
@@ -207,7 +204,7 @@ async function handleFormSubmit(e) {
 }
 
 // ------------------------------------
-// 4. HISTORY DISPLAY
+// 5. HISTORY DISPLAY
 // ------------------------------------
 function renderRequestCard(request) {
     const itemsHtml = request.items.map(item => `
@@ -229,101 +226,89 @@ function renderRequestCard(request) {
                 </span>
             </div>
             <p class="text-xs text-gray-500 mb-2">Submitted: ${requestDate}</p>
-            
             <div class="mb-3 p-3 bg-gray-900 rounded-lg">
-                <p class="text-sm font-semibold text-gray-300 mb-1">Items:</p>
-                <ul class="list-disc pl-5 space-y-0.5">
-                    ${itemsHtml}
-                </ul>
+                <ul class="list-disc pl-5 space-y-0.5">${itemsHtml}</ul>
             </div>
-            
             ${request.notes ? `<p class="text-sm text-gray-400 border-t border-gray-700 pt-2"><span class="font-semibold">Notes:</span> ${request.notes}</p>` : ''}
-            
         </div>
     `;
 }
 
 async function loadRequestHistory() {
     const historyList = document.getElementById('request-history-list');
-    const token = localStorage.getItem(SERVICE_TOKEN_KEY); // Use SERVICE KEY
+    const token = localStorage.getItem('nixtz_service_auth_token'); 
     
-    if (!historyList) return; // Exit if history container is missing
+    if (!historyList) return;
 
     if (!token) {
-        // If token is explicitly missing, uses the new service check and exits
-        historyList.innerHTML = '<p class="text-red-400 text-center py-8">Authentication token missing. Redirecting...</p>';
-        window.checkServiceAccessAndRedirect('laundry_request.html');
+        historyList.innerHTML = '<p class="text-red-400 text-center py-8">Authentication token missing.</p>';
         return; 
     }
 
     historyList.innerHTML = '<p class="text-gray-500 text-center py-8">Loading request history...</p>';
 
     try {
+        // This line caused the "undefined/api" error before.
+        // We now have window.API_BASE_URL defined at the top.
         const response = await fetch(`${window.API_BASE_URL}/api/laundry/user-requests`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
+        // Handle non-JSON responses (like 404 pages)
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+            throw new Error("Server returned non-JSON response (likely a 404 or 500 error page).");
+        }
+
         const result = await response.json();
         
         if (response.status === 401 || response.status === 403) {
-            // Token is invalid/expired or user lacks permission
-            window.showMessage("Session expired. Redirecting to login.", true);
-            // NOTE: Must use handleServiceLogout() here as we are on a service page
             if (typeof window.handleServiceLogout === 'function') window.handleServiceLogout(); 
-            window.checkServiceAccessAndRedirect('laundry_request.html');
             return;
         }
 
         if (response.ok && result.success) {
-            if (result.data.length > 0) {
-                historyList.innerHTML = result.data.map(renderRequestCard).join('');
-            } else {
-                historyList.innerHTML = '<p class="text-gray-400 text-center py-8">You have no previous laundry requests.</p>';
-            }
+            historyList.innerHTML = result.data.length > 0 
+                ? result.data.map(renderRequestCard).join('') 
+                : '<p class="text-gray-400 text-center py-8">You have no previous laundry requests.</p>';
         } else {
-            // General server error
-            historyList.innerHTML = `<p class="text-red-400 text-center py-8">Error loading history: ${result.message || 'Unknown server issue.'}</p>`;
-            window.showMessage(`Server Error: ${result.message || 'Unknown issue'}`, true);
+            historyList.innerHTML = `<p class="text-red-400 text-center py-8">${result.message || 'Error loading history.'}</p>`;
         }
 
     } catch (error) {
         console.error('History Load Network Error:', error);
-        historyList.innerHTML = '<p class="text-red-400 text-center py-8">Network error loading history. Check server status.</p>';
-        window.showMessage('A network error occurred while contacting the server.', true);
+        historyList.innerHTML = '<p class="text-red-400 text-center py-8">Could not connect to server.</p>';
     }
 }
-
 
 // ------------------------------------
 // 6. INITIALIZATION
 // ------------------------------------
 function initLaundryRequestPage() {
-    // Safety check: if service auth fails, redirect immediately.
-    // NOTE: This call only checks the token exists, it doesn't redirect if it exists.
     if (!window.getServiceAuthStatus()) {
-        // We only redirect if we have no token at all
         window.checkServiceAccessAndRedirect('laundry_request.html');
         return; 
     }
 
-    document.getElementById('laundry-request-form').addEventListener('submit', handleFormSubmit);
+    const form = document.getElementById('laundry-request-form');
+    if (form) form.addEventListener('submit', handleFormSubmit);
     
     // Setup item input management
     const addItemButton = document.getElementById('add-item-btn');
-    itemsContainer.appendChild(createItemInput());
-    itemsContainer.querySelector('.flex-shrink-0').disabled = true; // Disable remove button on the first item
-
-    addItemButton.addEventListener('click', () => {
+    if (addItemButton) {
+        itemsContainer.innerHTML = ''; // Clear existing
         itemsContainer.appendChild(createItemInput());
-        // Ensure remove button is enabled if more than one item exists
-        itemsContainer.querySelectorAll('.flex-shrink-0').forEach(btn => btn.disabled = false);
-        createLucideIcons(); // Recreate icons for new elements
-    });
+        itemsContainer.querySelector('.flex-shrink-0').disabled = true;
+
+        addItemButton.addEventListener('click', () => {
+            itemsContainer.appendChild(createItemInput());
+            itemsContainer.querySelectorAll('.flex-shrink-0').forEach(btn => btn.disabled = false);
+            createLucideIcons(); // RENDER ICONS FOR NEW BUTTON
+        });
+    }
 
     loadRequestHistory();
     
-    // Final check for banner initialization
-    // CRITICAL FIX: We run the general banner update logic from service_script.js here.
     if (typeof window.updateServiceBanner === 'function') {
         window.updateServiceBanner(); 
     }

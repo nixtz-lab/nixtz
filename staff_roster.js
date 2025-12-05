@@ -11,7 +11,7 @@ const PROFILE_API_URL = `${window.API_BASE_URL}/api/staff/profile`;
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const DAY_OFF_MARKER = 'หยุด'; 
 const AUTH_TOKEN_KEY = localStorage.getItem('nixtz_auth_token') ? 'nixtz_auth_token' : 'tmt_auth_token'; 
-const SHIFT_STORAGE_KEY = 'nixtz_core_shifts';
+const SHIFT_STORAGE_KEY = 'nixtz_shifts_v2'; // Changed key to force fresh start if data was corrupt
 
 // --- BASE CATEGORIES (The Fixed 1, 2, 3) ---
 const BASE_CATEGORIES = {
@@ -22,15 +22,37 @@ const BASE_CATEGORIES = {
 
 // --- ACTIVE SHIFTS (Editable List with Persistence) ---
 // Try to load from LocalStorage first, otherwise use defaults.
-let storedShifts = localStorage.getItem(SHIFT_STORAGE_KEY);
-let CORE_SHIFTS = storedShifts ? JSON.parse(storedShifts) : { 
-    '1': { baseId: 1, category: 'Morning', name: 'M1', time: '07:00-16:00', required: 6 }, 
-    '2': { baseId: 2, category: 'Afternoon', name: 'A1', time: '13:30-22:30', required: 5 },
-    '3': { baseId: 3, category: 'Night', name: 'N1', time: '22:00-07:00', required: 3 },
-};
+let CORE_SHIFTS;
+try {
+    const storedShifts = localStorage.getItem(SHIFT_STORAGE_KEY);
+    CORE_SHIFTS = storedShifts ? JSON.parse(storedShifts) : { 
+        '1': { baseId: 1, category: 'Morning', name: 'M1', time: '07:00-16:00', required: 6 }, 
+        '2': { baseId: 2, category: 'Afternoon', name: 'A1', time: '13:30-22:30', required: 5 },
+        '3': { baseId: 3, category: 'Night', name: 'N1', time: '22:00-07:00', required: 3 },
+    };
+} catch (e) {
+    console.error("Error parsing saved shifts, resetting to default.", e);
+    CORE_SHIFTS = { 
+        '1': { baseId: 1, category: 'Morning', name: 'M1', time: '07:00-16:00', required: 6 }, 
+        '2': { baseId: 2, category: 'Afternoon', name: 'A1', time: '13:30-22:30', required: 5 },
+        '3': { baseId: 3, category: 'Night', name: 'N1', time: '22:00-07:00', required: 3 },
+    };
+}
 
 function saveShiftsToStorage() {
-    localStorage.setItem(SHIFT_STORAGE_KEY, JSON.stringify(CORE_SHIFTS));
+    try {
+        localStorage.setItem(SHIFT_STORAGE_KEY, JSON.stringify(CORE_SHIFTS));
+        console.log("Shifts saved to storage:", CORE_SHIFTS);
+    } catch (e) {
+        console.error("Failed to save shifts to storage", e);
+    }
+}
+
+// --- HELPER: REFRESH ICONS SAFELY ---
+function refreshIcons() {
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+    }
 }
 
 // --- AUTHENTICATION ---
@@ -131,8 +153,7 @@ async function loadRoster(startDateString) {
         console.error("Load Roster Error:", error);
         rosterBody.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-red-500">Connection Error.</td></tr>';
     }
-    // Refresh icons after loading
-    if (window.lucide) window.lucide.createIcons();
+    refreshIcons();
 }
 
 window.forceRosterRegeneration = async function() {
@@ -368,7 +389,7 @@ window.openStaffListModal = async () => {
                 </button>
             </div>
         `).join('');
-        if (window.lucide) window.lucide.createIcons();
+        refreshIcons();
     } else {
         container.innerHTML = '<p class="text-center text-gray-500 py-4">No staff found.</p>';
     }
@@ -409,7 +430,10 @@ document.addEventListener('DOMContentLoaded', () => {
         window.handleDateChange(d);
     }
 
-    if (window.lucide) window.lucide.createIcons();
+    refreshIcons();
+    
+    // Safety check for slow icon loading
+    setTimeout(refreshIcons, 500);
 
     // 1. SHIFT CONFIG SAVE
     const shiftForm = document.getElementById('shift-config-form');
