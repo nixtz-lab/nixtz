@@ -6,9 +6,7 @@
 const SHIFTS = { 
     // Shift ID 1: Morning (Example: 07:00-16:00)
     1: { name: 'Morning', time: '07:00-16:00', roles: ['C1', 'C4', 'C3'], required: 6 }, 
-    // Shift ID 2: Afternoon (Example: 13:30-22:30)
     2: { name: 'Afternoon', time: '13:30-22:30', roles: ['C1', 'C5', 'C3'], required: 5 }, 
-    // Shift ID 3: Night (Example: 22:00-07:00)
     3: { name: 'Night', time: '22:00-07:00', roles: ['C2', 'C1'], required: 3 }
 };
 
@@ -158,13 +156,21 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
         
         // 1. Manager (Pae, C1)
         if (manager && !isScheduled(manager.employeeId, dayIndex)) { 
+            // FIX: Ensure Manager's shift preference is Morning unless explicitly requested otherwise.
+            const request = getWeeklyRequest(manager);
+            const pref = (request.type === 'ShiftChange') ? request.shift : 'Morning';
+            let sId, t, jobRole;
+            
+            if (pref === 'Night') { sId = 3; t = NIGHT_TIME; countN++; jobRole = 'C1 (Mgr)'; } 
+            else if (pref === 'Afternoon') { sId = 2; t = AFTERNOON_TIME; countA++; jobRole = 'C1 (Mgr)'; }
+            else { sId = 1; t = MORNING_TIME; countM++; jobRole = 'C1 (Mgr)'; }
+            
             weeklyRosterMap.get(manager.employeeId).weeklySchedule[dayIndex].shifts.push({ 
-                shiftId: 1, 
-                jobRole: 'C1 (Mgr)', 
-                timeRange: MORNING_TIME, 
+                shiftId: sId, 
+                jobRole: jobRole, 
+                timeRange: t, 
                 color: ROLE_COLORS['Manager'] 
             });
-            countM++;
         } 
         
         // 2. Supervisors (C1)
@@ -174,10 +180,10 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
             const request = getWeeklyRequest(sup);
             const pref = (request.type === 'ShiftChange') ? request.shift : sup.shiftPreference;
             
-            let sId, t, jobRole;
-            if (pref === 'Afternoon') { sId = 2; t = AFTERNOON_TIME; countA++; jobRole = 'C1 (Sup)'; }
-            else if (pref === 'Night') { sId = 3; t = NIGHT_TIME; countN++; jobRole = 'C1 (Sup)'; } 
-            else { sId = 1; t = MORNING_TIME; countM++; jobRole = 'C1 (Sup)'; } 
+            let sId, t, jobRole = 'C1 (Sup)';
+            if (pref === 'Afternoon') { sId = 2; t = AFTERNOON_TIME; countA++; }
+            else if (pref === 'Night') { sId = 3; t = NIGHT_TIME; countN++; } 
+            else { sId = 1; t = MORNING_TIME; countM++; } 
             
             weeklyRosterMap.get(sup.employeeId).weeklySchedule[dayIndex].shifts.push({ shiftId: sId, jobRole: jobRole, timeRange: t, color: ROLE_COLORS['Supervisor'] });
         });
@@ -189,15 +195,13 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
             const request = getWeeklyRequest(driver);
             const pref = (request.type === 'ShiftChange') ? request.shift : driver.shiftPreference; 
             
-            let sId, t = (pref.includes('Morning') ? MORNING_TIME : AFTERNOON_TIME);
-            sId = (pref.includes('Morning') ? 1 : 2);
-
-            const jobRole = 'C3'; 
+            let sId, t;
+            if (pref.includes('Morning')) { sId = 1; t = MORNING_TIME; countM++; rolesAssigned.M.C3++; }
+            else { sId = 2; t = AFTERNOON_TIME; countA++; rolesAssigned.A.C3++; }
+            
+            const jobRole = 'C3 (Del)'; // Changed role to C3 (Del) for clearer display
             
             weeklyRosterMap.get(driver.employeeId).weeklySchedule[dayIndex].shifts.push({ shiftId: sId, jobRole: jobRole, timeRange: t, color: ROLE_COLORS['Delivery'] });
-        
-            if (sId === 1) { countM++; rolesAssigned.M.C3++; }
-            else { countA++; rolesAssigned.A.C3++; }
         });
 
 
