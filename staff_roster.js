@@ -31,7 +31,7 @@ function getAllShifts() {
 
 let currentRosterData = []; 
 let currentWeekStartDate = null;
-let staffProfilesCache = [];
+let staffProfilesCache = []; // Global cache for staff profiles
 const AUTH_TOKEN_KEY = localStorage.getItem('nixtz_auth_token') ? 'nixtz_auth_token' : 'tmt_auth_token'; 
 
 // --- AUTHENTICATION AND UI STATE HANDLER ---
@@ -66,7 +66,6 @@ window.updateAuthUI = updateAuthUI;
 // --- MODAL & SHIFT CONFIGURATION LOGIC ---
 
 function loadShiftConfig() { 
-    // Simplified load logic
     return true; 
 }
 window.loadShiftConfig = loadShiftConfig;
@@ -120,7 +119,6 @@ async function fetchStaffProfiles(updateUi = true) {
         try {
             result = await response.json();
         } catch (e) {
-            // Handle non-JSON response (e.g., server down or serving HTML error page)
             result = { success: false, message: `Non-JSON response (Status: ${response.status})` };
         }
 
@@ -141,7 +139,6 @@ async function fetchStaffProfiles(updateUi = true) {
             }
             return staffProfilesCache;
         } else {
-            // Log the error message directly from the API or construct one
             const errorMsg = result.message || `API Error: Status ${response.status}. URL: ${PROFILE_API_URL}`;
             console.error("Fetch Staff Error:", errorMsg);
 
@@ -165,15 +162,11 @@ async function fetchStaffProfiles(updateUi = true) {
 window.openStaffRequestModal = async function() { 
     console.log('Open Staff Request Modal clicked. Populating staff dropdown...');
     
-    // 1. Show the loading state initially
     document.getElementById('staff-request-modal')?.classList.remove('hidden');
     document.getElementById('staff-request-modal')?.classList.add('flex');
     document.getElementById('request-staff-select').innerHTML = '<option>Loading Staff...</option>';
 
-    // 2. Fetch the profiles without updating the Staff List Modal UI (updateUi=false)
     const staffList = await fetchStaffProfiles(false);
-    
-    // 3. Populate the dropdown with the fetched list
     populateStaffRequestDropdown(staffList);
 };
 
@@ -181,16 +174,38 @@ window.openStaffRequestModal = async function() {
 // FIX: Implement working openStaffListModal
 window.openStaffListModal = function() { 
     console.log('Open Staff List Modal clicked. Fetching profiles...');
-    fetchStaffProfiles(true); // <--- Call the fetch logic, updating the modal UI
+    fetchStaffProfiles(true); 
     document.getElementById('staff-list-modal')?.classList.remove('hidden');
     document.getElementById('staff-list-modal')?.classList.add('flex');
 };
 
-// Placeholder for the edit modal function (required by fetchStaffProfiles)
-window.openEditProfileModal = function(id) { 
-    console.log('Opening edit modal for:', id);
-    // Logic to load data into the single-staff-modal goes here
-};
+// FIX: Implement working openEditProfileModal
+async function openEditProfileModal(employeeId) {
+    if (!employeeId) return;
+
+    // Find the profile in the cached list
+    const staff = staffProfilesCache.find(p => p.employeeId === employeeId);
+    
+    if (!staff) {
+        window.showMessage(`Error: Staff profile for ID ${employeeId} not found in cache.`, true);
+        return;
+    }
+
+    // 1. Get elements and populate data
+    document.getElementById('single-staff-title').textContent = `Edit Profile: ${staff.name}`;
+    document.getElementById('edit-profile-id').value = staff._id; // Hidden field for DB ID
+    document.getElementById('edit-staff-name').value = staff.name;
+    document.getElementById('edit-staff-id').value = staff.employeeId; 
+    document.getElementById('edit-staff-position').value = staff.position;
+    document.getElementById('edit-staff-shift-preference').value = staff.shiftPreference;
+    document.getElementById('edit-staff-fixed-dayoff').value = staff.fixedDayOff;
+    
+    // 2. Show the modal
+    document.getElementById('staff-list-modal')?.classList.add('hidden'); // Hide staff list
+    document.getElementById('single-staff-modal')?.classList.remove('hidden');
+    document.getElementById('single-staff-modal')?.classList.add('flex');
+}
+window.openEditProfileModal = openEditProfileModal;
 
 
 // --- CORE ROSTER UTILITIES ---
