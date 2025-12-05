@@ -19,6 +19,9 @@ tailwind.config = {
             fontFamily: {
                 sans: ['Inter', 'sans-serif'],
             },
+            boxShadow: { 
+                '3xl-dark': '0 35px 60px -15px rgba(0, 0, 0, 0.5)',
+            }
         }
     }
 }
@@ -27,7 +30,6 @@ tailwind.config = {
 <script src="https://unpkg.com/lucide@latest"></script>
 <script src="staff_roster.js" defer></script> 
 <style>
-    /* Custom styles for the table cells to manage input appearance */
     .roster-cell {
         padding: 4px;
         min-width: 100px;
@@ -43,12 +45,6 @@ tailwind.config = {
         color: white;
         padding: 0;
         margin: 0;
-    }
-    .shift-summary {
-        font-size: 12px;
-        font-weight: 600;
-        text-align: center;
-        color: #94A3B8; /* Slate 400 */
     }
     .day-header {
         display: block;
@@ -72,12 +68,7 @@ tailwind.config = {
 
             <div class="flex items-center space-x-4">
                 <a href="index.html">
-                    <img
-                        src="images/nixtz_logo.png"
-                        alt="Nixtz Business Software Logo"
-                        class="h-14 sm:h-16 w-auto rounded-xl"
-                        title="Nixtz Business Software"
-                    >
+                    <img src="images/nixtz_logo.png" alt="Nixtz Business Software Logo" class="h-14 sm:h-16 w-auto rounded-xl">
                 </a>
             </div>
 
@@ -110,10 +101,30 @@ tailwind.config = {
                         <i data-lucide="user" class="w-6 h-6"></i>
                     </button>
                     <span id="username-display" class="font-semibold text-white hidden sm:inline">User</span>
-                    <div id="user-dropdown" class="absolute right-0 top-full mt-3 w-64 bg-gray-800 rounded-xl shadow-3xl-dark border border-gray-700/50 p-4 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 origin-top-right scale-95 group-hover:scale-100 z-50">
-                        <button id="logout-button" class="w-full text-center text-sm text-red-400 hover:text-red-500 transition duration-200 font-medium py-2 px-3 rounded-lg hover:bg-gray-700">
-                            <i data-lucide="log-out" class="w-4 h-4 mr-2 inline"></i> Logout
-                        </button>
+
+                    <!-- DROPDOWN MENU (Corrected Hover Bridge & Content) -->
+                    <div id="user-dropdown" class="absolute right-0 top-full pt-3 w-64 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 origin-top-right scale-95 group-hover:scale-100 z-50">
+                        <div class="bg-gray-800 rounded-xl shadow-3xl-dark border border-gray-700/50 p-4">
+                            
+                            <p class="text-sm font-medium text-white mb-3 border-b border-gray-700 pb-2">Account: <span id="user-initials" class="font-normal text-nixtz-secondary">User</span></p>
+
+                            <button id="profile-button" onclick="openUserProfileModal()" class="w-full text-left text-sm text-gray-300 hover:text-white transition duration-200 font-medium py-2 px-3 rounded-lg hover:bg-gray-700 mb-3 flex items-center">
+                                <i data-lucide="settings" class="w-4 h-4 mr-2"></i>
+                                Profile & Password
+                            </button>
+                            
+                            <div class="mb-4">
+                                <label for="currency-select" class="block text-xs font-medium text-gray-400 mb-1">Base Location (Coming Soon)</label>
+                                <select id="currency-select" class="w-full p-2 rounded-lg bg-nixtz-card border border-gray-700 text-sm text-white appearance-none cursor-not-allowed transition duration-200 disabled:opacity-50" disabled>
+                                    <option value="HQ">Headquarters</option>
+                                </select>
+                            </div>
+
+                            <button id="logout-button" onclick="handleLogout()" class="w-full text-center text-sm text-red-400 hover:text-red-500 transition duration-200 font-medium py-2 px-3 rounded-lg hover:bg-gray-700 flex items-center justify-center">
+                                <i data-lucide="log-out" class="w-4 h-4 mr-2"></i>
+                                Logout
+                            </button>
+                        </div>
                     </div>
                 </div>
                 
@@ -143,8 +154,6 @@ tailwind.config = {
                 <button onclick="openShiftConfigModal()" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-full shadow-md transition duration-200 flex items-center">
                     <i data-lucide="settings" class="w-5 h-5 mr-1"></i> Shift Config
                 </button>
-                
-                <!-- REMOVED: Redundant Shift List Button -->
             </div>
 
             <div class="flex items-center space-x-4 w-full md:w-auto">
@@ -212,6 +221,7 @@ tailwind.config = {
     </div>
 </main>
 
+<!-- ADD STAFF MODAL -->
 <div id="add-staff-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[9999] hidden items-center justify-center p-4 transition-opacity duration-300">
     <div class="bg-nixtz-card w-full max-w-lg rounded-xl shadow-3xl-dark p-6 md:p-8 border border-gray-700/50">
         <h2 class="text-2xl font-bold text-nixtz-secondary mb-4 border-b border-gray-700 pb-3 flex justify-between items-center">
@@ -220,9 +230,7 @@ tailwind.config = {
                 <i data-lucide="x" class="w-6 h-6"></i>
             </button>
         </h2>
-
         <div id="staff-message-box" class="p-3 rounded-lg text-white mb-3 hidden"></div>
-
         <form id="add-staff-form" class="space-y-4">
             <div>
                 <label for="new-staff-name" class="block text-sm font-medium text-gray-400 mb-1">Full Name</label>
@@ -275,6 +283,7 @@ tailwind.config = {
     </div>
 </div>
 
+<!-- STAFF LIST MODAL -->
 <div id="staff-list-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[9999] hidden items-center justify-center p-4 transition-opacity duration-300">
     <div class="bg-nixtz-card w-full max-w-2xl rounded-xl shadow-3xl-dark p-6 md:p-8 border border-gray-700/50 max-h-[90vh] overflow-y-auto">
         <h2 class="text-2xl font-bold text-nixtz-primary mb-4 border-b border-gray-700 pb-3 flex justify-between items-center">
@@ -285,13 +294,13 @@ tailwind.config = {
         </h2>
 
         <div id="staff-list-message" class="text-sm text-center p-3 rounded-lg hidden"></div>
-
         <div id="staff-profiles-container" class="space-y-4">
             <p class="text-gray-500 text-center py-4">Loading staff data...</p>
         </div>
     </div>
 </div>
 
+<!-- EDIT STAFF MODAL -->
 <div id="single-staff-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[9999] hidden items-center justify-center p-4 transition-opacity duration-300">
     <div class="bg-nixtz-card w-full max-w-md rounded-xl shadow-3xl-dark p-6 md:p-8 border border-gray-700/50">
         <h2 class="text-xl font-bold text-nixtz-secondary mb-4 border-b border-gray-700 pb-3 flex justify-between items-center" id="single-staff-title">
@@ -300,20 +309,16 @@ tailwind.config = {
                 <i data-lucide="x" class="w-6 h-6"></i>
             </button>
         </h2>
-
         <form id="edit-staff-form" class="space-y-4">
             <input type="hidden" id="edit-profile-id">
-            
             <div>
                 <label for="edit-staff-name" class="block text-sm font-medium text-gray-400 mb-1">Full Name</label>
                 <input type="text" id="edit-staff-name" required class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition duration-200">
             </div>
-            
             <div>
                 <label for="edit-staff-id" class="block text-sm font-medium text-gray-400 mb-1">Employee ID</label>
                 <input type="text" id="edit-staff-id" required disabled class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-gray-500 cursor-not-allowed">
             </div>
-
             <div>
                 <label for="edit-staff-position" class="block text-sm font-medium text-gray-400 mb-1">Position</label>
                 <select id="edit-staff-position" required class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition">
@@ -344,7 +349,6 @@ tailwind.config = {
                     <option value="Sun">Sunday</option>
                 </select>
             </div>
-
              <button type="submit" class="w-full p-3 bg-nixtz-secondary text-white rounded-lg font-bold shadow-lg hover:bg-[#0da070] transition duration-300">
                 Update Profile
             </button>
@@ -352,6 +356,7 @@ tailwind.config = {
     </div>
 </div>
 
+<!-- SHIFT CONFIG MODAL -->
 <div id="shift-config-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[9999] hidden items-center justify-center p-4 transition-opacity duration-300">
     <div class="bg-nixtz-card w-full max-w-lg rounded-xl shadow-3xl-dark p-6 md:p-8 border border-gray-700/50">
         <h2 class="text-2xl font-bold text-nixtz-secondary mb-4 border-b border-gray-700 pb-3 flex justify-between items-center">
@@ -360,42 +365,33 @@ tailwind.config = {
                 <i data-lucide="x" class="w-6 h-6"></i>
             </button>
         </h2>
-
         <div id="shift-config-message" class="p-3 rounded-lg text-white mb-3 hidden"></div>
-        
         <h3 class="text-lg font-semibold text-gray-300 mb-2">Current Shifts</h3>
         <div id="configured-shift-list" class="space-y-3 p-3 bg-gray-800 rounded-lg border border-gray-700 max-h-48 overflow-y-auto mb-6">
             <p class="text-gray-500 text-center py-2">Loading...</p>
         </div>
-
         <h3 class="text-lg font-semibold text-nixtz-primary mb-3 mt-4 border-t border-gray-700 pt-3" id="shift-form-title">
             Add New Shift Configuration
         </h3>
-
         <form id="shift-config-form" class="space-y-4">
-            
             <input type="hidden" id="edit-shift-id" value="0"> <div>
                 <label for="config-shift-select" class="block text-sm font-medium text-gray-400 mb-1">Shift ID Slot</label>
                 <select id="config-shift-select" required
                         class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition duration-200">
                     </select>
             </div>
-            
             <div>
                 <label for="config-shift-name" class="block text-sm font-medium text-gray-400 mb-1">Shift Name (e.g., M1)</label>
                 <input type="text" id="config-shift-name" required placeholder="M1"
                        class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition duration-200">
             </div>
-            
             <div>
                 <label for="config-shift-time" class="block text-sm font-medium text-gray-400 mb-1">Time Range (HH:MM-HH:MM)</label>
                 <input type="text" id="config-shift-time" required placeholder="07:00-16:00"
                        class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition duration-200">
             </div>
-            
             <input type="hidden" id="config-shift-required">
             <input type="hidden" id="config-shift-roles">
-
             <button type="submit" id="submit-shift-config-btn"
                     class="w-full p-3 bg-nixtz-secondary text-white rounded-lg font-bold shadow-lg hover:bg-[#0da070] transition duration-300 disabled:opacity-50">
                 Save Configuration
@@ -413,18 +409,14 @@ tailwind.config = {
                 <i data-lucide="x" class="w-6 h-6"></i>
             </button>
         </h2>
-
         <div id="request-message-box" class="p-3 rounded-lg text-white mb-3 hidden"></div>
-
         <form id="staff-request-form" class="space-y-4">
-            
             <!-- Week Start (Editable) -->
             <div>
                 <label class="block text-sm font-medium text-gray-400 mb-1">Target Week (Starting Mon)</label>
                 <input type="date" id="request-week-start"
                        class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition duration-200">
             </div>
-
             <div>
                 <label for="request-staff-select" class="block text-sm font-medium text-gray-400 mb-1">Select Staff Member</label>
                 <select id="request-staff-select" required
@@ -432,7 +424,6 @@ tailwind.config = {
                     <option value="">-- Select Staff --</option>
                 </select>
             </div>
-            
             <!-- Simplified Selection Logic -->
             <div>
                 <label for="request-type" class="block text-sm font-medium text-gray-400 mb-1">Update Type</label>
@@ -443,7 +434,6 @@ tailwind.config = {
                     <option value="weekly_shift_pref">Change Weekly Preference</option>
                 </select>
             </div>
-
             <!-- Specific Assignment: Now includes Date Range & Dynamic Shift Dropdown -->
             <div id="specific-assignment-fields" class="space-y-4">
                 <div class="flex space-x-4">
@@ -458,7 +448,6 @@ tailwind.config = {
                                class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition duration-200">
                     </div>
                 </div>
-
                 <div>
                     <label class="block text-sm font-medium text-gray-400 mb-1">Select Assigned Shift</label>
                     <select id="request-configured-shift" required
@@ -467,7 +456,6 @@ tailwind.config = {
                     </select>
                 </div>
             </div>
-
             <div id="shift-pref-fields" class="space-y-4 hidden">
                 <p class="text-xs text-gray-500">The shift selected here will temporarily override the employee's **Default Shift Preference** for the selected week only.</p>
                 <div>
@@ -480,18 +468,60 @@ tailwind.config = {
                     </select>
                 </div>
             </div>
-            
             <div id="none-clear-message" class="space-y-4 hidden">
                 <p class="text-sm text-yellow-400 font-semibold">
                     This action will permanently clear the `nextWeekHolidayRequest` field on the staff profile.
                 </p>
             </div>
-            
             <button type="submit" id="submit-request-btn"
                     class="w-full p-3 bg-nixtz-secondary text-white rounded-lg font-bold shadow-lg hover:bg-[#0da070] transition duration-300 transform hover:scale-[1.01] disabled:opacity-50">
                 Save Update
             </button>
         </form>
+    </div>
+</div>
+
+<!-- USER PROFILE & PASSWORD MODAL (NEWLY ADDED) -->
+<div id="profile-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[9999] hidden flex items-center justify-center p-4 transition-opacity duration-300">
+    <div class="bg-nixtz-card w-full max-w-lg rounded-xl shadow-3xl-dark p-6 md:p-8 border border-gray-700/50">
+        <h2 class="text-2xl font-bold text-nixtz-secondary mb-4 border-b border-gray-700 pb-3 flex justify-between items-center">
+            User Profile Settings
+            <button onclick="document.getElementById('profile-modal').classList.add('hidden')" class="text-gray-400 hover:text-white transition duration-200">
+                <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
+        </h2>
+        <div class="mb-6">
+            <p class="text-lg font-semibold text-white mb-2">Account Details</p>
+            <div class="space-y-2 text-sm">
+                <p class="text-gray-400">Username: <span id="modal-username" class="text-white font-medium">Loading...</span></p>
+                <p class="text-gray-400">Email: <span id="modal-email" class="text-white font-medium">Loading...</span></p>
+            </div>
+        </div>
+        <div class="mt-8 border-t border-gray-700 pt-6">
+            <h3 class="text-xl font-semibold text-nixtz-primary mb-4">Change Password</h3>
+            <div id="password-message-box" class="p-3 rounded-lg text-white mb-3 hidden"></div>
+            <form id="change-password-form" class="space-y-4">
+                <div>
+                    <label for="current-password" class="block text-sm font-medium text-gray-400 mb-1">Current Password</label>
+                    <input type="password" id="current-password" required
+                           class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition duration-200">
+                </div>
+                <div>
+                    <label for="new-password" class="block text-sm font-medium text-gray-400 mb-1">New Password</label>
+                    <input type="password" id="new-password" required minlength="8"
+                           class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition duration-200">
+                </div>
+                <div>
+                    <label for="confirm-new-password" class="block text-sm font-medium text-gray-400 mb-1">Confirm New Password</label>
+                    <input type="password" id="confirm-new-password" required minlength="8"
+                           class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition duration-200">
+                </div>
+                <button type="submit" id="save-password-button"
+                        class="w-full p-3 bg-nixtz-primary text-white rounded-lg font-bold shadow-lg hover:bg-[#3f3bbf] transition duration-300 transform hover:scale-[1.01] disabled:opacity-50">
+                    Update Password
+                </button>
+            </form>
+        </div>
     </div>
 </div>
 

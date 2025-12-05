@@ -96,19 +96,8 @@
         <p id="message-text" class="font-semibold"></p>
     </div>
 
-    <main class="flex-grow p-4 md:p-8 max-w-7xl mx-auto w-full space-y-8">
-        
-        <div class="bg-nixtz-card rounded-xl shadow-2xl p-6 border border-gray-700">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-xl font-bold text-white">Service Analytics (All Time)</h2>
-                <button onclick="fetchAnalytics()" class="flex items-center text-nixtz-primary hover:text-white transition font-semibold text-sm">
-                    <i data-lucide="refresh-cw" class="w-4 h-4 mr-2"></i> Refresh Data
-                </button>
-            </div>
-            <div id="analytics-dashboard" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-                <div class="text-gray-400 text-sm p-4 col-span-full">Loading service data...</div>
-            </div>
-        </div>
+    <main class="flex-grow p-4 md:p-8 max-w-7xl mx-auto w-full">
+        <h1 class="text-3xl font-extrabold mb-8 text-center text-nixtz-primary">Outstanding Laundry Jobs</h1>
 
         <div class="bg-nixtz-card rounded-xl shadow-2xl p-6 border border-gray-700">
             <div class="flex justify-between items-center mb-6 border-b border-gray-700 pb-4">
@@ -122,34 +111,6 @@
                 <p class="text-gray-500 text-center py-8">Loading outstanding requests...</p>
             </div>
         </div>
-
-        <div class="bg-nixtz-card rounded-xl shadow-2xl p-6 border border-gray-700">
-            <div class="flex justify-between items-center mb-6 border-b border-gray-700 pb-4">
-                <h2 class="text-xl font-bold text-white">Full Request History</h2>
-                <button onclick="fetchAllRequests()" class="flex items-center text-nixtz-secondary hover:bg-[#0da070] hover:text-white transition font-semibold text-sm">
-                    <i data-lucide="list-ordered" class="w-4 h-4 mr-2"></i> Load All
-                </button>
-            </div>
-            
-            <div class="overflow-x-auto rounded-lg border border-gray-700">
-                <table class="min-w-full divide-y divide-gray-700">
-                    <thead class="bg-gray-800">
-                        <tr>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Department</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Requester/Contact</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden sm:table-cell">Items Summary</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden md:table-cell">Date</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="all-requests-body" class="divide-y divide-gray-700 bg-gray-900">
-                        <tr><td colspan="6" class="px-4 py-4 text-sm text-gray-500 text-center">Load data above.</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
     </main>
     
     <script src="service_script.js"></script>

@@ -1,6 +1,6 @@
 /**
  * staff_roster.js
- * FINAL STABLE VERSION. Fixes: Clean Display for Mgr/Sup (Shift ID + Time only), Background Colors, Persistence.
+ * FINAL STABLE VERSION. Fixes: User Dropdown, Profile Modal, and Roster Logic.
  */
 
 // Global constants and API endpoints
@@ -49,7 +49,7 @@ function refreshIcons() {
     }
 }
 
-// --- AUTHENTICATION ---
+// --- AUTHENTICATION & USER MENU ---
 function getAuthStatus() { return !!localStorage.getItem(AUTH_TOKEN_KEY); }
 function getUsernameFromToken() { return localStorage.getItem('nixtz_username') || 'Superwayno'; }
 
@@ -58,16 +58,51 @@ function updateAuthUI() {
     const authButtons = document.getElementById('auth-buttons-container');
     const userMenu = document.getElementById('user-menu-container');
     const usernameDisplay = document.getElementById('username-display');
+    const userInitials = document.getElementById('user-initials');
 
     if (isLoggedIn) {
         if(authButtons) authButtons.style.display = 'none';
         if(userMenu) userMenu.style.display = 'flex';
-        if(usernameDisplay) usernameDisplay.textContent = getUsernameFromToken(); 
+        const username = getUsernameFromToken();
+        if(usernameDisplay) usernameDisplay.textContent = username; 
+        if(userInitials) userInitials.textContent = username;
     } else {
         if(authButtons) authButtons.style.display = 'flex';
         if(userMenu) userMenu.style.display = 'none';
     }
 }
+
+// --- NEW: LOGOUT & PROFILE FUNCTIONS ---
+window.handleLogout = function() {
+    localStorage.removeItem('nixtz_auth_token'); 
+    localStorage.removeItem('tmt_auth_token');
+    localStorage.removeItem('nixtz_username'); 
+    localStorage.removeItem('nixtz_user_role'); 
+    localStorage.removeItem('nixtz_user_membership'); 
+    localStorage.removeItem('nixtz_page_access'); 
+    localStorage.removeItem('nixtz_email'); 
+    
+    alert("Logged out successfully.");
+    window.location.href = 'index.html';
+};
+
+window.openUserProfileModal = async function() {
+    const modal = document.getElementById('profile-modal');
+    if (!modal) return;
+    
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+
+    // Fetch user data if needed
+    const username = localStorage.getItem('nixtz_username') || 'User';
+    const email = localStorage.getItem('nixtz_email') || 'Loading...';
+    
+    const uEl = document.getElementById('modal-username');
+    const eEl = document.getElementById('modal-email');
+    
+    if(uEl) uEl.textContent = username;
+    if(eEl) eEl.textContent = email;
+};
 
 // --- CORE ROSTER FUNCTIONS ---
 
@@ -124,13 +159,9 @@ function addStaffRow(initialData = {}) {
                             displayVal = `${shiftIdToDisplay}`;
                         } else {
                             // Normal Staff: Show "ShiftID Role" (e.g. "2 C5")
-                            // If rawRole is generic like "C5", show "2 C5"
-                            // If rawRole is specific like "M1", show "1 M1"
                             if (rawRole !== config.name) {
-                                // rawRole is likely the job code (C5, C4)
                                 displayVal = `${shiftIdToDisplay} ${rawRole}`;
                             } else {
-                                // rawRole matches config name (M1)
                                 displayVal = `${shiftIdToDisplay} ${config.name}`;
                             }
                         }
@@ -174,14 +205,12 @@ function updateFooterTotals(rosterData) {
     const footer = document.querySelector('#roster-table tfoot');
     if (!footer) return;
 
-    // Initialize counts: 1=Morning, 2=Afternoon, 3=Night
     const totals = {
         1: { Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0, Sun: 0 },
         2: { Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0, Sun: 0 },
         3: { Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0, Sun: 0 }
     };
 
-    // Calculate totals from roster data
     rosterData.forEach(staff => {
         if (!staff.weeklySchedule) return;
         staff.weeklySchedule.forEach(dayData => {
@@ -190,15 +219,11 @@ function updateFooterTotals(rosterData) {
             
             if (shift && shift.shiftId) {
                 let baseId = 0;
-                // Identify if it belongs to Morning(1), Afternoon(2), or Night(3)
                 if (CORE_SHIFTS[shift.shiftId]) {
                     baseId = CORE_SHIFTS[shift.shiftId].baseId;
                 } else {
-                    // Fallback if ID is direct (1, 2, 3)
                     baseId = parseInt(shift.shiftId);
                 }
-
-                // Increment if valid category
                 if (totals[baseId] && totals[baseId][day] !== undefined) {
                     totals[baseId][day]++;
                 }
@@ -206,7 +231,6 @@ function updateFooterTotals(rosterData) {
         });
     });
 
-    // Render HTML for Footer
     let html = '';
     const rows = [
         { id: 1, label: 'Morning Total', color: 'text-yellow-400' },
@@ -243,11 +267,9 @@ async function loadRoster(startDateString) {
 
         if (response.ok && result.success && Array.isArray(result.data) && result.data.length > 0) {
             result.data.forEach(data => addStaffRow(data));
-            // Calculate and show totals at the bottom
             updateFooterTotals(result.data);
         } else {
             rosterBody.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-gray-500">No roster found. Click "Regenerate" (Green Button).</td></tr>';
-            // Clear footer if empty
             const footer = document.querySelector('#roster-table tfoot');
             if(footer) footer.innerHTML = '';
         }
@@ -384,7 +406,6 @@ window.openStaffRequestModal = async function() {
     const modal = document.getElementById('staff-request-modal');
     if (!modal) return;
     
-    // Auto-fill Week Start (Read-only)
     const weekStartVal = document.getElementById('week-start-date').value;
     const weekStartInput = document.getElementById('request-week-start');
     if (weekStartInput) weekStartInput.value = weekStartVal;
@@ -581,8 +602,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const type = document.getElementById('request-type').value;
             let reqString = "None"; 
-            // Use the MODAL's date input, not the main calendar!
-            const weekStart = document.getElementById('request-week-start').value;
+            const weekStart = document.getElementById('week-start-date').value;
 
             if (type === 'specific_day_duty') {
                 const startDate = document.getElementById('request-start-date').value;

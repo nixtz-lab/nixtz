@@ -1,11 +1,18 @@
 /**
  * laundry_staff.js
  * Handles the logic for the staff-facing laundry management panel.
- * Contains all application logic and UI wiring for the page.
  */
 
-// Define key locally for API calls
-const SERVICE_TOKEN_KEY = 'nixtz_service_auth_token'; 
+// --- 1. CONFIGURATION FIX (CRITICAL) ---
+// This prevents the "undefined/api/..." error.
+// Since laundry_request.js is working, this matching config will fix the staff page.
+if (typeof window.API_BASE_URL === 'undefined') {
+    // OPTION A: Standard configuration (Try this first)
+    window.API_BASE_URL = ''; 
+    
+    // OPTION B: Fallback if you still get 404 errors
+    // window.API_BASE_URL = 'https://nixtz.com:3000'; 
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     // Ensure Lucide icons are initialized
@@ -14,8 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Run initial access check and data load
     initLaundryStaffPage();
     
-    // CRITICAL FIX: Run the global banner display logic from service_script.js
-    // This function is now defined ONLY in service_script.js and is called here.
+    // Run the global banner display logic from service_script.js
     if (typeof window.updateServiceBanner === 'function') {
         window.updateServiceBanner();
     }
@@ -68,8 +74,11 @@ function getNextStatus(currentStatus) {
 function toggleUserDropdown() {
     const dropdown = document.getElementById('user-dropdown');
     if (dropdown) {
-        // Toggles visibility
-        dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+        const isHidden = dropdown.style.display === 'none' || dropdown.style.display === '';
+        dropdown.style.display = isHidden ? 'block' : 'none';
+        
+        // Re-render icons inside when opening
+        if (isHidden) createLucideIcons();
     }
 }
 window.toggleUserDropdown = toggleUserDropdown; // Expose globally for HTML onclick
@@ -81,24 +90,27 @@ window.toggleUserDropdown = toggleUserDropdown; // Expose globally for HTML oncl
 function closeDropdownOnOutsideClick(event) {
     const userContainer = document.getElementById('user-display-container');
     const dropdown = document.getElementById('user-dropdown');
+    const displayButton = document.getElementById('user-display-button');
     
-    if (dropdown && userContainer && dropdown.style.display === 'block' && !userContainer.contains(event.target)) {
+    // Only hide if the dropdown is visible and the click is NOT inside the container
+    if (dropdown && dropdown.style.display === 'block' && 
+        userContainer && !userContainer.contains(event.target) &&
+        !displayButton.contains(event.target)) {
+        
         dropdown.style.display = 'none';
     }
 }
-
-
-// --- NOTE: The conflicting local updateServiceBanner() function has been removed from this file. ---
 
 
 // ------------------------------------
 // 2. STATUS UPDATE (APP LOGIC)
 // ------------------------------------
 async function updateRequestStatus(requestId, newStatus) {
-    const token = localStorage.getItem(SERVICE_TOKEN_KEY); // Use SERVICE KEY
+    // FIX: Use string literal to avoid ReferenceError if global variable is missing
+    const token = localStorage.getItem('nixtz_service_auth_token'); 
+    
     if (!token) {
          window.showMessage("Authentication failed. Redirecting to login.", true);
-         // Use the specific service redirect function (assumed to be in service_script.js)
          if (typeof window.checkServiceAccessAndRedirect === 'function') {
             window.checkServiceAccessAndRedirect('laundry_staff.html');
          }
@@ -129,11 +141,7 @@ async function updateRequestStatus(requestId, newStatus) {
         } else {
             if (response.status === 401 || response.status === 403) {
                  window.showMessage("Session expired or access denied. Redirecting to login.", true);
-                 // CRITICAL FIX: Use the service specific logout function
                  if (typeof window.handleServiceLogout === 'function') window.handleServiceLogout(); 
-                 if (typeof window.checkServiceAccessAndRedirect === 'function') {
-                    window.checkServiceAccessAndRedirect('laundry_staff.html');
-                 }
                  return;
             }
             window.showMessage(result.message || 'Failed to update request status.', true);
@@ -144,7 +152,7 @@ async function updateRequestStatus(requestId, newStatus) {
         window.showMessage('Network error during status update.', true);
     }
 }
-window.updateRequestStatus = updateRequestStatus; // Expose globally for HTML onclick
+window.updateRequestStatus = updateRequestStatus; 
 
 // ------------------------------------
 // 3. REQUEST DISPLAY (APP LOGIC)
@@ -152,7 +160,6 @@ window.updateRequestStatus = updateRequestStatus; // Expose globally for HTML on
 function renderRequestCard(request) {
     const nextStatus = getNextStatus(request.status);
     const statusColorClass = getStatusColor(request.status);
-    const requestDate = new Date(request.requestedAt).toLocaleString();
     
     const itemsHtml = request.items.map(item => `
         <li class="text-xs text-gray-400">
@@ -216,12 +223,12 @@ function renderRequestCard(request) {
 // ------------------------------------
 async function loadOutstandingRequests() {
     const listContainer = document.getElementById('requests-list');
-    const token = localStorage.getItem(SERVICE_TOKEN_KEY); // Use SERVICE KEY
+    // FIX: Use string literal to avoid dependency issues
+    const token = localStorage.getItem('nixtz_service_auth_token'); 
     
     if (!listContainer) return;
 
     if (!token) {
-        // Use the new service check and exit
         listContainer.innerHTML = '<p class="text-red-400 text-center py-8">Authentication token missing. Redirecting...</p>';
         if (typeof window.checkServiceAccessAndRedirect === 'function') {
             window.checkServiceAccessAndRedirect('laundry_staff.html');
@@ -236,6 +243,12 @@ async function loadOutstandingRequests() {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
+        // Check for 404 HTML response (Common with Nginx config issues)
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+            throw new Error("Server returned non-JSON response (likely a 404). Check API_BASE_URL.");
+        }
+
         const result = await response.json();
 
         if (response.ok && result.success && result.data.length > 0) {
@@ -245,23 +258,19 @@ async function loadOutstandingRequests() {
         } else {
              if (response.status === 401 || response.status === 403) {
                  window.showMessage("Session expired or access denied. Redirecting to login.", true);
-                 // CRITICAL FIX: Use the service specific logout function
                  if (typeof window.handleServiceLogout === 'function') window.handleServiceLogout(); 
-                 if (typeof window.checkServiceAccessAndRedirect === 'function') {
-                    window.checkServiceAccessAndRedirect('laundry_staff.html');
-                 }
                  return;
             }
             window.showMessage(result.message || 'Failed to load requests.', true);
-            listContainer.innerHTML = `<p class="text-red-400 text-center py-8">${result.message || 'Error loading requests. Check staff role access.'}</p>`;
+            listContainer.innerHTML = `<p class="text-red-400 text-center py-8">${result.message || 'Error loading requests.'}</p>`;
         }
         
-        if(window.lucide) window.lucide.createIcons();
+        if(typeof lucide !== 'undefined') lucide.createIcons();
 
     } catch (error) {
         console.error('Requests Load Error:', error);
         window.showMessage('A network error occurred while contacting the server.', true);
-        listContainer.innerHTML = '<p class="text-red-400 text-center py-8">Network error loading requests.</p>';
+        listContainer.innerHTML = '<p class="text-red-400 text-center py-8">Network error. Check console for details.</p>';
     }
 }
 
@@ -314,7 +323,7 @@ function showCustomConfirm(message) {
 // 6. INITIALIZATION & ACCESS CHECK
 // ------------------------------------
 function initLaundryStaffPage() {
-    // Rely on the new service-specific access check (defined in service_script.js)
+    // Rely on the new service-specific access check
     if (typeof window.getServiceAuthStatus === 'function' && !window.getServiceAuthStatus()) {
         if (typeof window.checkServiceAccessAndRedirect === 'function') {
             window.checkServiceAccessAndRedirect('laundry_staff.html');
@@ -328,7 +337,6 @@ function initLaundryStaffPage() {
     
     if (!isAuthorized) {
          window.showMessage("Access Denied: Your role does not permit staff panel access.", true);
-         // CRITICAL: Use handleServiceLogout for service page
          if (typeof window.handleServiceLogout === 'function') window.handleServiceLogout(); 
          return;
     }
