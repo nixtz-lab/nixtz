@@ -1,6 +1,6 @@
 /**
  * staff_roster.js
- * FINAL STABLE VERSION. Fixes: User Dropdown, Profile Modal, and Roster Logic.
+ * FINAL STABLE VERSION. Fixes: Specific Date Requests & Backend Logic Sync.
  */
 
 // Global constants and API endpoints
@@ -146,7 +146,7 @@ function addStaffRow(initialData = {}) {
                 } else if (shiftInfo.shiftId) {
                     // It's a working shift
                     const config = Object.values(CORE_SHIFTS).find(c => c.name === rawRole) || CORE_SHIFTS[shiftInfo.shiftId];
-                    let shiftIdToDisplay = shiftInfo.shiftId; // e.g., 1, 2, 3
+                    let shiftIdToDisplay = shiftInfo.shiftId; 
 
                     // If we found a config, use its properties
                     if (config) {
@@ -617,7 +617,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     rShift = parts[0]; 
                     rRole = parts[1];  
                 }
-
+                
+                // Format: YYYY-MM-DD:Start|End:ID:Role
                 reqString = `${weekStart}:${startDate}|${endDate}:${rShift}:${rRole}`;
             } 
             else if (type === 'weekly_shift_pref') {

@@ -86,19 +86,24 @@
                     <h2 class="text-xl font-bold text-nixtz-primary mb-4 flex items-center">
                         <i data-lucide="user-plus" class="w-5 h-5 mr-2"></i> Create New Staff User
                     </h2>
+                    
                     <form id="create-staff-form" class="space-y-4">
+                        
                         <div>
                             <label for="staff-name" class="block text-sm font-medium text-gray-400">Employee Full Name</label>
                             <input type="text" id="staff-name" required class="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:border-nixtz-primary transition">
                         </div>
+
                         <div>
                             <label for="staff-employee-id" class="block text-sm font-medium text-gray-400">Employee ID</label>
                             <input type="text" id="staff-employee-id" required class="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:border-nixtz-primary transition">
                         </div>
+                        
                         <div>
                             <label for="staff-password" class="block text-sm font-medium text-gray-400">Temporary Password (Min 8 Chars)</label>
                             <input type="password" id="staff-password" required minlength="8" class="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:border-nixtz-primary transition">
                         </div>
+                        
                         <div>
                             <label for="staff-department" class="block text-sm font-medium text-gray-400">Assigned Department</label>
                             <select id="staff-department" required class="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:border-nixtz-primary transition">
@@ -106,25 +111,38 @@
                                 <option value="Housekeeping">Housekeeping</option>
                                 <option value="Engineering">Engineering</option>
                                 <option value="FrontOffice">Front Office</option>
-                                </select>
+                            </select>
                         </div>
+                        
                         <div>
                             <label for="staff-role" class="block text-sm font-medium text-gray-400">Role</label>
                             <select id="staff-role" required class="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:border-nixtz-primary transition">
-                                <option value="standard">Standard Staff (Service Access Only)</option>
-                                <option value="admin">Service Admin (Full Dashboard Access)</option>
+                                <option value="request_only">Laundry Request Staff (Request Only)</option>
+                                <option value="standard">Laundry Staff (Process & Request)</option>
+                                <option value="admin">Service Admin (Full Access)</option>
                             </select>
                         </div>
-                        <button type="submit" class="w-full py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-nixtz-secondary hover:bg-[#0da070] transition duration-150">
-                            Create Staff Account
-                        </button>
+                        
+                        <div class="flex flex-col gap-3">
+                            <button type="submit" class="w-full py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-nixtz-secondary hover:bg-[#0da070] transition duration-150">
+                                Create Staff Account
+                            </button>
+                            
+                            <button type="button" onclick="manageDepartments()" class="w-full py-2 px-4 border border-gray-600 rounded-lg shadow-sm text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white transition duration-150">
+                                <i data-lucide="settings" class="w-4 h-4 inline mr-2"></i> Add or Edit Assigned Department
+                            </button>
+                        </div>
+
                     </form>
                 </div>
             </div>
+
         </main>
     </div>
+    
     <script src="service_script.js"></script>
     <script src="service_admin.js"></script>
+    
     <script>
         window.switchAdminView = (viewName) => {
             const views = ['active-users', 'create-staff'];
@@ -146,11 +164,17 @@
                     navElement.classList.toggle('text-gray-300', view !== viewName);
                 }
             });
+            if (viewName === 'active-users') {
+                 if (typeof fetchActiveServiceUsers === 'function') fetchActiveServiceUsers();
+            }
         };
+
         document.addEventListener('DOMContentLoaded', () => {
             if (typeof lucide !== 'undefined') lucide.createIcons();
             window.switchAdminView('active-users'); 
-            if (typeof window.updateServiceBanner === 'function') window.updateServiceBanner();
+            if (typeof window.updateServiceBanner === 'function') {
+                window.updateServiceBanner();
+            }
         });
     </script>
 </body>

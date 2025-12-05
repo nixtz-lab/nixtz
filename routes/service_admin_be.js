@@ -24,8 +24,9 @@ router.post('/create-staff-v2', async (req, res) => {
     const { sname, semployeeId, spassword, sdepartment, srole } = req.body; 
     
     // 1. Validate required fields and role
-    if (!sname || !semployeeId || !spassword || !sdepartment || !['standard', 'admin'].includes(srole)) {
-        return res.status(400).json({ success: false, message: 'Invalid or missing user data (Name, ID, Password, Department, Role). Role must be standard or admin.' });
+    // UPDATED: Added 'request_only' to the allowed roles list
+    if (!sname || !semployeeId || !spassword || !sdepartment || !['standard', 'admin', 'request_only'].includes(srole)) {
+        return res.status(400).json({ success: false, message: 'Invalid role. Role must be standard, admin, or request_only.' });
     }
     
     try {
