@@ -1,6 +1,6 @@
 /**
  * staff_roster.js
- * FINAL STABLE VERSION. Fixes: Generate Button & Fixed Day Off logic.
+ * FINAL STABLE VERSION. Fixes: Icons, Generate Button & Fixed Day Off logic.
  */
 
 // Global constants and API endpoints
@@ -90,9 +90,11 @@ async function loadRoster(startDateString) {
         console.error("Load Roster Error:", error);
         rosterBody.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-red-500">Connection Error.</td></tr>';
     }
+    // Refresh icons just in case rows contain them in future
+    if (window.lucide) window.lucide.createIcons();
 }
 
-// 3. REGENERATE ROSTER (The Fix)
+// 3. REGENERATE ROSTER
 window.forceRosterRegeneration = async function() {
     const dateInput = document.getElementById('week-start-date');
     const dateVal = dateInput ? dateInput.value : null;
@@ -106,7 +108,7 @@ window.forceRosterRegeneration = async function() {
     if (!confirmGen) return;
 
     // Show loading indicator
-    const btn = document.querySelector('button[title="Regenerate Roster"]'); // Assuming the green button has this title or use onclick
+    const btn = document.querySelector('button[title="Regenerate Roster"]'); 
     if(btn) btn.disabled = true;
 
     try {
@@ -118,7 +120,6 @@ window.forceRosterRegeneration = async function() {
         const result = await response.json();
         
         if (response.ok && result.success) {
-            // alert("Success! Roster generated.");
             loadRoster(dateVal); // Immediate reload
         } else {
             alert("Generation Failed: " + (result.message || "Unknown error"));
@@ -157,9 +158,10 @@ window.handleDateChange = function(input) {
     loadRoster(monday);
 };
 
-// 5. MODAL STUBS (Simplified for functionality)
+// 5. MODAL STUBS
 let staffCache = [];
 window.showAddStaffModal = () => document.getElementById('add-staff-modal').classList.remove('hidden');
+
 window.openStaffListModal = async () => {
     document.getElementById('staff-list-modal').classList.remove('hidden');
     const container = document.getElementById('staff-profiles-container');
@@ -170,18 +172,30 @@ window.openStaffListModal = async () => {
     if(json.success) {
         staffCache = json.data;
         container.innerHTML = staffCache.map(s => `
-            <div class="flex justify-between p-2 border-b border-gray-700">
+            <div class="flex justify-between items-center p-2 border-b border-gray-700">
                 <span>${s.name} (${s.position})</span>
-                <button onclick="openEditModal('${s.employeeId}')" class="text-blue-400">Edit</button>
+                <button onclick="openEditModal('${s.employeeId}')" class="text-blue-400 hover:text-blue-300">
+                    <i data-lucide="edit" class="w-4 h-4"></i>
+                </button>
             </div>
         `).join('');
+        // Re-render icons inside the modal
+        if (window.lucide) window.lucide.createIcons();
     }
 };
+
 window.openEditModal = (id) => {
     const s = staffCache.find(x => x.employeeId === id);
     if(!s) return;
     // Populate your edit modal IDs here
-    // Example: document.getElementById('edit-name').value = s.name;
+    document.getElementById('single-staff-title').textContent = `Edit Profile: ${s.name}`;
+    document.getElementById('edit-profile-id').value = s._id;
+    document.getElementById('edit-staff-name').value = s.name;
+    document.getElementById('edit-staff-id').value = s.employeeId;
+    document.getElementById('edit-staff-position').value = s.position;
+    document.getElementById('edit-staff-shift-preference').value = s.shiftPreference;
+    document.getElementById('edit-staff-fixed-dayoff').value = s.fixedDayOff;
+
     document.getElementById('single-staff-modal').classList.remove('hidden');
 };
 
@@ -197,4 +211,7 @@ document.addEventListener('DOMContentLoaded', () => {
         d.value = monday;
         window.handleDateChange(d);
     }
+
+    // Initialize Global Icons (Sidebar, Header, etc.)
+    if (window.lucide) window.lucide.createIcons();
 });
