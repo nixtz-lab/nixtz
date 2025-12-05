@@ -7,6 +7,7 @@ const SHIFTS = {
 };
 
 const DAYS_FULL = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const VALID_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const DAY_OFF_MARKER = 'หยุด'; 
 
 /**
@@ -45,13 +46,11 @@ function calculateDailyShift(staff, day, dayIndex, currentCounts, request) {
     // --- PRIORITY 1: Specific Requests & Leave ---
     if (request) {
         if (request.type === 'Specific' && request.day === day) {
-            // If it's a specific assignment (Work or Off)
             if (request.shiftId === 'STATUS_LEAVE') {
                 return { shiftId: null, jobRole: request.dutyRole, timeRange: DAY_OFF_MARKER };
             }
             const shift = SHIFTS[request.shiftId];
             if (shift) {
-                // We need to count this towards the daily total
                 if (request.shiftId == 1) currentCounts.M++;
                 if (request.shiftId == 2) currentCounts.A++;
                 if (request.shiftId == 3) currentCounts.N++;
@@ -64,7 +63,6 @@ function calculateDailyShift(staff, day, dayIndex, currentCounts, request) {
     }
 
     // --- PRIORITY 2: Fixed Day Off ---
-    // Strict check: Only if the current loop day matches the fixed day string
     if (fixedDayOff !== 'None' && fixedDayOff === day) {
         return { shiftId: null, jobRole: 'Day Off (Fixed)', timeRange: DAY_OFF_MARKER };
     }
@@ -74,17 +72,19 @@ function calculateDailyShift(staff, day, dayIndex, currentCounts, request) {
     // 3a. Manager (Morning Default)
     if (position === 'Manager') {
         const pref = (request && request.type === 'ShiftChange') ? request.shift : 'Morning';
-        if (pref === 'Night') { currentCounts.N++; return { shiftId: 3, jobRole: 'C1 (Mgr)', timeRange: SHIFTS[3].time }; }
-        if (pref === 'Afternoon') { currentCounts.A++; return { shiftId: 2, jobRole: 'C1 (Mgr)', timeRange: SHIFTS[2].time }; }
-        currentCounts.M++; return { shiftId: 1, jobRole: 'C1 (Mgr)', timeRange: SHIFTS[1].time };
+        // UPDATED: Return Shift ID as jobRole ('1', '2', '3') instead of 'C1 (Mgr)'
+        if (pref === 'Night') { currentCounts.N++; return { shiftId: 3, jobRole: '3', timeRange: SHIFTS[3].time }; }
+        if (pref === 'Afternoon') { currentCounts.A++; return { shiftId: 2, jobRole: '2', timeRange: SHIFTS[2].time }; }
+        currentCounts.M++; return { shiftId: 1, jobRole: '1', timeRange: SHIFTS[1].time };
     }
 
     // 3b. Supervisor
     if (position === 'Supervisor') {
         const pref = (request && request.type === 'ShiftChange') ? request.shift : staff.shiftPreference;
-        if (pref === 'Afternoon') { currentCounts.A++; return { shiftId: 2, jobRole: 'C1 (Sup)', timeRange: SHIFTS[2].time }; }
-        if (pref === 'Night') { currentCounts.N++; return { shiftId: 3, jobRole: 'C1 (Sup)', timeRange: SHIFTS[3].time }; }
-        currentCounts.M++; return { shiftId: 1, jobRole: 'C1 (Sup)', timeRange: SHIFTS[1].time };
+        // UPDATED: Return Shift ID as jobRole ('1', '2', '3') instead of 'C1 (Sup)'
+        if (pref === 'Afternoon') { currentCounts.A++; return { shiftId: 2, jobRole: '2', timeRange: SHIFTS[2].time }; }
+        if (pref === 'Night') { currentCounts.N++; return { shiftId: 3, jobRole: '3', timeRange: SHIFTS[3].time }; }
+        currentCounts.M++; return { shiftId: 1, jobRole: '1', timeRange: SHIFTS[1].time };
     }
 
     // 3c. Delivery
@@ -95,7 +95,6 @@ function calculateDailyShift(staff, day, dayIndex, currentCounts, request) {
     }
 
     // 3d. Normal Staff (The fillers)
-    // Preference handling
     const pref = (request && request.type === 'ShiftChange') ? request.shift : staff.shiftPreference;
 
     // Night Staff Check
@@ -104,7 +103,7 @@ function calculateDailyShift(staff, day, dayIndex, currentCounts, request) {
         return { shiftId: 3, jobRole: 'C2', timeRange: SHIFTS[3].time };
     }
 
-    // Morning Check (If preferred OR if Morning is low and Afternoon is full)
+    // Morning Check 
     const needsMorning = currentCounts.M < SHIFTS[1].required;
     const needsAfternoon = currentCounts.A < SHIFTS[2].required;
 
@@ -119,7 +118,7 @@ function calculateDailyShift(staff, day, dayIndex, currentCounts, request) {
         return { shiftId: 2, jobRole: 'C5', timeRange: SHIFTS[2].time };
     }
 
-    // Fallback: If no slots needed, they get a day off (or forced extra)
+    // Fallback
     return { shiftId: null, jobRole: DAY_OFF_MARKER, timeRange: DAY_OFF_MARKER };
 }
 
@@ -127,9 +126,9 @@ function calculateDailyShift(staff, day, dayIndex, currentCounts, request) {
 function generateWeeklyRoster(staffProfiles, weekStartDate) {
     const weekStartString = weekStartDate.toISOString().split('T')[0];
     
-    // Sort staff to ensure Manager/Sup get first picks
+    // UPDATED SORTING: Manager -> Supervisor -> Normal Staff -> Delivery
     const sortedStaff = [...staffProfiles].sort((a, b) => {
-        const ranks = { 'Manager': 1, 'Supervisor': 2, 'Delivery': 3, 'Normal Staff': 4 };
+        const ranks = { 'Manager': 1, 'Supervisor': 2, 'Normal Staff': 3, 'Delivery': 4 };
         return (ranks[a.position] || 5) - (ranks[b.position] || 5);
     });
 
@@ -137,8 +136,8 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
     const weeklyData = sortedStaff.map(s => ({
         employeeName: s.name,
         employeeId: s.employeeId,
-        position: s.position,
-        weeklySchedule: [] // We will push days here one by one
+        position: s.position || '', // Fix: Fallback to empty string to prevent "undefined"
+        weeklySchedule: [] 
     }));
 
     // Iterate Day by Day

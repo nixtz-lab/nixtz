@@ -5,12 +5,12 @@
 
 // --- 1. CONFIGURATION FIX (CRITICAL) ---
 // This prevents the "undefined/api/..." error.
+// Since laundry_request.js is working, this matching config will fix the staff page.
 if (typeof window.API_BASE_URL === 'undefined') {
-    // OPTION A: If your Nginx/Web Server is configured correctly to forward /api
+    // OPTION A: Standard configuration (Try this first)
     window.API_BASE_URL = ''; 
     
-    // OPTION B: If you are getting "404 Not Found" and cannot fix Nginx:
-    // Uncomment the line below to point directly to your backend port (usually 3000)
+    // OPTION B: Fallback if you still get 404 errors
     // window.API_BASE_URL = 'https://nixtz.com:3000'; 
 }
 
