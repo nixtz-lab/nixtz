@@ -193,7 +193,6 @@ async function openEditProfileModal(employeeId) {
 
     // 1. Get elements and populate data
     document.getElementById('single-staff-title').textContent = `Edit Profile: ${staff.name}`;
-    // NOTE: If using MongoDB _id, you should ensure 'staff._id' is available here.
     document.getElementById('edit-profile-id').value = staff._id || staff.employeeId; 
     document.getElementById('edit-staff-name').value = staff.name;
     document.getElementById('edit-staff-id').value = staff.employeeId; 

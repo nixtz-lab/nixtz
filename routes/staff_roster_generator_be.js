@@ -6,7 +6,9 @@
 const SHIFTS = { 
     // Shift ID 1: Morning (Example: 07:00-16:00)
     1: { name: 'Morning', time: '07:00-16:00', roles: ['C1', 'C4', 'C3'], required: 6 }, 
+    // Shift ID 2: Afternoon (Example: 13:30-22:30)
     2: { name: 'Afternoon', time: '13:30-22:30', roles: ['C1', 'C5', 'C3'], required: 5 }, 
+    // Shift ID 3: Night (Example: 22:00-07:00)
     3: { name: 'Night', time: '22:00-07:00', roles: ['C2', 'C1'], required: 3 }
 };
 
@@ -134,11 +136,11 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
                 const fixedDay = staff.fixedDayOff || 'None'; 
                 const isFixedDaySet = fixedDay !== 'None' && VALID_DAYS.includes(fixedDay);
                 
-                // CRITICAL FIX: Ensure the assignment only happens for the matching day
+                // CRITICAL FIX: Ensure the assignment ONLY happens for the matching day
                 if (isFixedDaySet && fixedDay === day) { 
                     assignment = { 
                         shiftId: null, 
-                        jobRole: DAY_OFF_MARKER, 
+                        jobRole: 'Day Off (Fixed)', // Changed marker for clarity in this step
                         timeRange: DAY_OFF_MARKER,
                         color: color
                     };
@@ -156,7 +158,6 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
         
         // 1. Manager (Pae, C1)
         if (manager && !isScheduled(manager.employeeId, dayIndex)) { 
-            // FIX: Ensure Manager's shift preference is Morning unless explicitly requested otherwise.
             const request = getWeeklyRequest(manager);
             const pref = (request.type === 'ShiftChange') ? request.shift : 'Morning';
             let sId, t, jobRole;
@@ -199,7 +200,7 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
             if (pref.includes('Morning')) { sId = 1; t = MORNING_TIME; countM++; rolesAssigned.M.C3++; }
             else { sId = 2; t = AFTERNOON_TIME; countA++; rolesAssigned.A.C3++; }
             
-            const jobRole = 'C3 (Del)'; // Changed role to C3 (Del) for clearer display
+            const jobRole = 'C3 (Del)'; 
             
             weeklyRosterMap.get(driver.employeeId).weeklySchedule[dayIndex].shifts.push({ shiftId: sId, jobRole: jobRole, timeRange: t, color: ROLE_COLORS['Delivery'] });
         });
