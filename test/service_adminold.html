@@ -10,17 +10,10 @@
             theme: {
                 extend: {
                     colors: {
-                        'nixtz-primary': '#4F46E5', // Indigo/Blue
-                        'nixtz-secondary': '#10B981', // Emerald/Green
-                        'nixtz-bg': '#0F172A', // Very dark background (Slate 900)
-                        'nixtz-card': '#1E293B', // Dark card background (Slate 800)
-                        // Status Colors (Matching the script)
-                        'status-pending': '#FBBF24', // Amber 500
-                        'status-pickedup': '#3B82F6', // Blue 500
-                        'status-progress': '#8B5CF6', // Violet 500
-                        'status-ready': '#10B981', // Emerald 500
-                        'status-complete': '#22C55E', // Green 500
-                        'status-cancelled': '#EF4444', // Red 500
+                        'nixtz-primary': '#4F46E5',
+                        'nixtz-secondary': '#10B981',
+                        'nixtz-bg': '#0F172A',
+                        'nixtz-card': '#1E293B',
                     },
                     fontFamily: { sans: ['Inter', 'sans-serif'], },
                 }
@@ -35,62 +28,39 @@
         <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
             <div class="flex items-center space-x-4">
                 <a href="business_dashboard.html" title="Back to Dashboard">
-                    <img
-                        src="images/nixtz_logo.png"
-                        alt="Nixtz Logo"
-                        class="h-10 w-auto rounded-md"
-                        onerror="this.src='https://placehold.co/40x40/4F46E5/ffffff?text=N'"
-                    >
-                    <span class="text-xl font-bold text-white ml-2">Service Management Admin</span>
+                    <img src="images/nixtz_logo.png" alt="Nixtz Logo" class="h-10 w-auto rounded-md">
+                    <span class="text-xl font-bold text-white ml-2">Service Admin</span>
                 </a>
             </div>
             
             <div class="flex items-center space-x-4">
-                
                 <div id="user-display-container" class="relative group" style="display: none;">
-                    <button id="user-display-button" 
-                            onclick="toggleUserDropdown()"
-                            class="flex items-center space-x-2 p-2 rounded-full bg-nixtz-card border border-gray-600 hover:bg-gray-700 transition duration-200">
+                    <button id="user-display-button" onclick="toggleUserDropdown()" class="flex items-center space-x-2 p-2 rounded-full bg-nixtz-card border border-gray-600 hover:bg-gray-700 transition duration-200">
                         <i data-lucide="user" class="w-5 h-5 text-nixtz-secondary"></i>
                         <span id="username-display" class="font-semibold text-sm text-gray-200"></span>
                     </button>
-
-                    <div id="user-dropdown" 
-                         style="display: none;"
-                         class="absolute right-0 top-full mt-3 w-48 bg-gray-800 rounded-xl shadow-xl border border-gray-700/50 p-2 z-50">
-                        
+                    
+                    <div id="user-dropdown" style="display: none;" class="absolute right-0 top-full mt-3 w-48 bg-gray-800 rounded-xl shadow-xl border border-gray-700/50 p-2 z-50">
                         <a href="user_profile.html" class="w-full flex items-center text-left text-sm text-gray-300 hover:text-white transition duration-200 font-medium py-2 px-3 rounded-lg hover:bg-gray-700">
                             <i data-lucide="user-circle" class="w-4 h-4 mr-2 inline"></i> User Profile
                         </a>
-                        
                         <a href="change_password.html" class="w-full flex items-center text-left text-sm text-gray-300 hover:text-white transition duration-200 font-medium py-2 px-3 rounded-lg hover:bg-gray-700">
                             <i data-lucide="key" class="w-4 h-4 mr-2 inline"></i> Change Password
                         </a>
-
-                        <button id="logout-dropdown-button" onclick="window.handleServiceLogout()" 
-                                class="w-full flex items-center text-left text-sm text-red-400 hover:text-red-500 transition duration-200 font-medium py-2 px-3 rounded-lg hover:bg-gray-700 mt-2 border-t border-gray-700/50">
+                        <button id="logout-dropdown-button" onclick="window.handleServiceLogout()" class="w-full flex items-center text-left text-sm text-red-400 hover:text-red-500 transition duration-200 font-medium py-2 px-3 rounded-lg hover:bg-gray-700 mt-2 border-t border-gray-700/50">
                             <i data-lucide="log-out" class="w-4 h-4 mr-2 inline"></i> Logout
                         </button>
                     </div>
                 </div>
-
-                <a href="admin_panel.html" 
-                   id="admin-button" 
-                   style="display: none;" 
-                   class="bg-nixtz-secondary hover:bg-[#0da070] text-white font-semibold py-1.5 px-4 rounded-full shadow-lg transition duration-300 text-sm border border-gray-700">
-                    System Admin Panel
-                </a>
-                
                  <a href="laundry_staff.html" class="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-1.5 px-4 rounded-full shadow-lg transition duration-300 text-sm border border-gray-700">
                     Go to Staff Panel
                 </a>
                 
-                <button id="default-logout-button" onclick="window.handleServiceLogout()"
-                         class="bg-red-700 hover:bg-red-600 text-white font-semibold py-1.5 px-4 rounded-full shadow-lg transition duration-300 text-sm border border-gray-700">
+                <button id="default-logout-button" onclick="window.handleServiceLogout()" class="bg-red-700 hover:bg-red-600 text-white font-semibold py-1.5 px-4 rounded-full shadow-lg transition duration-300 text-sm border border-gray-700">
                     Logout
                 </button>
             </div>
-            </div>
+        </div>
     </header>
 
     <div id="message-box" class="fixed top-4 right-4 bg-nixtz-secondary text-white p-4 rounded-lg shadow-2xl z-[9999] hidden opacity-0 transition-opacity duration-300">
@@ -98,85 +68,28 @@
     </div>
 
     <div class="flex flex-grow max-w-full mx-auto">
-        
         <aside class="w-64 bg-gray-900/50 p-4 border-r border-gray-800 sticky top-[72px] h-[calc(100vh-72px)] overflow-y-auto">
-            <h3 class="text-xs font-bold uppercase text-gray-400 mb-4 tracking-wider">Service Management</h3>
-            
+            <h3 class="text-xs font-bold uppercase text-gray-400 mb-4 tracking-wider">Staff & Users</h3>
             <nav class="space-y-2">
-                <a href="javascript:void(0)" onclick="switchAdminView('dashboard')" id="nav-dashboard"
-                   class="flex items-center p-3 rounded-lg text-white font-semibold bg-nixtz-primary transition hover:bg-[#3f3bbf]">
-                    <i data-lucide="layout-dashboard" class="w-5 h-5 mr-3"></i> Dashboard & Requests
-                </a>
-                
-                <h3 class="text-xs font-bold uppercase text-gray-400 mt-6 pt-3 border-t border-gray-800 tracking-wider">Staff & Users</h3>
-
                 <a href="javascript:void(0)" onclick="switchAdminView('active-users')" id="nav-active-users"
-                   class="flex items-center p-3 rounded-lg text-gray-300 font-medium transition hover:bg-gray-700 hover:text-white">
+                   class="flex items-center p-3 rounded-lg text-white font-semibold bg-nixtz-primary transition hover:bg-[#3f3bbf]">
                     <i data-lucide="users" class="w-5 h-5 mr-3"></i> Active Service Users
                 </a>
-
                 <a href="javascript:void(0)" onclick="switchAdminView('create-staff')" id="nav-create-staff"
                    class="flex items-center p-3 rounded-lg text-gray-300 font-medium transition hover:bg-gray-700 hover:text-white">
                     <i data-lucide="user-plus" class="w-5 h-5 mr-3"></i> Create New Staff
                 </a>
-                
             </nav>
         </aside>
+        
         <main id="admin-main-content" class="flex-grow p-4 md:p-8 w-full max-w-5xl">
-            
-            <h1 class="text-3xl font-extrabold mb-8 text-nixtz-secondary" id="content-title">Laundry Service Management Dashboard</h1>
+            <h1 class="text-3xl font-extrabold mb-8 text-nixtz-secondary" id="content-title">Active Service User Management</h1>
 
-            <div id="view-dashboard">
-                <div class="grid grid-cols-1 gap-8">
-                    
-                    <div class="space-y-8">
-                        <div class="bg-nixtz-card rounded-xl shadow-2xl p-6 border border-gray-700">
-                            <div class="flex justify-between items-center mb-6">
-                                <h2 class="text-xl font-bold text-white">Service Analytics (All Time)</h2>
-                                <button onclick="fetchAnalytics()" class="flex items-center text-nixtz-primary hover:text-white transition font-semibold text-sm">
-                                    <i data-lucide="refresh-cw" class="w-4 h-4 mr-2"></i> Refresh Data
-                                </button>
-                            </div>
-                            <div id="analytics-dashboard" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-                                <div class="text-gray-400 text-sm p-4 col-span-full">Loading service data...</div>
-                            </div>
-                        </div>
-
-                        <div class="bg-nixtz-card rounded-xl shadow-2xl p-6 border border-gray-700">
-                            <div class="flex justify-between items-center mb-6 border-b border-gray-700 pb-4">
-                                <h2 class="text-xl font-bold text-white">Full Request History</h2>
-                                <button onclick="fetchAllRequests()" class="flex items-center text-nixtz-secondary hover:bg-[#0da070] hover:text-white transition font-semibold text-sm">
-                                    <i data-lucide="list-ordered" class="w-4 h-4 mr-2"></i> Load All
-                                </button>
-                            </div>
-                            
-                            <div class="overflow-x-auto rounded-lg border border-gray-700">
-                                <table class="min-w-full divide-y divide-gray-700">
-                                    <thead class="bg-gray-800">
-                                        <tr>
-                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Department</th>
-                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Requester/Contact</th>
-                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden sm:table-cell">Items Summary</th>
-                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
-                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider hidden md:table-cell">Date</th>
-                                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="all-requests-body" class="divide-y divide-gray-700 bg-gray-900">
-                                        <tr><td colspan="6" class="px-4 py-4 text-sm text-gray-500 text-center">Load data above.</td></tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div id="view-active-users" style="display: none;">
-                <h2 class="text-2xl font-extrabold text-white mb-6">Active Service User Management</h2>
+            <div id="view-active-users">
+                <h2 class="text-xl font-bold text-white mb-6">Service User Directory</h2>
                 <div id="active-users-list" class="bg-nixtz-card p-6 rounded-xl border border-gray-700">
-                    <p class="text-gray-500">List of active service users will be loaded here...</p>
-                    </div>
+                    <p class="text-gray-500">Feature coming soon: List of all active service staff.</p>
+                </div>
             </div>
 
             <div id="view-create-staff" style="display: none;" class="max-w-md mx-auto">
@@ -186,22 +99,18 @@
                     </h2>
                     
                     <form id="create-staff-form" class="space-y-4">
-                        
                         <div>
                             <label for="staff-name" class="block text-sm font-medium text-gray-400">Employee Full Name</label>
                             <input type="text" id="staff-name" required class="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:border-nixtz-primary transition">
                         </div>
-
                         <div>
                             <label for="staff-employee-id" class="block text-sm font-medium text-gray-400">Employee ID</label>
                             <input type="text" id="staff-employee-id" required class="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:border-nixtz-primary transition">
                         </div>
-                        
                         <div>
                             <label for="staff-password" class="block text-sm font-medium text-gray-400">Temporary Password (Min 8 Chars)</label>
                             <input type="password" id="staff-password" required minlength="8" class="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:border-nixtz-primary transition">
                         </div>
-                        
                         <div>
                             <label for="staff-department" class="block text-sm font-medium text-gray-400">Assigned Department</label>
                             <select id="staff-department" required class="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:border-nixtz-primary transition">
@@ -209,83 +118,94 @@
                                 <option value="Housekeeping">Housekeeping</option>
                                 <option value="Engineering">Engineering</option>
                                 <option value="FrontOffice">Front Office</option>
-                                </select>
+                            </select>
                         </div>
-                        
                         <div>
                             <label for="staff-role" class="block text-sm font-medium text-gray-400">Role</label>
                             <select id="staff-role" required class="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:border-nixtz-primary transition">
-                                <option value="standard">Standard Staff (Service Access Only)</option>
-                                <option value="admin">Service Admin (Full Dashboard Access)</option>
+                                <option value="request_only">Laundry Request Staff (Request Only)</option>
+                                <option value="standard">Laundry Staff (Process & Request)</option>
+                                <option value="admin">Service Admin (Full Access)</option>
                             </select>
                         </div>
-                        
-                        <button type="submit" class="w-full py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-nixtz-secondary hover:bg-[#0da070] transition duration-150">
-                            Create Staff Account
-                        </button>
+                        <div class="flex flex-col gap-3">
+                            <button type="submit" class="w-full py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-nixtz-secondary hover:bg-[#0da070] transition duration-150">
+                                Create Staff Account
+                            </button>
+                            <button type="button" onclick="manageDepartments()" class="w-full py-2 px-4 border border-gray-600 rounded-lg shadow-sm text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white transition duration-150">
+                                <i data-lucide="settings" class="w-4 h-4 inline mr-2"></i> Add or Edit Assigned Department
+                            </button>
+                        </div>
                     </form>
                 </div>
             </div>
-
         </main>
-        </div>
+    </div>
 
+    <div id="edit-user-modal" style="display: none;" class="fixed inset-0 bg-black/80 flex items-center justify-center z-[9000]">
+        <div class="bg-nixtz-card p-6 rounded-xl shadow-2xl max-w-md w-full border border-gray-700">
+            <h3 class="text-xl font-bold text-white mb-4">Edit Staff Member</h3>
+            
+            <form id="edit-staff-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-400 mb-1">Full Name</label>
+                    <input type="text" id="edit-staff-name" required class="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:border-nixtz-primary">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-400 mb-1">Department</label>
+                    <input type="text" id="edit-staff-department" required class="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:border-nixtz-primary">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-400 mb-1">Role</label>
+                    <select id="edit-staff-role" required class="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white">
+                        <option value="request_only">Laundry Request Staff</option>
+                        <option value="standard">Laundry Staff</option>
+                        <option value="admin">Service Admin</option>
+                    </select>
+                </div>
+
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" onclick="closeEditModal()" class="px-4 py-2 text-sm font-medium text-gray-400 hover:text-white transition">Cancel</button>
+                    <button type="submit" class="px-4 py-2 text-sm font-bold bg-nixtz-secondary hover:bg-[#0da070] text-white rounded-lg transition shadow-lg">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
     
     <script src="service_script.js"></script>
-
     <script src="service_admin.js"></script>
     
     <script>
-        // Function to switch between views and manage active link styling
         window.switchAdminView = (viewName) => {
-            // Define all view elements and nav elements
-            const views = ['dashboard', 'active-users', 'create-staff'];
+            const views = ['active-users', 'create-staff'];
             const titleMap = {
-                'dashboard': 'Laundry Service Management Dashboard',
                 'active-users': 'Active Service User Management',
                 'create-staff': 'Create New Service Staff Account'
             };
-
             const contentTitle = document.getElementById('content-title');
             if (contentTitle) contentTitle.textContent = titleMap[viewName];
 
             views.forEach(view => {
                 const viewElement = document.getElementById(`view-${view}`);
                 const navElement = document.getElementById(`nav-${view}`);
-                
                 if (viewElement) viewElement.style.display = view === viewName ? 'block' : 'none';
-
                 if (navElement) {
-                    // Update active styling
                     navElement.classList.toggle('bg-nixtz-primary', view === viewName);
                     navElement.classList.toggle('bg-gray-700', view !== viewName);
                     navElement.classList.toggle('text-white', view === viewName);
                     navElement.classList.toggle('text-gray-300', view !== viewName);
-                    navElement.classList.toggle('font-semibold', view === viewName);
-                    navElement.classList.toggle('font-medium', view !== viewName);
                 }
             });
-
-            // If switching to the Dashboard, fetch initial analytics data
-            if (viewName === 'dashboard') {
-                // Ensure the necessary functions are available before calling
-                if (typeof fetchAnalytics === 'function') fetchAnalytics();
-                if (typeof fetchAllRequests === 'function') fetchAllRequests();
-            }
-            // If switching to Active Users, fetch the list
             if (viewName === 'active-users') {
                  if (typeof fetchActiveServiceUsers === 'function') fetchActiveServiceUsers();
             }
         };
 
-        // Initial setup on load
         document.addEventListener('DOMContentLoaded', () => {
             if (typeof lucide !== 'undefined') lucide.createIcons();
-            
-            // Set initial view and styling
-            window.switchAdminView('dashboard');
-
-            // Call the banner update function defined in service_script.js
+            window.switchAdminView('active-users'); 
             if (typeof window.updateServiceBanner === 'function') {
                 window.updateServiceBanner();
             }

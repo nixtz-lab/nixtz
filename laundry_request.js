@@ -3,17 +3,19 @@
  * Handles the logic for the user-facing laundry request submission form and history display.
  */
 
-// --- 1. CONFIGURATION FIX (CRITICAL) ---
+// --- 1. CONFIGURATION FIX ---
 if (typeof window.API_BASE_URL === 'undefined') {
-    // If your backend is live (Nginx configured), leave this empty.
-    // If testing locally, set to 'http://localhost:3000'
+    // If your backend is live (Nginx configured), leave this empty:
     window.API_BASE_URL = ''; 
+    
+    // NOTE: If you still get "404 Not Found" after using this, 
+    // it means your Nginx server block is missing the /api proxy pass.
 }
 
 const itemsContainer = document.getElementById('items-container');
 
-// --- 2. MODE STATE MANAGEMENT (NEW) ---
-let currentMode = 'pickup'; // Default mode
+// --- 2. MODE STATE MANAGEMENT (UPDATED) ---
+let currentMode = 'supply'; // Changed default mode to 'supply'
 
 const ITEM_OPTIONS = {
     pickup: [
@@ -45,8 +47,8 @@ document.addEventListener('DOMContentLoaded', () => {
     initLaundryRequestPage();
     document.addEventListener('click', closeDropdownOnOutsideClick);
     
-    // Initialize default mode UI
-    setRequestMode('pickup');
+    // Initialize default mode UI to 'supply' (Order Clean)
+    setRequestMode('supply'); // <-- UPDATED
 });
 
 // Helper function to create Lucide icons safely
@@ -60,8 +62,8 @@ function createLucideIcons() {
 
 function getStatusColor(status) {
     switch (status) {
-        case 'Pending Pickup': 
-        case 'Pending Delivery': return 'bg-status-pending text-nixtz-bg'; // Added Delivery status
+        case 'Pending Pickup': return 'bg-status-pending text-nixtz-bg'; // Yellow
+        case 'Pending Delivery': return 'bg-blue-500 text-white';        // Blue (For Clean Orders)
         case 'Picked Up': return 'bg-status-pickedup text-white';
         case 'In Progress': return 'bg-status-progress text-white';
         case 'Ready for Delivery': return 'bg-status-ready text-nixtz-bg';
@@ -71,7 +73,7 @@ function getStatusColor(status) {
     }
 }
 
-// --- 4. TOGGLE MODE FUNCTION (NEW) ---
+// --- 4. TOGGLE MODE FUNCTION ---
 function setRequestMode(mode) {
     currentMode = mode;
     const typeInput = document.getElementById('request-type');
@@ -87,14 +89,12 @@ function setRequestMode(mode) {
             btnPickup.className = "flex-1 py-2 text-sm font-bold rounded-md text-white bg-nixtz-primary shadow-lg transition-all duration-200";
             btnSupply.className = "flex-1 py-2 text-sm font-bold rounded-md text-gray-400 hover:text-white transition-all duration-200";
             submitBtn.textContent = "Request Pickup";
-            submitBtn.classList.remove('bg-nixtz-secondary', 'hover:bg-[#0da070]');
-            submitBtn.classList.add('bg-nixtz-primary', 'hover:bg-[#3f3bbf]');
+            submitBtn.className = "w-full py-3 mt-6 bg-nixtz-primary hover:bg-[#3f3bbf] text-white font-bold rounded-lg shadow-lg transition";
         } else {
             btnSupply.className = "flex-1 py-2 text-sm font-bold rounded-md text-nixtz-bg bg-nixtz-secondary shadow-lg transition-all duration-200";
             btnPickup.className = "flex-1 py-2 text-sm font-bold rounded-md text-gray-400 hover:text-white transition-all duration-200";
             submitBtn.textContent = "Order Supplies";
-            submitBtn.classList.remove('bg-nixtz-primary', 'hover:bg-[#3f3bbf]');
-            submitBtn.classList.add('bg-nixtz-secondary', 'hover:bg-[#0da070]');
+            submitBtn.className = "w-full py-3 mt-6 bg-nixtz-secondary hover:bg-[#0da070] text-white font-bold rounded-lg shadow-lg transition";
         }
     }
 
@@ -106,7 +106,7 @@ function setRequestMode(mode) {
         createLucideIcons();
     }
 }
-window.setRequestMode = setRequestMode; // Expose to window for HTML onclick
+window.setRequestMode = setRequestMode; 
 
 // --- 5. HEADER UI LOGIC ---
 
@@ -168,13 +168,10 @@ function createItemInput() {
         </button>
     `;
     
-    // Attach remove listener
     itemDiv.querySelector(`#${removeBtnId}`).addEventListener('click', () => {
-        // Only remove if there is more than 1 item
         if (itemsContainer.children.length > 1) {
             itemDiv.remove();
         } else {
-            // Optional: Clear fields if it's the last one
             window.showMessage("At least one item is required.", true);
         }
     });
@@ -183,7 +180,7 @@ function createItemInput() {
 }
 
 // ------------------------------------
-// 7. FORM SUBMISSION (UPDATED)
+// 7. FORM SUBMISSION
 // ------------------------------------
 async function handleFormSubmit(e) {
     e.preventDefault();
@@ -192,7 +189,7 @@ async function handleFormSubmit(e) {
     const department = document.getElementById('department').value.trim();
     const contactExt = document.getElementById('contact-ext').value.trim();
     const notes = document.getElementById('notes').value.trim();
-    const requestType = currentMode; // Grab the mode ('pickup' or 'supply')
+    const requestType = currentMode; // Capture current mode
     
     const items = [];
     itemsContainer.querySelectorAll('[id^="item-"]').forEach(itemDiv => {
@@ -240,7 +237,7 @@ async function handleFormSubmit(e) {
         if (response.ok && result.success) {
             window.showMessage(result.message, false);
             form.reset();
-            // Reset items to the current mode defaults
+            // Reset to defaults
             itemsContainer.innerHTML = '';
             itemCounter = 0;
             itemsContainer.appendChild(createItemInput());
@@ -263,7 +260,7 @@ async function handleFormSubmit(e) {
 }
 
 // ------------------------------------
-// 8. HISTORY DISPLAY (UPDATED)
+// 8. HISTORY DISPLAY
 // ------------------------------------
 function renderRequestCard(request) {
     // Determine visuals based on Request Type

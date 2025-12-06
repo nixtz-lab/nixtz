@@ -154,7 +154,11 @@
                 
                 <div>
                     <label class="block text-sm font-medium text-gray-400 mb-1">Department</label>
-                    <input type="text" id="edit-staff-department" required class="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:border-nixtz-primary">
+                    <select id="edit-staff-department" required class="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:border-nixtz-primary">
+                        <option value="Housekeeping">Housekeeping</option>
+                        <option value="Engineering">Engineering</option>
+                        <option value="FrontOffice">Front Office</option>
+                    </select>
                 </div>
 
                 <div>
@@ -164,6 +168,12 @@
                         <option value="standard">Laundry Staff</option>
                         <option value="admin">Service Admin</option>
                     </select>
+                </div>
+
+                <div class="pt-2 border-t border-gray-700">
+                    <label class="block text-sm font-bold text-nixtz-secondary mb-1">Reset Password (Optional)</label>
+                    <input type="password" id="edit-staff-password" placeholder="Leave blank to keep current password" class="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:border-nixtz-secondary placeholder-gray-600">
+                    <p class="text-xs text-gray-500 mt-1">Min 8 characters if changing.</p>
                 </div>
 
                 <div class="flex justify-end gap-3 mt-6">

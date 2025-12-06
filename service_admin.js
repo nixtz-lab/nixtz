@@ -1,6 +1,5 @@
 /**
  * service_admin.js
- * Handles the logic for the dedicated Service Management Admin Panel.
  */
 
 if (typeof window.API_BASE_URL === 'undefined') {
@@ -10,16 +9,13 @@ if (typeof window.API_BASE_URL === 'undefined') {
 let currentEditingUserId = null;
 
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Auth Check
     if (!window.getServiceAuthStatus()) {
         window.checkServiceAccessAndRedirect('service_admin.html');
         return; 
     }
 
-    // 2. Initialize Icons
     if (typeof lucide !== 'undefined') lucide.createIcons();
     
-    // 3. Attach Form Listeners
     const createStaffForm = document.getElementById('create-staff-form');
     if (createStaffForm) {
         createStaffForm.addEventListener('submit', handleCreateStaffFormSubmit);
@@ -30,14 +26,12 @@ document.addEventListener('DOMContentLoaded', () => {
         editForm.addEventListener('submit', handleSaveUserEdit);
     }
 
-    // 4. Global UI Listeners
     document.addEventListener('click', closeDropdownOnOutsideClick);
     
     if (typeof window.updateServiceBanner === 'function') {
         window.updateServiceBanner();
     }
 
-    // 5. Initial Data Load
     fetchActiveServiceUsers();
 });
 
@@ -81,7 +75,7 @@ function manageDepartments() {
 window.manageDepartments = manageDepartments;
 
 // ------------------------------------
-// DATA FETCHING & RENDERING
+// DATA FETCHING & RENDERING (FIXED CACHING)
 // ------------------------------------
 
 async function fetchActiveServiceUsers() {
@@ -92,8 +86,11 @@ async function fetchActiveServiceUsers() {
 
     container.innerHTML = '<p class="text-gray-500 text-center py-4">Loading active staff list...</p>';
 
+    // --- FIX: ADD CACHE BUSTER TO URL ---
+    const cacheBuster = `?t=${new Date().getTime()}`;
+
     try {
-        const response = await fetch(`${window.API_BASE_URL}/api/service/admin/staff-list`, {
+        const response = await fetch(`${window.API_BASE_URL}/api/service/admin/staff-list${cacheBuster}`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
@@ -120,7 +117,6 @@ function renderUserList(users) {
     if (!container) return;
 
     const rows = users.map(user => {
-        // SAFEGUARD 1: Check for orphaned data
         const role = user.suser ? user.suser.srole : 'unknown';
         
         // Map Codes to Readable Names
@@ -138,7 +134,7 @@ function renderUserList(users) {
         if (role === 'request_only') roleColor = 'bg-blue-600 text-white';
         if (role === 'standard') roleColor = 'bg-nixtz-primary text-white';
 
-        // SAFEGUARD 2: Encode data to prevent onclick errors with special characters
+        // Escaping data for onclick safety
         const safeName = encodeURIComponent(user.sname || '');
         const safeDept = encodeURIComponent(user.sdepartment || '');
         
@@ -191,25 +187,23 @@ function renderUserList(users) {
 
 function openEditModal(staffAccessId, currentName, currentDept, currentRole) {
     const modal = document.getElementById('edit-user-modal');
-    
-    // SAFEGUARD 3: Check if modal exists in HTML
     if (!modal) {
-        alert("Error: Edit Modal HTML is missing from service_admin.html. Please update your HTML file.");
+        alert("Error: Edit Modal HTML missing.");
         return;
     }
 
     currentEditingUserId = staffAccessId;
     
-    // Set Values
     const nameInput = document.getElementById('edit-staff-name');
     const deptInput = document.getElementById('edit-staff-department');
     const roleInput = document.getElementById('edit-staff-role');
     const passInput = document.getElementById('edit-staff-password');
-
-    if (nameInput) nameInput.value = currentName;
-    if (deptInput) deptInput.value = currentDept; 
-    if (roleInput) roleInput.value = currentRole;
-    if (passInput) passInput.value = ''; 
+    
+    // Set Values
+    if(nameInput) nameInput.value = currentName;
+    if(deptInput) deptInput.value = currentDept; 
+    if(roleInput) roleInput.value = currentRole;
+    if(passInput) passInput.value = ''; 
 
     modal.style.display = 'flex';
 }

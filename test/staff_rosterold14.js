@@ -488,7 +488,7 @@ window.showAddStaffModal = () => {
 };
 
 window.closeEditProfileModal = (event) => {
-    if(event) event.preventDefault();
+    event.preventDefault();
     document.getElementById('single-staff-modal').classList.add('hidden');
     document.getElementById('staff-list-modal').classList.remove('hidden');
 };
@@ -542,8 +542,7 @@ window.openEditProfileModal = (id) => {
     if(!s) return;
     
     const titleEl = document.getElementById('single-staff-title');
-    const nameDisplay = document.getElementById('header-staff-name-display');
-    if(nameDisplay) nameDisplay.textContent = `Edit Profile: ${s.name}`;
+    if(titleEl) titleEl.textContent = `Edit Profile: ${s.name}`;
     
     document.getElementById('edit-profile-id').value = s._id;
     document.getElementById('edit-staff-name').value = s.name;
@@ -702,6 +701,11 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             
             const dbId = document.getElementById('edit-profile-id').value;
+            
+            // NOTE: We do NOT send shiftPreference/fixedDayOff here anymore as they are removed from this form.
+            // We assume backend does a partial update or we just send what we have.
+            // To be safe, we fetch the existing staff to merge, OR we rely on backend patch behavior.
+            // Here we send the keys we govern in this form.
             
             const updateData = {
                 name: document.getElementById('edit-staff-name').value,

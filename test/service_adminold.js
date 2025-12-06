@@ -3,25 +3,21 @@
  * Handles the logic for the dedicated Service Management Admin Panel.
  */
 
-// --- 1. CONFIGURATION FIX ---
 if (typeof window.API_BASE_URL === 'undefined') {
     window.API_BASE_URL = ''; 
 }
 
+let currentEditingUserId = null;
+
 document.addEventListener('DOMContentLoaded', () => {
-    // --- AUTHENTICATION CHECK (NEW) ---
-    // If no token exists, kick the user out immediately.
+    // 1. Auth Check
     if (!window.getServiceAuthStatus()) {
         window.checkServiceAccessAndRedirect('service_admin.html');
-        return; // Stop execution
+        return; 
     }
 
-    // 1. Initialize Icons
+    // 2. Initialize Icons
     if (typeof lucide !== 'undefined') lucide.createIcons();
-    
-    // 2. Load Dashboard Data
-    fetchAnalytics();
-    fetchAllRequests();
     
     // 3. Attach Form Listeners
     const createStaffForm = document.getElementById('create-staff-form');
@@ -29,17 +25,24 @@ document.addEventListener('DOMContentLoaded', () => {
         createStaffForm.addEventListener('submit', handleCreateStaffFormSubmit);
     }
 
-    // 4. Attach Dropdown Close Listener
+    const editForm = document.getElementById('edit-staff-form');
+    if (editForm) {
+        editForm.addEventListener('submit', handleSaveUserEdit);
+    }
+
+    // 4. Global UI Listeners
     document.addEventListener('click', closeDropdownOnOutsideClick);
     
-    // 5. Update Header Banner
     if (typeof window.updateServiceBanner === 'function') {
         window.updateServiceBanner();
     }
+
+    // 5. Initial Data Load
+    fetchActiveServiceUsers();
 });
 
 // ------------------------------------
-// 2. DROPDOWN LOGIC
+// UI LOGIC
 // ------------------------------------
 
 function toggleUserDropdown() {
@@ -47,7 +50,6 @@ function toggleUserDropdown() {
     if (dropdown) {
         const isHidden = dropdown.style.display === 'none' || dropdown.style.display === '';
         dropdown.style.display = isHidden ? 'block' : 'none';
-        
         if (isHidden && typeof lucide !== 'undefined') lucide.createIcons();
     }
 }
@@ -57,195 +59,218 @@ function closeDropdownOnOutsideClick(event) {
     const userContainer = document.getElementById('user-display-container');
     const dropdown = document.getElementById('user-dropdown');
     const displayButton = document.getElementById('user-display-button');
-
     if (dropdown && dropdown.style.display === 'block' && 
         userContainer && !userContainer.contains(event.target) && 
         !displayButton.contains(event.target)) {
-        
         dropdown.style.display = 'none';
     }
 }
 
+function manageDepartments() {
+    const newDept = prompt("Enter the name of the new Department:");
+    if (newDept && newDept.trim() !== "") {
+        const select = document.getElementById('staff-department');
+        const option = document.createElement("option");
+        option.text = newDept.trim();
+        option.value = newDept.trim().replace(/\s+/g, ''); 
+        select.add(option);
+        select.value = option.value; 
+        window.showMessage(`Department "${newDept}" added to list.`, false);
+    }
+}
+window.manageDepartments = manageDepartments;
 
 // ------------------------------------
-// 3. DATA FETCHING & DASHBOARD
+// DATA FETCHING & RENDERING
 // ------------------------------------
 
-const statusMap = {
-    'PendingPickup': { label: 'Pending Pickup', color: 'bg-status-pending text-nixtz-bg', icon: 'hourglass' },
-    'PickedUp': { label: 'Picked Up', color: 'bg-status-pickedup text-white', icon: 'truck' },
-    'InProgress': { label: 'In Progress', color: 'bg-status-progress text-white', icon: 'washing-machine' },
-    'ReadyforDelivery': { label: 'Ready for Delivery', color: 'bg-status-ready text-nixtz-bg', icon: 'box' },
-    'Completed': { label: 'Completed', color: 'bg-status-complete text-white', icon: 'check-circle' },
-    'Cancelled': { label: 'Cancelled', color: 'bg-status-cancelled text-white', icon: 'x-circle' }
-};
-
-async function fetchAnalytics() {
-    // FIX: Ensure we use the string literal consistently to avoid ReferenceErrors
+async function fetchActiveServiceUsers() {
+    const container = document.getElementById('active-users-list');
     const token = localStorage.getItem('nixtz_service_auth_token');
     
-    if (!token) return;
+    if (!container || !token) return;
+
+    container.innerHTML = '<p class="text-gray-500 text-center py-4">Loading active staff list...</p>';
 
     try {
-        const response = await fetch(`${window.API_BASE_URL}/api/laundry/admin/analytics`, {
+        const response = await fetch(`${window.API_BASE_URL}/api/service/admin/staff-list`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        
-        // Handle 403 Forbidden (Not an Admin)
-        if (response.status === 403) {
-             window.showMessage("Access Denied: Admin privileges required.", true);
-             // Optional: Redirect back to staff panel if they are just standard staff
-             setTimeout(() => window.location.href = 'laundry_staff.html', 1500);
-             return;
-        }
 
         const result = await response.json();
 
         if (response.ok && result.success) {
-            updateAnalyticsDashboard(result.data);
+            if (result.data.length === 0) {
+                container.innerHTML = '<p class="text-gray-400 text-center py-4">No active service staff found.</p>';
+            } else {
+                renderUserList(result.data);
+            }
         } else {
-            if(window.showMessage) window.showMessage(result.message || 'Failed to load analytics.', true);
+            container.innerHTML = `<p class="text-red-400 text-center py-4">${result.message || 'Failed to load users.'}</p>`;
         }
     } catch (error) {
-        console.error('Analytics Fetch Error:', error);
+        console.error('Fetch Users Error:', error);
+        container.innerHTML = '<p class="text-red-400 text-center py-4">Network error loading users.</p>';
     }
 }
+window.fetchActiveServiceUsers = fetchActiveServiceUsers;
 
-async function fetchAllRequests() {
-    const tableBody = document.getElementById('all-requests-body');
-    const token = localStorage.getItem('nixtz_service_auth_token');
-
-    if (!tableBody || !token) return;
-
-    tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-500">Loading all requests...</td></tr>';
-
-    try {
-        const response = await fetch(`${window.API_BASE_URL}/api/laundry/admin/all-requests`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        
-        const contentType = response.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-            throw new Error("Invalid server response (404/500)");
-        }
-
-        const result = await response.json();
-
-        if (response.ok && result.success && result.data.length > 0) {
-            tableBody.innerHTML = result.data.map(renderRequestRow).join('');
-        } else if (result.data && result.data.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-400">No requests found in the system.</td></tr>';
-        } else {
-            tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-red-400">Error loading data.</td></tr>';
-        }
-
-        if(typeof lucide !== 'undefined') lucide.createIcons();
-
-    } catch (error) {
-        console.error('All Requests Fetch Error:', error);
-        tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-red-400">Network error loading requests.</td></tr>';
-    }
-}
-
-function updateAnalyticsDashboard(data) {
-    const container = document.getElementById('analytics-dashboard');
+function renderUserList(users) {
+    const container = document.getElementById('active-users-list');
     if (!container) return;
-    
-    const statuses = ['Total', 'PendingPickup', 'PickedUp', 'InProgress', 'ReadyforDelivery', 'Completed', 'Cancelled'];
-    
-    container.innerHTML = statuses.map(key => {
-        const count = data[key] || 0;
-        const info = statusMap[key] || { label: key, color: 'bg-gray-700 text-white', icon: 'info' };
+
+    const rows = users.map(user => {
+        // SAFEGUARD 1: Check for orphaned data
+        const role = user.suser ? user.suser.srole : 'unknown';
         
-        const cardColor = key === 'Total' ? 'bg-nixtz-primary' : info.color;
-        const iconName = key === 'Total' ? 'trending-up' : info.icon;
-        const labelText = key === 'Total' ? 'Total Requests' : info.label;
-        const textColor = key === 'Total' ? 'text-white' : (key === 'PendingPickup' || key === 'ReadyforDelivery' ? 'text-nixtz-bg' : 'text-white');
+        // Map Codes to Readable Names
+        const roleNames = {
+            'admin': 'Service Admin',
+            'standard': 'Laundry Staff',
+            'request_only': 'Request Staff',
+            'unknown': 'Unknown'
+        };
+        const displayRole = roleNames[role] || role.toUpperCase();
 
+        // Color Logic
+        let roleColor = 'bg-gray-700 text-gray-300';
+        if (role === 'admin') roleColor = 'bg-purple-600 text-white';
+        if (role === 'request_only') roleColor = 'bg-blue-600 text-white';
+        if (role === 'standard') roleColor = 'bg-nixtz-primary text-white';
+
+        // SAFEGUARD 2: Encode data to prevent onclick errors with special characters
+        const safeName = encodeURIComponent(user.sname || '');
+        const safeDept = encodeURIComponent(user.sdepartment || '');
+        
         return `
-            <div class="p-4 rounded-xl shadow-lg border border-gray-700 ${cardColor}">
-                <div class="flex justify-between items-center">
-                    <i data-lucide="${iconName}" class="w-6 h-6 ${textColor}"></i>
-                    <p class="text-3xl font-extrabold ${textColor}">${count}</p>
-                </div>
-                <p class="text-sm mt-2 font-medium ${textColor}">${labelText}</p>
-            </div>
-        `;
-    }).join('');
-    
-    if(typeof lucide !== 'undefined') lucide.createIcons();
-}
-
-function renderRequestRow(request) {
-    const statusInfo = statusMap[request.status.replace(/\s/g, '')] || { label: request.status, color: 'bg-gray-500 text-white' };
-    
-    const itemsSummary = request.items.slice(0, 2).map(item => `${item.count}x ${item.type}`).join(', ') + 
-                         (request.items.length > 2 ? ` (+${request.items.length - 2} more)` : '');
-
-    const requestedDate = new Date(request.requestedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-
-    return `
-        <tr class="bg-gray-900 border-b border-gray-800 hover:bg-gray-800 transition duration-150">
-            <td class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Department</td>
-            <td class="px-4 py-3 text-left text-xs font-medium text-gray-400">${request.requesterUsername} / ${request.contactExt}</td>
-            <td class="px-4 py-3 text-sm text-gray-400 hidden sm:table-cell">${itemsSummary}</td>
-            <td class="px-4 py-3 text-sm">
-                <span class="px-3 py-1 text-xs font-semibold rounded-full ${statusInfo.color}">
-                    ${statusInfo.label}
+        <tr class="bg-gray-900 border-b border-gray-800 hover:bg-gray-800 transition">
+            <td class="px-4 py-3 font-medium text-white">${user.sname || 'N/A'}</td>
+            <td class="px-4 py-3 text-gray-400">${user.semployeeId || 'N/A'}</td>
+            <td class="px-4 py-3 text-gray-400">${user.sdepartment || 'N/A'}</td>
+            <td class="px-4 py-3">
+                <span class="px-2 py-1 text-xs font-bold rounded-full ${roleColor}">
+                    ${displayRole}
                 </span>
             </td>
-            <td class="px-4 py-3 text-sm text-gray-500 hidden md:table-cell">${requestedDate}</td>
-            <td class="px-4 py-3">
-                <button 
-                    onclick="deleteRequest('${request._id}', '${request.department}')"
-                    class="text-red-400 hover:text-red-600 transition p-1 rounded-full hover:bg-red-900/30"
-                    title="Delete Request"
-                >
-                    <i data-lucide="trash-2" class="w-5 h-5"></i>
+            <td class="px-4 py-3 text-sm text-gray-500">${user.serviceScope}</td>
+            <td class="px-4 py-3 text-right">
+                <button onclick="openEditModal('${user._id}', decodeURIComponent('${safeName}'), decodeURIComponent('${safeDept}'), '${role}')" 
+                        class="p-2 text-nixtz-secondary hover:text-white transition rounded-full hover:bg-gray-700" 
+                        title="Edit User">
+                    <i data-lucide="edit-2" class="w-4 h-4"></i>
                 </button>
             </td>
         </tr>
+    `}).join('');
+
+    container.innerHTML = `
+        <div class="overflow-x-auto rounded-lg">
+            <table class="min-w-full divide-y divide-gray-700">
+                <thead class="bg-gray-800">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Name</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">ID</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Dept</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Role</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Scope</th>
+                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-700 bg-gray-900">
+                    ${rows}
+                </tbody>
+            </table>
+        </div>
     `;
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 // ------------------------------------
-// 4. ADMIN ACTIONS
+// EDIT MODAL LOGIC
 // ------------------------------------
 
-async function deleteRequest(id, department) {
-    const token = localStorage.getItem('nixtz_service_auth_token');
-    if (!token) return;
+function openEditModal(staffAccessId, currentName, currentDept, currentRole) {
+    const modal = document.getElementById('edit-user-modal');
+    
+    // SAFEGUARD 3: Check if modal exists in HTML
+    if (!modal) {
+        alert("Error: Edit Modal HTML is missing from service_admin.html. Please update your HTML file.");
+        return;
+    }
 
-    const confirmationMessage = `Are you sure you want to PERMANENTLY delete the request from ${department}? This cannot be undone.`;
-    const modalResponse = await showCustomConfirm(confirmationMessage);
-    if (!modalResponse) return;
+    currentEditingUserId = staffAccessId;
+    
+    // Set Values
+    const nameInput = document.getElementById('edit-staff-name');
+    const deptInput = document.getElementById('edit-staff-department');
+    const roleInput = document.getElementById('edit-staff-role');
+    const passInput = document.getElementById('edit-staff-password');
+
+    if (nameInput) nameInput.value = currentName;
+    if (deptInput) deptInput.value = currentDept; 
+    if (roleInput) roleInput.value = currentRole;
+    if (passInput) passInput.value = ''; 
+
+    modal.style.display = 'flex';
+}
+window.openEditModal = openEditModal;
+
+function closeEditModal() {
+    const modal = document.getElementById('edit-user-modal');
+    if (modal) modal.style.display = 'none';
+    currentEditingUserId = null;
+}
+window.closeEditModal = closeEditModal;
+
+async function handleSaveUserEdit(e) {
+    e.preventDefault();
+    if (!currentEditingUserId) return;
+
+    const newName = document.getElementById('edit-staff-name').value.trim();
+    const newDept = document.getElementById('edit-staff-department').value;
+    const newRole = document.getElementById('edit-staff-role').value;
+    const newPassElement = document.getElementById('edit-staff-password');
+    const newPass = newPassElement ? newPassElement.value.trim() : '';
+
+    if (newPass && newPass.length < 8) {
+        return window.showMessage("New password must be at least 8 characters.", true);
+    }
+
+    const token = localStorage.getItem('nixtz_service_auth_token');
 
     try {
-        const response = await fetch(`${window.API_BASE_URL}/api/laundry/admin/${id}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` }
+        const response = await fetch(`${window.API_BASE_URL}/api/service/admin/update-staff/${currentEditingUserId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ 
+                sname: newName, 
+                sdepartment: newDept, 
+                srole: newRole,
+                spassword: newPass 
+            })
         });
 
         const result = await response.json();
 
         if (response.ok && result.success) {
-            window.showMessage(result.message, false);
-            fetchAnalytics();
-            fetchAllRequests();
+            window.showMessage("User updated successfully.", false);
+            closeEditModal();
+            fetchActiveServiceUsers(); 
         } else {
-            window.showMessage(result.message || 'Failed to delete request.', true);
+            window.showMessage(result.message || 'Failed to update user.', true);
         }
-
     } catch (error) {
-        console.error('Delete Error:', error);
-        window.showMessage('Network error during deletion.', true);
+        console.error('Update Error:', error);
+        window.showMessage('Network error updating user.', true);
     }
 }
-window.deleteRequest = deleteRequest;
+
+// ------------------------------------
+// CREATE STAFF LOGIC
+// ------------------------------------
 
 async function handleCreateStaffFormSubmit(e) {
     e.preventDefault();
-    
     const name = document.getElementById('staff-name').value.trim();
     const semployeeId = document.getElementById('staff-employee-id').value.trim();
     const password = document.getElementById('staff-password').value.trim();
@@ -253,12 +278,10 @@ async function handleCreateStaffFormSubmit(e) {
     const role = document.getElementById('staff-role').value;
 
     if (!name || !semployeeId || !password || !department || !role) {
-        window.showMessage("All fields are required.", true);
-        return;
+        return window.showMessage("All fields are required.", true);
     }
     if (password.length < 8) {
-         window.showMessage("Password must be at least 8 characters long.", true);
-         return;
+         return window.showMessage("Password must be at least 8 characters long.", true);
     }
 
     const payload = { 
@@ -274,65 +297,20 @@ async function handleCreateStaffFormSubmit(e) {
     try {
         const response = await fetch(`${window.API_BASE_URL}/api/service/admin/create-staff-v2`, { 
             method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify(payload)
         });
-
         const result = await response.json();
 
         if (response.ok && result.success) {
             window.showMessage(result.message, false);
             e.target.reset(); 
+            fetchActiveServiceUsers();
         } else {
             window.showMessage(result.message || 'Failed to create staff account.', true);
         }
-
     } catch (error) {
         console.error('Staff Creation Error:', error);
         window.showMessage('Network error.', true);
     }
-}
-
-function showCustomConfirm(message) {
-    return new Promise(resolve => {
-        let existingModal = document.getElementById('custom-confirm-modal');
-        if (existingModal) existingModal.remove();
-
-        const modalHtml = `
-            <div id="custom-confirm-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[10000]">
-                <div class="bg-nixtz-card p-6 rounded-xl shadow-2xl max-w-sm w-full border border-gray-700">
-                    <h3 class="text-lg font-bold text-white mb-4">Confirmation Required</h3>
-                    <p class="text-gray-300 mb-6">${message}</p>
-                    <div class="flex justify-end space-x-3">
-                        <button id="cancel-btn" class="px-4 py-2 text-sm font-semibold rounded-lg text-gray-400 border border-gray-600 hover:bg-gray-700 transition">
-                            Cancel
-                        </button>
-                        <button id="confirm-btn" class="px-4 py-2 text-sm font-semibold rounded-lg text-white bg-nixtz-secondary hover:bg-[#0da070] transition">
-                            Confirm
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        document.body.insertAdjacentHTML('beforeend', modalHtml);
-        
-        const cleanup = () => {
-            const modal = document.getElementById('custom-confirm-modal');
-            if (modal) modal.remove();
-        };
-
-        document.getElementById('confirm-btn').onclick = () => {
-            cleanup();
-            resolve(true);
-        };
-
-        document.getElementById('cancel-btn').onclick = () => {
-            cleanup();
-            resolve(false);
-        };
-    });
 }
