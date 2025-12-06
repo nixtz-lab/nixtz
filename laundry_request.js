@@ -5,6 +5,7 @@
 
 // --- 1. CONFIGURATION FIX ---
 if (typeof window.API_BASE_URL === 'undefined') {
+    // If your backend is live (Nginx configured), leave this empty:
     window.API_BASE_URL = ''; 
 }
 
@@ -59,7 +60,7 @@ function createLucideIcons() {
 function getStatusColor(status) {
     switch (status) {
         case 'Pending Pickup': return 'bg-status-pending text-nixtz-bg'; // Yellow
-        case 'Pending Delivery': return 'bg-blue-500 text-white';        // Blue (For Clean Orders)
+        case 'Pending Delivery': return 'bg-blue-500 text-white';        // Blue
         case 'Picked Up': return 'bg-status-pickedup text-white';
         case 'In Progress': return 'bg-status-progress text-white';
         case 'Ready for Delivery': return 'bg-status-ready text-nixtz-bg';
@@ -256,7 +257,7 @@ async function handleFormSubmit(e) {
 }
 
 // ------------------------------------
-// 8. HISTORY DISPLAY (FIXED ITEM QUANTITY)
+// 8. HISTORY DISPLAY (FIXED ITEM QUANTITY MERGE)
 // ------------------------------------
 function renderRequestCard(request) {
     // Determine visuals based on Request Type
@@ -268,11 +269,23 @@ function renderRequestCard(request) {
     // Border color based on type
     const borderColor = isSupply ? 'border-nixtz-secondary' : 'border-nixtz-primary';
 
-    // FIX: Ensure only one list item is created per entry
-    const itemsHtml = request.items.map(item => `
+    // FIX: Merge duplicated items in the array and sum the count (handles backend data corruption)
+    const uniqueItems = new Map();
+    if (request.items) {
+        request.items.forEach(item => {
+            // Key by Type and Details to ensure items with same name but different details are separate
+            const key = item.type + (item.details || '');
+            const existing = uniqueItems.get(key) || { count: 0, details: item.details || '' };
+            existing.count += item.count;
+            uniqueItems.set(key, existing);
+        });
+    }
+
+
+    const itemsHtml = Array.from(uniqueItems.entries()).map(([key, item]) => `
         <li class="text-xs text-gray-400 flex justify-between">
             <span>
-                <span class="font-bold text-white">${item.count}x</span> ${item.type}
+                <span class="font-bold text-white">${item.count}x</span> ${key.split('(')[0].trim()}
             </span>
             ${item.details ? `<span class="italic text-gray-500 text-[10px]">(${item.details})</span>` : ''}
         </li>
@@ -341,7 +354,7 @@ async function loadRequestHistory() {
             historyList.innerHTML = result.data.length > 0 
                 ? result.data.map(renderRequestCard).join('') 
                 : '<p class="text-gray-400 text-center py-8">You have no previous laundry requests.</p>';
-            createLucideIcons(); // Render icons for history items
+            createLucideIcons(); 
         } else {
             historyList.innerHTML = `<p class="text-red-400 text-center py-8">${result.message || 'Error loading history.'}</p>`;
         }

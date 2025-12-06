@@ -39,7 +39,7 @@ function createLucideIcons() {
 function getStatusColor(status) {
     switch (status) {
         case 'Pending Pickup': return 'bg-status-pending text-nixtz-bg';
-        case 'Pending Delivery': return 'bg-blue-600 text-white'; // <--- ADDED FIX
+        case 'Pending Delivery': return 'bg-blue-600 text-white'; // <--- FIX: Blue Badge for Delivery
         case 'Picked Up': return 'bg-status-pickedup text-white';
         case 'In Progress': return 'bg-status-progress text-white';
         case 'Ready for Delivery': return 'bg-status-ready text-nixtz-bg';
@@ -52,7 +52,7 @@ function getStatusColor(status) {
 function getNextStatus(currentStatus) {
     switch (currentStatus) {
         case 'Pending Pickup': return 'Picked Up';
-        case 'Pending Delivery': return 'In Progress'; // <--- NEW STEP
+        case 'Pending Delivery': return 'In Progress'; // <--- FIX: Supply orders start processing
         case 'Picked Up': return 'In Progress';
         case 'In Progress': return 'Ready for Delivery';
         case 'Ready for Delivery': return 'Completed';
