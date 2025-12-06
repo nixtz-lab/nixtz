@@ -34,6 +34,11 @@
             </div>
             
             <div class="flex items-center space-x-4">
+                
+                <a href="laundry_request.html" 
+                   class="bg-nixtz-secondary hover:bg-[#0da070] text-white font-semibold py-1.5 px-4 rounded-full shadow-lg transition duration-300 text-sm border border-gray-700">
+                    Go to Request Page
+                </a>
                 <div id="user-display-container" class="relative group" style="display: none;">
                     <button id="user-display-button" onclick="toggleUserDropdown()" class="flex items-center space-x-2 p-2 rounded-full bg-nixtz-card border border-gray-600 hover:bg-gray-700 transition duration-200">
                         <i data-lucide="user" class="w-5 h-5 text-nixtz-secondary"></i>
@@ -319,7 +324,7 @@
             const modal = document.getElementById('manage-options-modal');
             if (modal) modal.style.display = 'none';
         };
-        
+
         // NEW MODAL CLOSING FUNCTION (for Manage Item Types)
         window.closeItemManagementModal = () => {
             const modal = document.getElementById('manage-items-modal');

@@ -14,30 +14,36 @@ const itemsContainer = document.getElementById('items-container');
 // --- 2. MODE STATE MANAGEMENT ---
 let currentMode = 'supply'; // Changed default mode to 'supply'
 
-const ITEM_OPTIONS = {
-    pickup: [
-        "Uniforms (Bulk)", 
-        "Towels (Bulk)", 
-        "Bed Sheets (Bulk)", 
-        "Patient Gowns (Bulk)", 
-        "Other"
-    ],
-    supply: [
-        "Bed Sheet (Single)",
-        "Bed Sheet (Double)",
-        "Pillow Case",
-        "Bath Towel",
-        "Face Towel",
-        "Blanket",
-        "Patient Gown (Size S)",
-        "Patient Gown (Size M)",
-        "Patient Gown (Size L)",
-        "Patient Gown (Size XL)",
-        "Staff Scrub Top (Size M)",
-        "Staff Scrub Top (Size L)",
-        "Other"
-    ]
+// 🚨 CRITICAL CHANGE: This global variable will now hold the dynamic list
+// Initialize with an empty object structure, the data will be populated by fetchDynamicItemOptions()
+let ITEM_OPTIONS = {
+    pickup: [], 
+    supply: []
 };
+
+// Helper to fetch and update ITEM_OPTIONS
+async function fetchDynamicItemOptions() {
+    const token = localStorage.getItem('nixtz_service_auth_token');
+    if (!token) return;
+
+    try {
+        const response = await fetch(`${window.API_BASE_URL}/api/laundry/items/config`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+            // Overwrite the hardcoded list with data from the database
+            ITEM_OPTIONS.pickup = result.data.pickup || [];
+            ITEM_OPTIONS.supply = result.data.supply || [];
+        } else {
+            console.error("Failed to fetch dynamic item list:", result.message);
+        }
+    } catch (error) {
+        console.error("Network error fetching item list:", error);
+    }
+}
+
 
 document.addEventListener('DOMContentLoaded', () => {
     createLucideIcons();
@@ -46,8 +52,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initLaundryRequestPage(); 
     
     document.addEventListener('click', closeDropdownOnOutsideClick);
-    
-    // setRequestMode('supply') is handled inside initLaundryRequestPage() now.
 });
 
 // Helper function to create Lucide icons safely
@@ -145,6 +149,7 @@ function createItemInput() {
     itemDiv.className = 'flex flex-col sm:flex-row gap-2 border border-gray-700 p-3 rounded-lg bg-gray-800/30';
     
     // Generate Dropdown Options dynamically based on currentMode
+    // Uses the dynamically fetched list (ITEM_OPTIONS)
     const optionsHtml = ITEM_OPTIONS[currentMode].map(opt => `<option value="${opt}">${opt}</option>`).join('');
 
     itemDiv.innerHTML = `
@@ -198,7 +203,6 @@ async function handleFormSubmit(e) {
     const items = [];
     const itemElements = itemsContainer.querySelectorAll('[id^="item-"]'); // Select all item containers
 
-    // Debug logging removed to clean up console, but logic remains the same
     itemElements.forEach((itemDiv) => {
         const idPrefixMatch = itemDiv.id.match(/item-(\d+)/);
         if (!idPrefixMatch) return;
@@ -386,11 +390,14 @@ async function loadRequestHistory() {
 // ------------------------------------
 // 9. INITIALIZATION
 // ------------------------------------
-function initLaundryRequestPage() {
+async function initLaundryRequestPage() {
     if (!window.getServiceAuthStatus()) {
         window.checkServiceAccessAndRedirect('laundry_request.html');
         return; 
     }
+    
+    // CRITICAL: Fetch dynamic item options before setting up the form UI
+    await fetchDynamicItemOptions(); // Wait for data load
 
     const form = document.getElementById('laundry-request-form');
     if (form) form.addEventListener('submit', handleFormSubmit);
