@@ -1,6 +1,6 @@
 /**
  * staff_roster.js
- * FINAL STABLE VERSION. Fixes: Specific Date Requests & Backend Logic Sync.
+ * FINAL STABLE VERSION. Fixes: Moved Profile Fields to Update Modal, Added DOB/StartDate.
  */
 
 // Global constants and API endpoints
@@ -140,25 +140,22 @@ function addStaffRow(initialData = {}) {
                 let displayTime = "";
                 let isManagerOrSup = (initialData.position === 'Manager' || initialData.position === 'Supervisor');
 
-                // If looking for "Day Off", handle it simply
-                if (rawRole.includes(DAY_OFF_MARKER) || rawRole.includes("Off") || rawRole.includes("หยุด")) {
-                    displayVal = DAY_OFF_MARKER;
+                if (rawRole.includes(DAY_OFF_MARKER) || rawRole.includes("Off") || rawRole.includes("หยุด") || rawRole.includes("Leave") || rawRole.includes("Sick") || rawRole.includes("Personal") || rawRole.includes("Holiday")) {
+                    if (rawRole.includes("Sick")) displayVal = "Sick";
+                    else if (rawRole.includes("Personal")) displayVal = "Personal";
+                    else if (rawRole.includes("Holiday")) displayVal = "Holiday";
+                    else displayVal = DAY_OFF_MARKER;
                 } else if (shiftInfo.shiftId) {
-                    // It's a working shift
                     const config = Object.values(CORE_SHIFTS).find(c => c.name === rawRole) || CORE_SHIFTS[shiftInfo.shiftId];
                     let shiftIdToDisplay = shiftInfo.shiftId; 
 
-                    // If we found a config, use its properties
                     if (config) {
                         displayTime = config.time || "";
                         shiftIdToDisplay = config.baseId || shiftInfo.shiftId;
                         
-                        // CUSTOM FORMATTING RULES
                         if (isManagerOrSup) {
-                            // Manager/Supervisor: Show ONLY Shift ID (e.g. "1")
                             displayVal = `${shiftIdToDisplay}`;
                         } else {
-                            // Normal Staff: Show "ShiftID Role" (e.g. "2 C5")
                             if (rawRole !== config.name) {
                                 displayVal = `${shiftIdToDisplay} ${rawRole}`;
                             } else {
@@ -168,22 +165,18 @@ function addStaffRow(initialData = {}) {
                     }
                 }
 
-                // Tooltip text (always shows full info)
-                const fullText = displayTime ? `${displayVal} (${displayTime})` : displayVal;
-
-                // Color Logic
                 let cellClass = "text-white";
-                if (displayVal === DAY_OFF_MARKER) {
-                    cellClass = "text-red-400 font-medium"; // Red for off
+                if (displayVal === DAY_OFF_MARKER || displayVal === "Sick" || displayVal === "Personal" || displayVal === "Holiday") {
+                    cellClass = "text-red-400 font-medium"; 
                 } else if (initialData.position === 'Manager') {
                     cellClass = "text-blue-200 font-bold";
                 } else if (initialData.position === 'Supervisor') {
                     cellClass = "text-green-200 font-bold";
-                } else if (displayVal.includes("M") || displayVal.includes("1")) { // Morning or ID 1
+                } else if (displayVal.includes("M") || displayVal.includes("1")) { 
                     cellClass = "text-yellow-200";
-                } else if (displayVal.includes("A") || displayVal.includes("2")) { // Afternoon or ID 2
+                } else if (displayVal.includes("A") || displayVal.includes("2")) { 
                     cellClass = "text-blue-200";
-                } else if (displayVal.includes("N") || displayVal.includes("3")) { // Night or ID 3
+                } else if (displayVal.includes("N") || displayVal.includes("3")) { 
                     cellClass = "text-purple-200";
                 }
                 
@@ -416,10 +409,20 @@ window.openStaffRequestModal = async function() {
     const shiftSelect = document.getElementById('request-configured-shift');
     if (shiftSelect) {
         shiftSelect.innerHTML = '<option value="">-- Select Assigned Shift --</option>';
-        const offOpt = document.createElement('option');
-        offOpt.value = "STATUS_LEAVE";
-        offOpt.text = "Status: Day Off / Leave";
-        shiftSelect.add(offOpt);
+        
+        const leaveTypes = [
+            { val: "STATUS_LEAVE|Off", text: "Status: Day Off / Leave" },
+            { val: "STATUS_SICK|Sick", text: "Status: Sick Leave" },
+            { val: "STATUS_PERSONAL|Personal", text: "Status: Personal Leave" },
+            { val: "STATUS_HOLIDAY|Holiday", text: "Status: Public Holiday" }
+        ];
+
+        leaveTypes.forEach(lt => {
+            const opt = document.createElement('option');
+            opt.value = lt.val;
+            opt.text = lt.text;
+            shiftSelect.add(opt);
+        });
 
         Object.keys(CORE_SHIFTS).forEach(id => {
             const s = CORE_SHIFTS[id];
@@ -442,6 +445,18 @@ window.openStaffRequestModal = async function() {
             opt.setAttribute('data-mongo-id', s._id); 
             select.add(opt);
         });
+        
+        // --- NEW: Add Change Listener to populate moved fields ---
+        select.onchange = function() {
+            const selectedId = this.value;
+            const staff = staffCache.find(s => s.employeeId === selectedId);
+            if(staff) {
+                const prefSelect = document.getElementById('request-profile-pref');
+                const dayOffSelect = document.getElementById('request-profile-dayoff');
+                if(prefSelect) prefSelect.value = staff.shiftPreference || 'Morning';
+                if(dayOffSelect) dayOffSelect.value = staff.fixedDayOff || 'None';
+            }
+        };
     }
     
     if(window.toggleRequestFields) window.toggleRequestFields('specific_day_duty'); 
@@ -451,10 +466,17 @@ window.toggleRequestFields = function(val) {
     document.getElementById('specific-assignment-fields').classList.add('hidden');
     document.getElementById('shift-pref-fields').classList.add('hidden');
     document.getElementById('none-clear-message').classList.add('hidden');
+    document.getElementById('profile-settings-fields').classList.add('hidden'); // NEW
     
-    if (val === 'specific_day_duty') document.getElementById('specific-assignment-fields').classList.remove('hidden');
-    else if (val === 'weekly_shift_pref') document.getElementById('shift-pref-fields').classList.remove('hidden');
-    else document.getElementById('none-clear-message').classList.remove('hidden');
+    if (val === 'specific_day_duty') {
+        document.getElementById('specific-assignment-fields').classList.remove('hidden');
+    } else if (val === 'weekly_shift_pref') {
+        document.getElementById('shift-pref-fields').classList.remove('hidden');
+    } else if (val === 'update_profile_settings') {
+        document.getElementById('profile-settings-fields').classList.remove('hidden'); // NEW
+    } else {
+        document.getElementById('none-clear-message').classList.remove('hidden');
+    }
 }
 
 window.showAddStaffModal = () => {
@@ -526,8 +548,10 @@ window.openEditProfileModal = (id) => {
     document.getElementById('edit-staff-name').value = s.name;
     document.getElementById('edit-staff-id').value = s.employeeId;
     document.getElementById('edit-staff-position').value = s.position;
-    document.getElementById('edit-staff-shift-preference').value = s.shiftPreference;
-    document.getElementById('edit-staff-fixed-dayoff').value = s.fixedDayOff;
+    
+    // NEW: Load DOB and Start Date
+    if(s.dob) document.getElementById('edit-staff-dob').value = s.dob.split('T')[0];
+    if(s.startDate) document.getElementById('edit-staff-start-date').value = s.startDate.split('T')[0];
 
     const modal = document.getElementById('single-staff-modal');
     if(modal) {
@@ -586,7 +610,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 2. STAFF REQUEST (UPDATE) SAVE
+    // 2. STAFF REQUEST / UPDATE SAVE
     const requestForm = document.getElementById('staff-request-form');
     if(requestForm) {
         requestForm.addEventListener('submit', async (e) => {
@@ -601,29 +625,48 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const type = document.getElementById('request-type').value;
-            let reqString = "None"; 
             const weekStart = document.getElementById('week-start-date').value;
+            
+            let updatePayload = {};
 
-            if (type === 'specific_day_duty') {
-                const startDate = document.getElementById('request-start-date').value;
-                const endDate = document.getElementById('request-end-date').value;
-                const shiftValue = document.getElementById('request-configured-shift').value;
-                
-                let rShift = "STATUS_LEAVE";
-                let rRole = "Leave";
-
-                if (shiftValue && shiftValue !== "STATUS_LEAVE") {
-                    const parts = shiftValue.split('|');
-                    rShift = parts[0]; 
-                    rRole = parts[1];  
-                }
-                
-                // Format: YYYY-MM-DD:Start|End:ID:Role
-                reqString = `${weekStart}:${startDate}|${endDate}:${rShift}:${rRole}`;
+            // --- TYPE 1: Update Permanent Settings ---
+            if (type === 'update_profile_settings') {
+                updatePayload = {
+                    name: staffMember.name, // required by some backends
+                    position: staffMember.position,
+                    employeeId: staffMember.employeeId,
+                    // UPDATING FIELDS
+                    shiftPreference: document.getElementById('request-profile-pref').value,
+                    fixedDayOff: document.getElementById('request-profile-dayoff').value
+                };
             } 
-            else if (type === 'weekly_shift_pref') {
-                const newShift = document.getElementById('request-new-shift').value;
-                reqString = `${weekStart}:${newShift}`;
+            // --- TYPE 2: Shift Request (Temporary) ---
+            else {
+                let reqString = "None"; 
+                if (type === 'specific_day_duty') {
+                    const startDate = document.getElementById('request-start-date').value;
+                    const endDate = document.getElementById('request-end-date').value;
+                    const shiftValue = document.getElementById('request-configured-shift').value;
+                    let rShift = "STATUS_LEAVE";
+                    let rRole = "Leave";
+                    if (shiftValue) {
+                        const parts = shiftValue.split('|');
+                        rShift = parts[0]; 
+                        rRole = parts[1] || "Leave";  
+                    }
+                    reqString = `${weekStart}:${startDate}|${endDate}:${rShift}:${rRole}`;
+                } 
+                else if (type === 'weekly_shift_pref') {
+                    const newShift = document.getElementById('request-new-shift').value;
+                    reqString = `${weekStart}:${newShift}`;
+                }
+
+                updatePayload = { 
+                    name: staffMember.name, 
+                    position: staffMember.position, 
+                    employeeId: staffMember.employeeId,
+                    nextWeekHolidayRequest: reqString 
+                };
             }
 
             try {
@@ -633,24 +676,20 @@ document.addEventListener('DOMContentLoaded', () => {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${localStorage.getItem(AUTH_TOKEN_KEY)}`
                     },
-                    body: JSON.stringify({ 
-                        name: staffMember.name, 
-                        position: staffMember.position, 
-                        employeeId: staffMember.employeeId,
-                        nextWeekHolidayRequest: reqString 
-                    })
+                    body: JSON.stringify(updatePayload)
                 });
                 
                 const json = await res.json();
                 if(res.ok && json.success) {
-                    alert("Request saved! Please REGENERATE the roster to see changes.");
+                    alert("Update saved successfully! If you changed roster settings, click 'Regenerate Roster'.");
                     document.getElementById('staff-request-modal').classList.add('hidden');
+                    fetchStaffProfiles(); // Refresh cache
                 } else {
                     alert("Failed to save: " + (json.message || "Unknown error"));
                 }
             } catch(err) {
                 console.error(err);
-                alert("Network error saving request.");
+                alert("Network error saving update.");
             }
         });
     }
@@ -663,12 +702,18 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const dbId = document.getElementById('edit-profile-id').value;
             
+            // NOTE: We do NOT send shiftPreference/fixedDayOff here anymore as they are removed from this form.
+            // We assume backend does a partial update or we just send what we have.
+            // To be safe, we fetch the existing staff to merge, OR we rely on backend patch behavior.
+            // Here we send the keys we govern in this form.
+            
             const updateData = {
                 name: document.getElementById('edit-staff-name').value,
                 employeeId: document.getElementById('edit-staff-id').value,
                 position: document.getElementById('edit-staff-position').value,
-                shiftPreference: document.getElementById('edit-staff-shift-preference').value,
-                fixedDayOff: document.getElementById('edit-staff-fixed-dayoff').value
+                // NEW FIELDS
+                dob: document.getElementById('edit-staff-dob').value,
+                startDate: document.getElementById('edit-staff-start-date').value
             };
 
             try {
@@ -683,7 +728,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 const json = await res.json();
                 if(res.ok && json.success) {
-                    alert("Profile updated successfully! \n\nIMPORTANT: Click 'Regenerate Roster' to apply these changes to the current schedule.");
+                    alert("Profile updated successfully!");
                     document.getElementById('single-staff-modal').classList.add('hidden');
                     fetchStaffProfiles(); 
                 } else {
@@ -707,7 +752,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 employeeId: document.getElementById('new-staff-id').value,
                 position: document.getElementById('new-staff-position').value,
                 shiftPreference: document.getElementById('new-staff-shift-preference').value,
-                fixedDayOff: document.getElementById('new-staff-fixed-dayoff').value
+                fixedDayOff: document.getElementById('new-staff-fixed-dayoff').value,
+                // NEW FIELDS
+                dob: document.getElementById('new-staff-dob').value,
+                startDate: document.getElementById('new-staff-start-date').value
             };
 
             try {

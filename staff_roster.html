@@ -82,10 +82,9 @@ tailwind.config = {
                 </a>
                 
                 <nav id="desktop-nav-links" class="hidden md:flex space-x-3 text-sm">
-                    <a href="staff_roster.html" class="text-nixtz-secondary font-bold transition duration-300">Staff Roster</a>
-                    <a href="staff_report.html" class="text-gray-400 hover:text-nixtz-primary transition duration-300">Leave Report</a>
-                    <a href="asset_tracker.html" class="text-gray-400 hover:text-nixtz-primary transition duration-300">Assets</a>
-                    <a href="yearly_budget_planning.html" class="text-gray-400 hover:text-nixtz-primary transition duration-300">Budget Planning</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('staff_roster.html')" class="text-gray-400 hover:text-nixtz-primary transition duration-300">Staff Roster</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('asset_tracker.html')" class="text-gray-400 hover:text-nixtz-primary transition duration-300">Assets</a>
+                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('yearly_budget_planning.html')" class="text-gray-400 hover:text-nixtz-primary transition duration-300">Budget Planning</a>
                 </nav>
                 
                 <div id="auth-buttons-container" class="flex items-center space-x-4 sm:space-x-6">
@@ -251,6 +250,20 @@ tailwind.config = {
                     <option value="Manager">Manager</option>
                 </select>
             </div>
+            
+            <div class="flex space-x-4">
+                <div class="w-1/2">
+                    <label for="new-staff-dob" class="block text-sm font-medium text-gray-400 mb-1">Date of Birth</label>
+                    <input type="date" id="new-staff-dob"
+                           class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition duration-200">
+                </div>
+                <div class="w-1/2">
+                    <label for="new-staff-start-date" class="block text-sm font-medium text-gray-400 mb-1">Start Date</label>
+                    <input type="date" id="new-staff-start-date"
+                           class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition duration-200">
+                </div>
+            </div>
+
             <div>
                 <label for="new-staff-shift-preference" class="block text-sm font-medium text-gray-400 mb-1">Default Shift Preference</label>
                 <select id="new-staff-shift-preference"
@@ -325,27 +338,18 @@ tailwind.config = {
                     <option value="Manager">Manager</option>
                 </select>
             </div>
-            <div>
-                <label for="edit-staff-shift-preference" class="block text-sm font-medium text-gray-400 mb-1">Default Shift Preference</label>
-                <select id="edit-staff-shift-preference" class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition">
-                    <option value="Morning">Morning</option>
-                    <option value="Afternoon">Afternoon</option>
-                    <option value="Night">Night</option>
-                </select>
+            
+            <div class="flex space-x-4">
+                <div class="w-1/2">
+                    <label for="edit-staff-dob" class="block text-sm font-medium text-gray-400 mb-1">Date of Birth</label>
+                    <input type="date" id="edit-staff-dob" class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition">
+                </div>
+                <div class="w-1/2">
+                    <label for="edit-staff-start-date" class="block text-sm font-medium text-gray-400 mb-1">Start Date</label>
+                    <input type="date" id="edit-staff-start-date" class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition">
+                </div>
             </div>
-            <div>
-                <label for="edit-staff-fixed-dayoff" class="block text-sm font-medium text-gray-400 mb-1">Fixed Day Off (if any)</label>
-                <select id="edit-staff-fixed-dayoff" class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition">
-                    <option value="None">None (Auto-Rotate)</option>
-                    <option value="Mon">Monday</option>
-                    <option value="Tue">Tuesday</option>
-                    <option value="Wed">Wednesday</option>
-                    <option value="Thu">Thursday</option>
-                    <option value="Fri">Friday</option>
-                    <option value="Sat">Saturday</option>
-                    <option value="Sun">Sunday</option>
-                </select>
-            </div>
+
              <button type="submit" class="w-full p-3 bg-nixtz-secondary text-white rounded-lg font-bold shadow-lg hover:bg-[#0da070] transition duration-300">
                 Update Profile
             </button>
@@ -406,7 +410,7 @@ tailwind.config = {
         </h2>
         <div id="request-message-box" class="p-3 rounded-lg text-white mb-3 hidden"></div>
         <form id="staff-request-form" class="space-y-4">
-            <div>
+            <div id="target-week-div">
                 <label class="block text-sm font-medium text-gray-400 mb-1">Target Week (Starting Mon)</label>
                 <input type="date" id="request-week-start"
                        class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition duration-200">
@@ -418,15 +422,18 @@ tailwind.config = {
                     <option value="">-- Select Staff --</option>
                 </select>
             </div>
+            
             <div>
                 <label for="request-type" class="block text-sm font-medium text-gray-400 mb-1">Update Type</label>
                 <select id="request-type" onchange="toggleRequestFields(this.value)"
                         class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition duration-200">
                     <option value="specific_day_duty">Assign Specific Shift (Date Range)</option>
                     <option value="none_clear">Clear Request</option>
-                    <option value="weekly_shift_pref">Change Weekly Preference</option>
+                    <option value="weekly_shift_pref">Change Weekly Preference (Temporary)</option>
+                    <option value="update_profile_settings">Update Profile Settings (Permanent)</option>
                 </select>
             </div>
+
             <div id="specific-assignment-fields" class="space-y-4">
                 <div class="flex space-x-4">
                     <div class="w-1/2">
@@ -447,6 +454,7 @@ tailwind.config = {
                         </select>
                 </div>
             </div>
+
             <div id="shift-pref-fields" class="space-y-4 hidden">
                 <p class="text-xs text-gray-500">The shift selected here will temporarily override the employee's **Default Shift Preference** for the selected week only.</p>
                 <div>
@@ -459,11 +467,40 @@ tailwind.config = {
                     </select>
                 </div>
             </div>
+
+            <div id="profile-settings-fields" class="space-y-4 hidden">
+                 <p class="text-xs text-gray-400 border-l-2 border-nixtz-primary pl-2">
+                    Changes here will permanently update the staff member's main profile.
+                </p>
+                <div>
+                    <label for="request-profile-pref" class="block text-sm font-medium text-gray-400 mb-1">Default Shift Preference</label>
+                    <select id="request-profile-pref" class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition">
+                        <option value="Morning">Morning</option>
+                        <option value="Afternoon">Afternoon</option>
+                        <option value="Night">Night</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="request-profile-dayoff" class="block text-sm font-medium text-gray-400 mb-1">Fixed Day Off (if any)</label>
+                    <select id="request-profile-dayoff" class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition">
+                        <option value="None">None (Auto-Rotate)</option>
+                        <option value="Mon">Monday</option>
+                        <option value="Tue">Tuesday</option>
+                        <option value="Wed">Wednesday</option>
+                        <option value="Thu">Thursday</option>
+                        <option value="Fri">Friday</option>
+                        <option value="Sat">Saturday</option>
+                        <option value="Sun">Sunday</option>
+                    </select>
+                </div>
+            </div>
+
             <div id="none-clear-message" class="space-y-4 hidden">
                 <p class="text-sm text-yellow-400 font-semibold">
                     This action will permanently clear the `nextWeekHolidayRequest` field on the staff profile.
                 </p>
             </div>
+            
             <button type="submit" id="submit-request-btn"
                     class="w-full p-3 bg-nixtz-secondary text-white rounded-lg font-bold shadow-lg hover:bg-[#0da070] transition duration-300 transform hover:scale-[1.01] disabled:opacity-50">
                 Save Update

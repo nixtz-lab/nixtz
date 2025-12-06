@@ -11,35 +11,46 @@ const DAY_OFF_MARKER = 'หยุด';
 
 /**
  * Helper: Parse the specific request for a staff member for the current week.
+ * Updated to handle Date Ranges (Start|End) from the frontend.
  */
 function getStaffRequest(profile, weekStartString) {
     if (!profile.nextWeekHolidayRequest || profile.nextWeekHolidayRequest === 'None') return null;
     
     const parts = profile.nextWeekHolidayRequest.split(':');
     
-    // Ensure request is for THIS week (Compare Week Start Dates)
+    // Ensure request is for THIS week based on the Week Start Date
     if (parts[0] !== weekStartString) return null;
 
-    // 1. Weekly Shift Preference Change
-    // Format: "2025-12-01:Night"
+    // 1. Weekly Shift Preference Change (Format: WeekStart:ShiftName)
     if (parts.length === 2 && ['Morning', 'Afternoon', 'Night'].includes(parts[1])) {
         return { type: 'ShiftChange', shift: parts[1] };
     }
-
-    // 2. Specific Day Off / Duty (Date Range)
-    // Format: "2025-12-01:2025-12-05|2025-12-06:ShiftID:Role"
+    
+    // 2. Specific Day Off / Duty (Format: WeekStart : StartDate|EndDate : ShiftID : DutyRole)
     if (parts.length === 4) {
-        const dateRange = parts[1].split('|'); // Split Start|End
+        const dateSegment = parts[1];
+        let startDate, endDate;
+        
+        // Handle Range or Single Date
+        if (dateSegment.includes('|')) {
+            const dates = dateSegment.split('|');
+            startDate = dates[0];
+            endDate = dates[1];
+        } else {
+            startDate = dateSegment;
+            endDate = dateSegment;
+        }
+
         return { 
             type: 'Specific', 
-            startDate: dateRange[0], 
-            endDate: dateRange[1], 
+            startDate: startDate, 
+            endDate: endDate, 
             shiftId: parts[2], 
             dutyRole: parts[3] 
         };
     }
 
-    // 3. Simple Leave (Legacy/Fallback)
+    // 3. Leave (Legacy Format: WeekStart:DayName)
     if (parts.length === 2) {
         return { type: 'Leave', day: parts[1] };
     }
@@ -48,51 +59,51 @@ function getStaffRequest(profile, weekStartString) {
 
 /**
  * Core Function: Decide the shift for ONE staff member on ONE specific day.
+ * Uses currentDateString to match against specific date requests.
  */
-function calculateDailyShift(staff, dayName, currentDateString, currentCounts, request) {
+function calculateDailyShift(staff, day, dayIndex, currentDateString, currentCounts, request) {
     const fixedDayOff = (staff.fixedDayOff || 'None').trim();
     const position = staff.position;
     
-    // --- PRIORITY 1: Specific Requests (Date Range Check) ---
+    // --- PRIORITY 1: Specific Requests & Leave ---
     if (request) {
-        // Handle Specific Date Range Request
+        // Handle Date Range Requests
         if (request.type === 'Specific') {
-            // Check if the current loop date falls within the requested range
+            // Check if the current column's date falls within the requested range
             if (currentDateString >= request.startDate && currentDateString <= request.endDate) {
                 
-                // If the request is for Leave/Day Off
-                if (request.shiftId === 'STATUS_LEAVE') {
+                // Specific Leave Request (Now handles SICK, PERSONAL, HOLIDAY, etc.)
+                // If status starts with "STATUS_", we treat it as a special leave type.
+                if (request.shiftId.startsWith('STATUS_')) {
+                    // Use the user-provided "dutyRole" text (e.g. "Sick", "Personal")
                     return { shiftId: null, jobRole: request.dutyRole, timeRange: DAY_OFF_MARKER };
                 }
 
-                // If the request is for a specific working shift
+                // Specific Shift Assignment
                 const shift = SHIFTS[request.shiftId];
-                if (shift || request.shiftId) {
-                    // Try to find shift details, fallback to generic if ID not in standard map
-                    const time = shift ? shift.time : ""; 
-                    
-                    // Increment counts based on ID (rough mapping)
+                if (shift) {
                     if (request.shiftId == 1) currentCounts.M++;
-                    else if (request.shiftId == 2) currentCounts.A++;
-                    else if (request.shiftId == 3) currentCounts.N++;
-                    
-                    return { shiftId: request.shiftId, jobRole: request.dutyRole, timeRange: time };
+                    if (request.shiftId == 2) currentCounts.A++;
+                    if (request.shiftId == 3) currentCounts.N++;
+                    // Use the requested Role (e.g. "M3") but keep standard time for backend calculation
+                    return { shiftId: request.shiftId, jobRole: request.dutyRole, timeRange: shift.time };
                 }
             }
         }
-        
-        // Handle Legacy Leave (Single Day Name match)
-        if (request.type === 'Leave' && (request.day === dayName || request.day === 'Full Week')) {
+
+        // Handle Legacy/Day-Name Requests
+        if (request.type === 'Leave' && (request.day === day || request.day === 'Full Week')) {
             return { shiftId: null, jobRole: DAY_OFF_MARKER, timeRange: DAY_OFF_MARKER };
         }
     }
 
     // --- PRIORITY 2: Fixed Day Off ---
-    if (fixedDayOff !== 'None' && fixedDayOff === dayName) {
+    // Matches against Day Name (e.g., "Fri")
+    if (fixedDayOff !== 'None' && fixedDayOff === day) {
         return { shiftId: null, jobRole: 'Day Off (Fixed)', timeRange: DAY_OFF_MARKER };
     }
 
-    // --- PRIORITY 3: Role-Based Assignment ---
+    // --- PRIORITY 3: Role-Based Assignment (Automatic) ---
     
     // 3a. Manager (Morning Default)
     if (position === 'Manager') {
@@ -141,15 +152,13 @@ function calculateDailyShift(staff, dayName, currentDateString, currentCounts, r
         return { shiftId: 2, jobRole: 'C5', timeRange: SHIFTS[2].time };
     }
 
-    // Fallback
+    // Fallback if full
     return { shiftId: null, jobRole: DAY_OFF_MARKER, timeRange: DAY_OFF_MARKER };
 }
 
-
 function generateWeeklyRoster(staffProfiles, weekStartDate) {
-    // Ensure weekStartDate is a Date object
-    const startDateObj = new Date(weekStartDate);
-    const weekStartString = startDateObj.toISOString().split('T')[0];
+    // Ensure consistent string format for comparison
+    const weekStartString = weekStartDate.toISOString().split('T')[0];
     
     // SORTING: Manager -> Supervisor -> Normal Staff -> Delivery
     const sortedStaff = [...staffProfiles].sort((a, b) => {
@@ -157,6 +166,7 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
         return (ranks[a.position] || 5) - (ranks[b.position] || 5);
     });
 
+    // Structure to hold the result
     const weeklyData = sortedStaff.map(s => ({
         employeeName: s.name,
         employeeId: s.employeeId,
@@ -164,28 +174,29 @@ function generateWeeklyRoster(staffProfiles, weekStartDate) {
         weeklySchedule: [] 
     }));
 
-    // Iterate Day by Day (Mon -> Sun)
-    DAYS_FULL.forEach((dayName, dayIndex) => {
+    // Iterate Day by Day (Columns)
+    DAYS_FULL.forEach((day, dayIndex) => {
         
-        // CALCULATE THE EXACT DATE FOR THIS COLUMN (Mon, Tue, etc.)
-        // This fixes the issue where the code didn't know the date of "Tuesday"
-        const currentLoopDate = new Date(startDateObj);
-        currentLoopDate.setDate(startDateObj.getDate() + dayIndex);
-        const currentDateString = currentLoopDate.toISOString().split('T')[0];
+        // 1. Calculate the specific date for this column (e.g., "2025-12-05")
+        // We clone the weekStartDate and add the day index
+        const d = new Date(weekStartDate);
+        d.setUTCDate(d.getUTCDate() + dayIndex); 
+        const currentDateString = d.toISOString().split('T')[0];
 
-        // Reset counts for THIS DAY only
+        // 2. Reset counts for THIS DAY only
         let currentCounts = { M: 0, A: 0, N: 0 };
 
-        // Iterate Staff by Staff for THIS DAY
+        // 3. Iterate Staff by Staff for THIS DAY
         weeklyData.forEach((rosterEntry, staffIndex) => {
             const profile = sortedStaff[staffIndex];
             const request = getStaffRequest(profile, weekStartString);
             
-            // Pass the specific date string (currentDateString) to the calculator
-            const shiftAssignment = calculateDailyShift(profile, dayName, currentDateString, currentCounts, request);
+            // Calculate the single cell, passing the actual Date String for comparison
+            const shiftAssignment = calculateDailyShift(profile, day, dayIndex, currentDateString, currentCounts, request);
             
+            // Push to that staff's schedule
             rosterEntry.weeklySchedule.push({
-                dayOfWeek: dayName,
+                dayOfWeek: day,
                 shifts: [shiftAssignment]
             });
         });

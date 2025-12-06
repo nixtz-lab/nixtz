@@ -167,7 +167,13 @@ const LaundryRequestSchema = new mongoose.Schema({
     notes: { type: String, trim: true },
     items: [LaundryItemSchema],
     requestedAt: { type: Date, default: Date.now },
-    status: { type: String, default: 'Pending Pickup', enum: ['Pending Pickup', 'Picked Up', 'In Progress', 'Ready for Delivery', 'Completed', 'Cancelled'] },
+    // --- NEW FIELD: Request Type ---
+    requestType: { 
+        type: String, 
+        default: 'pickup', 
+        enum: ['pickup', 'supply'] // 'pickup' = Dirty/Soiled, 'supply' = Clean/Stock
+    },
+    status: { type: String, default: 'Pending Pickup',  enum: ['Pending Pickup', 'Pending Delivery', 'Picked Up', 'In Progress', 'Ready for Delivery', 'Completed', 'Cancelled'] },
     processedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'ServiceUser', required: false } // <-- CRITICAL: ProcessedBy links to ServiceUser
 });
 const LaundryRequest = mongoose.model('LaundryRequest', LaundryRequestSchema);

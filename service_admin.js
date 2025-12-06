@@ -1,40 +1,49 @@
 /**
  * service_admin.js
+ * Handles the logic for the dedicated Service Management Admin Panel.
  */
 
 if (typeof window.API_BASE_URL === 'undefined') {
     window.API_BASE_URL = ''; 
 }
 
-let currentEditingUserId = null;
+let currentEditingUserId = null; // Track which user is being edited
 
 document.addEventListener('DOMContentLoaded', () => {
+    // 1. Auth Check
     if (!window.getServiceAuthStatus()) {
         window.checkServiceAccessAndRedirect('service_admin.html');
         return; 
     }
 
+    // 2. Initialize Icons
     if (typeof lucide !== 'undefined') lucide.createIcons();
     
+    // 3. Attach Form Listeners
     const createStaffForm = document.getElementById('create-staff-form');
     if (createStaffForm) {
         createStaffForm.addEventListener('submit', handleCreateStaffFormSubmit);
     }
 
-    // Attach listener for the Edit User Modal Form
     const editForm = document.getElementById('edit-staff-form');
     if (editForm) {
         editForm.addEventListener('submit', handleSaveUserEdit);
     }
 
+    // 4. Global UI Listeners
     document.addEventListener('click', closeDropdownOnOutsideClick);
     
     if (typeof window.updateServiceBanner === 'function') {
         window.updateServiceBanner();
     }
 
+    // 5. Initial Data Load
     fetchActiveServiceUsers();
 });
+
+// ------------------------------------
+// UI LOGIC
+// ------------------------------------
 
 function toggleUserDropdown() {
     const dropdown = document.getElementById('user-dropdown');
@@ -70,6 +79,10 @@ function manageDepartments() {
     }
 }
 window.manageDepartments = manageDepartments;
+
+// ------------------------------------
+// DATA FETCHING & RENDERING
+// ------------------------------------
 
 async function fetchActiveServiceUsers() {
     const container = document.getElementById('active-users-list');
@@ -107,9 +120,10 @@ function renderUserList(users) {
     if (!container) return;
 
     const rows = users.map(user => {
+        // SAFEGUARD: Check if suser exists (in case of orphaned data)
         const role = user.suser ? user.suser.srole : 'unknown';
         
-        // --- FIX: Map Raw Codes to Readable Names ---
+        // Map Codes to Readable Names
         const roleNames = {
             'admin': 'Service Admin',
             'standard': 'Laundry Staff',
@@ -124,7 +138,7 @@ function renderUserList(users) {
         if (role === 'request_only') roleColor = 'bg-blue-600 text-white';
         if (role === 'standard') roleColor = 'bg-nixtz-primary text-white';
 
-        // Escaping data
+        // Escaping data for onclick safety
         const safeName = user.sname.replace(/'/g, "\\'");
         const safeDept = user.sdepartment.replace(/'/g, "\\'");
         
@@ -170,14 +184,20 @@ function renderUserList(users) {
     if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
-// --- EDIT MODAL LOGIC ---
+// ------------------------------------
+// EDIT MODAL LOGIC
+// ------------------------------------
 
 function openEditModal(staffAccessId, currentName, currentDept, currentRole) {
     currentEditingUserId = staffAccessId;
     
+    // Pre-fill existing data
     document.getElementById('edit-staff-name').value = currentName;
     document.getElementById('edit-staff-department').value = currentDept; 
     document.getElementById('edit-staff-role').value = currentRole;
+    
+    // Clear password field
+    document.getElementById('edit-staff-password').value = ''; 
 
     document.getElementById('edit-user-modal').style.display = 'flex';
 }
@@ -196,6 +216,11 @@ async function handleSaveUserEdit(e) {
     const newName = document.getElementById('edit-staff-name').value.trim();
     const newDept = document.getElementById('edit-staff-department').value;
     const newRole = document.getElementById('edit-staff-role').value;
+    const newPass = document.getElementById('edit-staff-password').value.trim();
+
+    if (newPass && newPass.length < 8) {
+        return window.showMessage("New password must be at least 8 characters.", true);
+    }
 
     const token = localStorage.getItem('nixtz_service_auth_token');
 
@@ -203,7 +228,12 @@ async function handleSaveUserEdit(e) {
         const response = await fetch(`${window.API_BASE_URL}/api/service/admin/update-staff/${currentEditingUserId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify({ sname: newName, sdepartment: newDept, srole: newRole })
+            body: JSON.stringify({ 
+                sname: newName, 
+                sdepartment: newDept, 
+                srole: newRole,
+                spassword: newPass // Send password (empty string if not changing)
+            })
         });
 
         const result = await response.json();
@@ -221,6 +251,10 @@ async function handleSaveUserEdit(e) {
     }
 }
 
+// ------------------------------------
+// CREATE STAFF LOGIC
+// ------------------------------------
+
 async function handleCreateStaffFormSubmit(e) {
     e.preventDefault();
     const name = document.getElementById('staff-name').value.trim();
@@ -237,8 +271,11 @@ async function handleCreateStaffFormSubmit(e) {
     }
 
     const payload = { 
-        sname: name, semployeeId: semployeeId, spassword: password, 
-        sdepartment: department, srole: role              
+        sname: name,             
+        semployeeId: semployeeId,
+        spassword: password,     
+        sdepartment: department, 
+        srole: role              
     }; 
     
     const token = localStorage.getItem('nixtz_service_auth_token');

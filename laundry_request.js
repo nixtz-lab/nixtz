@@ -4,26 +4,49 @@
  */
 
 // --- 1. CONFIGURATION FIX (CRITICAL) ---
-// This stops the "undefined/api/..." error visible in your screenshot.
 if (typeof window.API_BASE_URL === 'undefined') {
-    // If your Nginx is configured correctly to forward /api, leave this empty:
+    // If your backend is live (Nginx configured), leave this empty.
+    // If testing locally, set to 'http://localhost:3000'
     window.API_BASE_URL = ''; 
-    
-    // NOTE: If you still get "404 Not Found" after using this, 
-    // it means your Nginx server block is missing the /api proxy pass.
 }
 
 const itemsContainer = document.getElementById('items-container');
 
+// --- 2. MODE STATE MANAGEMENT (NEW) ---
+let currentMode = 'pickup'; // Default mode
+
+const ITEM_OPTIONS = {
+    pickup: [
+        "Uniforms (Bulk)", 
+        "Towels (Bulk)", 
+        "Bed Sheets (Bulk)", 
+        "Patient Gowns (Bulk)", 
+        "Other"
+    ],
+    supply: [
+        "Bed Sheet (Single)",
+        "Bed Sheet (Double)",
+        "Pillow Case",
+        "Bath Towel",
+        "Face Towel",
+        "Blanket",
+        "Patient Gown (Size S)",
+        "Patient Gown (Size M)",
+        "Patient Gown (Size L)",
+        "Patient Gown (Size XL)",
+        "Staff Scrub Top (Size M)",
+        "Staff Scrub Top (Size L)",
+        "Other"
+    ]
+};
+
 document.addEventListener('DOMContentLoaded', () => {
-    // Ensure Lucide icons are initialized immediately
     createLucideIcons();
-    
-    // Initialize the page logic
     initLaundryRequestPage();
-    
-    // Attach event listeners for the header UI
     document.addEventListener('click', closeDropdownOnOutsideClick);
+    
+    // Initialize default mode UI
+    setRequestMode('pickup');
 });
 
 // Helper function to create Lucide icons safely
@@ -33,11 +56,12 @@ function createLucideIcons() {
     }
 }
 
-// --- Core Application Logic ---
+// --- 3. CORE APPLICATION LOGIC ---
 
 function getStatusColor(status) {
     switch (status) {
-        case 'Pending Pickup': return 'bg-status-pending text-nixtz-bg';
+        case 'Pending Pickup': 
+        case 'Pending Delivery': return 'bg-status-pending text-nixtz-bg'; // Added Delivery status
         case 'Picked Up': return 'bg-status-pickedup text-white';
         case 'In Progress': return 'bg-status-progress text-white';
         case 'Ready for Delivery': return 'bg-status-ready text-nixtz-bg';
@@ -47,17 +71,50 @@ function getStatusColor(status) {
     }
 }
 
-// ------------------------------------
-// 2. HEADER BANNER UI & DROPDOWN LOGIC
-// ------------------------------------
+// --- 4. TOGGLE MODE FUNCTION (NEW) ---
+function setRequestMode(mode) {
+    currentMode = mode;
+    const typeInput = document.getElementById('request-type');
+    if(typeInput) typeInput.value = mode;
+
+    // Update Button Styles
+    const btnPickup = document.getElementById('btn-mode-pickup');
+    const btnSupply = document.getElementById('btn-mode-supply');
+    const submitBtn = document.getElementById('submit-btn');
+
+    if (btnPickup && btnSupply && submitBtn) {
+        if (mode === 'pickup') {
+            btnPickup.className = "flex-1 py-2 text-sm font-bold rounded-md text-white bg-nixtz-primary shadow-lg transition-all duration-200";
+            btnSupply.className = "flex-1 py-2 text-sm font-bold rounded-md text-gray-400 hover:text-white transition-all duration-200";
+            submitBtn.textContent = "Request Pickup";
+            submitBtn.classList.remove('bg-nixtz-secondary', 'hover:bg-[#0da070]');
+            submitBtn.classList.add('bg-nixtz-primary', 'hover:bg-[#3f3bbf]');
+        } else {
+            btnSupply.className = "flex-1 py-2 text-sm font-bold rounded-md text-nixtz-bg bg-nixtz-secondary shadow-lg transition-all duration-200";
+            btnPickup.className = "flex-1 py-2 text-sm font-bold rounded-md text-gray-400 hover:text-white transition-all duration-200";
+            submitBtn.textContent = "Order Supplies";
+            submitBtn.classList.remove('bg-nixtz-primary', 'hover:bg-[#3f3bbf]');
+            submitBtn.classList.add('bg-nixtz-secondary', 'hover:bg-[#0da070]');
+        }
+    }
+
+    // Reset Items
+    if (itemsContainer) {
+        itemsContainer.innerHTML = '';
+        itemCounter = 0;
+        itemsContainer.appendChild(createItemInput());
+        createLucideIcons();
+    }
+}
+window.setRequestMode = setRequestMode; // Expose to window for HTML onclick
+
+// --- 5. HEADER UI LOGIC ---
 
 function toggleUserDropdown() {
     const dropdown = document.getElementById('user-dropdown');
     if (dropdown) {
         const isHidden = dropdown.style.display === 'none' || dropdown.style.display === '';
         dropdown.style.display = isHidden ? 'block' : 'none';
-        
-        // Re-render icons when opening
         if (isHidden) createLucideIcons();
     }
 }
@@ -71,13 +128,12 @@ function closeDropdownOnOutsideClick(event) {
     if (dropdown && dropdown.style.display === 'block' && 
         userContainer && !userContainer.contains(event.target) && 
         !displayButton.contains(event.target)) {
-        
         dropdown.style.display = 'none';
     }
 }
 
 // ------------------------------------
-// 3. DYNAMIC ITEM INPUT MANAGEMENT
+// 6. DYNAMIC ITEM INPUT MANAGEMENT
 // ------------------------------------
 let itemCounter = 0;
 
@@ -87,25 +143,24 @@ function createItemInput() {
     const removeBtnId = `remove-${id}`;
     const itemDiv = document.createElement('div');
     itemDiv.id = id;
-    itemDiv.className = 'flex flex-col sm:flex-row gap-2 border border-gray-700 p-3 rounded-lg';
+    itemDiv.className = 'flex flex-col sm:flex-row gap-2 border border-gray-700 p-3 rounded-lg bg-gray-800/30';
     
+    // Generate Dropdown Options dynamically based on currentMode
+    const optionsHtml = ITEM_OPTIONS[currentMode].map(opt => `<option value="${opt}">${opt}</option>`).join('');
+
     itemDiv.innerHTML = `
         <div class="flex-grow">
             <label for="${id}-type" class="block text-xs font-medium text-gray-400">Item Type</label>
             <select id="${id}-type" required class="w-full px-3 py-1.5 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:border-nixtz-primary transition">
-                <option value="Uniform">Uniform</option>
-                <option value="Towels">Towels</option>
-                <option value="Linens">Linens (Sheets, covers)</option>
-                <option value="Staff Clothing">Staff Personal Clothing</option>
-                <option value="Other">Other (Specify in Details)</option>
+                ${optionsHtml}
             </select>
         </div>
-        <div>
+        <div class="w-24">
             <label for="${id}-count" class="block text-xs font-medium text-gray-400">Quantity</label>
             <input type="number" id="${id}-count" required min="1" value="1" class="w-full px-3 py-1.5 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:border-nixtz-primary transition">
         </div>
         <div class="sm:w-2/5">
-            <label for="${id}-details" class="block text-xs font-medium text-gray-400">Details (Stain, etc.)</label>
+            <label for="${id}-details" class="block text-xs font-medium text-gray-400">Details</label>
             <input type="text" id="${id}-details" class="w-full px-3 py-1.5 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:border-nixtz-primary transition" placeholder="Optional notes">
         </div>
         <button type="button" id="${removeBtnId}" class="flex-shrink-0 mt-4 sm:mt-5 text-red-400 hover:text-red-500 transition" title="Remove Item">
@@ -113,10 +168,14 @@ function createItemInput() {
         </button>
     `;
     
+    // Attach remove listener
     itemDiv.querySelector(`#${removeBtnId}`).addEventListener('click', () => {
-        itemDiv.remove();
-        if (itemsContainer.children.length === 1) {
-            itemsContainer.querySelector('.flex-shrink-0').disabled = true;
+        // Only remove if there is more than 1 item
+        if (itemsContainer.children.length > 1) {
+            itemDiv.remove();
+        } else {
+            // Optional: Clear fields if it's the last one
+            window.showMessage("At least one item is required.", true);
         }
     });
 
@@ -124,7 +183,7 @@ function createItemInput() {
 }
 
 // ------------------------------------
-// 4. FORM SUBMISSION
+// 7. FORM SUBMISSION (UPDATED)
 // ------------------------------------
 async function handleFormSubmit(e) {
     e.preventDefault();
@@ -133,6 +192,7 @@ async function handleFormSubmit(e) {
     const department = document.getElementById('department').value.trim();
     const contactExt = document.getElementById('contact-ext').value.trim();
     const notes = document.getElementById('notes').value.trim();
+    const requestType = currentMode; // Grab the mode ('pickup' or 'supply')
     
     const items = [];
     itemsContainer.querySelectorAll('[id^="item-"]').forEach(itemDiv => {
@@ -155,7 +215,8 @@ async function handleFormSubmit(e) {
         return;
     }
 
-    const payload = { department, contactExt, notes, items };
+    // Include requestType in the payload
+    const payload = { department, contactExt, notes, items, requestType };
     const token = localStorage.getItem('nixtz_service_auth_token'); 
     
     if (!token) {
@@ -179,10 +240,10 @@ async function handleFormSubmit(e) {
         if (response.ok && result.success) {
             window.showMessage(result.message, false);
             form.reset();
+            // Reset items to the current mode defaults
             itemsContainer.innerHTML = '';
             itemCounter = 0;
             itemsContainer.appendChild(createItemInput());
-            itemsContainer.querySelector('.flex-shrink-0').disabled = true;
             createLucideIcons(); 
 
             loadRequestHistory();
@@ -202,13 +263,24 @@ async function handleFormSubmit(e) {
 }
 
 // ------------------------------------
-// 5. HISTORY DISPLAY
+// 8. HISTORY DISPLAY (UPDATED)
 // ------------------------------------
 function renderRequestCard(request) {
+    // Determine visuals based on Request Type
+    const isSupply = request.requestType === 'supply';
+    const typeLabel = isSupply ? 'Clean Order' : 'Pickup';
+    const typeColor = isSupply ? 'text-nixtz-secondary' : 'text-blue-400';
+    const typeIcon = isSupply ? 'download' : 'upload'; // Download = Receive Clean, Upload = Send Dirty
+    
+    // Border color based on type
+    const borderColor = isSupply ? 'border-nixtz-secondary' : 'border-nixtz-primary';
+
     const itemsHtml = request.items.map(item => `
-        <li class="text-xs text-gray-400">
-            <span class="font-semibold">${item.count}x ${item.type}</span> 
-            ${item.details ? `(<span class="italic">${item.details}</span>)` : ''}
+        <li class="text-xs text-gray-400 flex justify-between">
+            <span>
+                <span class="font-bold text-white">${item.count}x</span> ${item.type}
+            </span>
+            ${item.details ? `<span class="italic text-gray-500 text-[10px]">(${item.details})</span>` : ''}
         </li>
     `).join('');
 
@@ -216,18 +288,27 @@ function renderRequestCard(request) {
     const requestDate = new Date(request.requestedAt).toLocaleString();
 
     return `
-        <div class="bg-gray-800 p-4 rounded-xl shadow-lg border-l-4 border-nixtz-primary/50 hover:border-nixtz-primary transition duration-200">
-            <div class="flex justify-between items-start mb-3">
-                <h4 class="text-lg font-bold text-white">${request.department}</h4>
-                <span class="px-3 py-1 text-xs font-semibold rounded-full ${statusColorClass}">
-                    ${request.status}
+        <div class="bg-gray-800 p-4 rounded-xl shadow-lg border-l-4 ${borderColor} hover:bg-gray-750 transition duration-200">
+            <div class="flex justify-between items-start mb-2">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="${typeIcon}" class="w-4 h-4 ${typeColor}"></i>
+                    <h4 class="text-lg font-bold text-white">${request.department}</h4>
+                </div>
+                <span class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full ${statusColorClass}">
+                    ${request.status || 'Pending'}
                 </span>
             </div>
-            <p class="text-xs text-gray-500 mb-2">Submitted: ${requestDate}</p>
-            <div class="mb-3 p-3 bg-gray-900 rounded-lg">
-                <ul class="list-disc pl-5 space-y-0.5">${itemsHtml}</ul>
+            
+            <div class="flex justify-between items-center text-xs text-gray-500 mb-3 border-b border-gray-700 pb-2">
+                <span>${requestDate}</span>
+                <span class="font-bold ${typeColor}">${typeLabel}</span>
             </div>
-            ${request.notes ? `<p class="text-sm text-gray-400 border-t border-gray-700 pt-2"><span class="font-semibold">Notes:</span> ${request.notes}</p>` : ''}
+
+            <div class="mb-3 p-2 bg-gray-900/50 rounded-lg border border-gray-700/50">
+                <ul class="space-y-1">${itemsHtml}</ul>
+            </div>
+            
+            ${request.notes ? `<p class="text-xs text-gray-400 border-t border-gray-700 pt-2 mt-2"><span class="font-bold text-gray-300">Note:</span> ${request.notes}</p>` : ''}
         </div>
     `;
 }
@@ -250,10 +331,9 @@ async function loadRequestHistory() {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
-        // Handle non-JSON responses (like 404 pages)
         const contentType = response.headers.get("content-type");
         if (!contentType || !contentType.includes("application/json")) {
-            throw new Error("Server returned non-JSON response (likely a 404 or 500 error page).");
+            throw new Error("Server returned non-JSON response (likely a 404 error page).");
         }
 
         const result = await response.json();
@@ -267,6 +347,7 @@ async function loadRequestHistory() {
             historyList.innerHTML = result.data.length > 0 
                 ? result.data.map(renderRequestCard).join('') 
                 : '<p class="text-gray-400 text-center py-8">You have no previous laundry requests.</p>';
+            createLucideIcons(); // Render icons for history items
         } else {
             historyList.innerHTML = `<p class="text-red-400 text-center py-8">${result.message || 'Error loading history.'}</p>`;
         }
@@ -278,10 +359,9 @@ async function loadRequestHistory() {
 }
 
 // ------------------------------------
-// 6. INITIALIZATION
+// 9. INITIALIZATION
 // ------------------------------------
 function initLaundryRequestPage() {
-    // Rely on the service-specific auth check
     if (!window.getServiceAuthStatus()) {
         window.checkServiceAccessAndRedirect('laundry_request.html');
         return; 
@@ -293,13 +373,8 @@ function initLaundryRequestPage() {
     // Setup item input management
     const addItemButton = document.getElementById('add-item-btn');
     if (addItemButton) {
-        itemsContainer.innerHTML = ''; // Clear existing
-        itemsContainer.appendChild(createItemInput());
-        itemsContainer.querySelector('.flex-shrink-0').disabled = true;
-
         addItemButton.addEventListener('click', () => {
             itemsContainer.appendChild(createItemInput());
-            itemsContainer.querySelectorAll('.flex-shrink-0').forEach(btn => btn.disabled = false);
             createLucideIcons(); 
         });
     }

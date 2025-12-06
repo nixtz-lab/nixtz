@@ -99,5 +99,57 @@ router.get('/staff-list', async (req, res) => {
     }
 });
 
+/**
+ * PUT /api/service/admin/update-staff/:id
+ * Update staff details (Name, Dept, Role) AND Password (Optional)
+ * This route is required for the Edit Modal to work.
+ */
+router.put('/update-staff/:id', async (req, res) => {
+    const SUser = getSUserModel();
+    const ServiceStaffAccess = getServiceStaffAccessModel();
+    
+    const staffAccessId = req.params.id;
+    // Extract spassword from body (optional)
+    const { sname, sdepartment, srole, spassword } = req.body;
+
+    const validRoles = ['standard', 'admin', 'request_only'];
+    if (!sname || !sdepartment || !validRoles.includes(srole)) {
+        return res.status(400).json({ success: false, message: 'Invalid data or Role.' });
+    }
+
+    try {
+        // 1. Find the Staff Access Record
+        const staffRecord = await ServiceStaffAccess.findById(staffAccessId);
+        if (!staffRecord) return res.status(404).json({ success: false, message: 'Staff record not found.' });
+
+        // 2. Update Staff Details
+        staffRecord.sname = sname;
+        staffRecord.sdepartment = sdepartment;
+        await staffRecord.save();
+
+        // 3. Update Linked User Account (Role & Password)
+        if (staffRecord.suser) {
+            const updateData = { srole: srole };
+
+            // NEW: Only update password if a new one was sent (and is valid)
+            if (spassword && spassword.trim() !== "") {
+                if (spassword.length < 8) {
+                    return res.status(400).json({ success: false, message: 'Password must be at least 8 characters.' });
+                }
+                const salt = await bcrypt.genSalt(10);
+                updateData.spasswordHash = await bcrypt.hash(spassword, salt);
+            }
+
+            await SUser.findByIdAndUpdate(staffRecord.suser, updateData);
+        }
+
+        res.json({ success: true, message: 'Staff updated successfully.' });
+
+    } catch (err) {
+        console.error('Update Staff Error:', err);
+        res.status(500).json({ success: false, message: 'Server error updating staff.' });
+    }
+});
+
 
 module.exports = router;
