@@ -1,6 +1,5 @@
 /**
  * service_admin.js
- * Handles the logic for the service management admin panel.
  */
 
 if (typeof window.API_BASE_URL === 'undefined') {
@@ -17,7 +16,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (typeof lucide !== 'undefined') lucide.createIcons();
     
-    // Form handlers
     const createStaffForm = document.getElementById('create-staff-form');
     if (createStaffForm) {
         createStaffForm.addEventListener('submit', handleCreateStaffFormSubmit);
@@ -28,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
         editForm.addEventListener('submit', handleSaveUserEdit);
     }
     
-    // NEW: Handle Department Form Submission
+    // NEW: Handle Department Form Submission inside the modal
     const addDeptForm = document.getElementById('add-department-form');
     if (addDeptForm) {
         addDeptForm.addEventListener('submit', handleAddDepartmentSubmit);
@@ -45,7 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ------------------------------------
-// UI UTILITIES
+// UI LOGIC
 // ------------------------------------
 
 function toggleUserDropdown() {
@@ -87,6 +85,7 @@ function updateDepartmentDropdowns(newDeptName) {
     const departmentName = newDeptName.trim();
     if (!departmentName) return;
 
+    // Select IDs for the main creation form and the edit modal
     const selectIds = ['staff-department', 'edit-staff-department'];
 
     selectIds.forEach(id => {
@@ -96,7 +95,7 @@ function updateDepartmentDropdowns(newDeptName) {
             if (!Array.from(select.options).some(opt => opt.value === departmentName)) {
                 const option = document.createElement("option");
                 option.text = departmentName;
-                option.value = departmentName; // FIX: Value is the department name, WITH spaces
+                option.value = departmentName; // CRITICAL FIX: Value is the department name, WITH spaces
                 select.add(option);
             }
         }
@@ -169,7 +168,6 @@ async function handleAddDepartmentSubmit(e) {
 // ------------------------------------
 // DATA FETCHING & RENDERING (FIXED CACHING)
 // ------------------------------------
-// ... (rest of the file remains the same, except for the fix to handleDeptSubmit)
 
 async function fetchActiveServiceUsers() {
     const container = document.getElementById('active-users-list');
@@ -371,7 +369,7 @@ async function handleCreateStaffFormSubmit(e) {
          return window.showMessage("Password must be at least 8 characters long.", true);
     }
     if (department === "") {
-        return window.showMessage("Please select or add an Assigned Department.", true);
+        return window.showMessage("Please select an Assigned Department.", true);
     }
 
 
@@ -379,7 +377,7 @@ async function handleCreateStaffFormSubmit(e) {
         sname: name,             
         semployeeId: semployeeId,
         spassword: password,     
-        sdepartment: department, // NOTE: sdepartment now includes spaces if added via modal
+        sdepartment: department, 
         srole: role              
     }; 
     

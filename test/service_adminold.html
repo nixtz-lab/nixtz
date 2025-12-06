@@ -28,7 +28,7 @@
         <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
             <div class="flex items-center space-x-4">
                 <a href="business_dashboard.html" title="Back to Dashboard">
-                    <img src="images/nixtz_logo.png" alt="Nixtz Logo" class="h-10 w-auto rounded-md">
+                    <img src="images/Nixtz logo black copy.png" alt="Nixtz Logo" class="h-10 w-auto rounded-md">
                     <span class="text-xl font-bold text-white ml-2">Service Admin</span>
                 </a>
             </div>
@@ -78,6 +78,10 @@
                 <a href="javascript:void(0)" onclick="switchAdminView('create-staff')" id="nav-create-staff"
                    class="flex items-center p-3 rounded-lg text-gray-300 font-medium transition hover:bg-gray-700 hover:text-white">
                     <i data-lucide="user-plus" class="w-5 h-5 mr-3"></i> Create New Staff
+                </a>
+                <a href="javascript:void(0)" onclick="manageDepartments()" id="nav-manage-options"
+                   class="flex items-center p-3 rounded-lg text-gray-300 font-medium transition hover:bg-gray-700 hover:text-white border-t border-gray-700 mt-2 pt-2">
+                    <i data-lucide="settings" class="w-5 h-5 mr-3"></i> Manage Dept & Roles
                 </a>
             </nav>
         </aside>
@@ -132,10 +136,7 @@
                             <button type="submit" class="w-full py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-nixtz-secondary hover:bg-[#0da070] transition duration-150">
                                 Create Staff Account
                             </button>
-                            <button type="button" onclick="manageDepartments()" class="w-full py-2 px-4 border border-gray-600 rounded-lg shadow-sm text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white transition duration-150">
-                                <i data-lucide="settings" class="w-4 h-4 inline mr-2"></i> Add or Edit Assigned Department
-                            </button>
-                        </div>
+                            </div>
                     </form>
                 </div>
             </div>
@@ -154,7 +155,11 @@
                 
                 <div>
                     <label class="block text-sm font-medium text-gray-400 mb-1">Department</label>
-                    <input type="text" id="edit-staff-department" required class="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:border-nixtz-primary">
+                    <select id="edit-staff-department" required class="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white focus:border-nixtz-primary">
+                        <option value="Housekeeping">Housekeeping</option>
+                        <option value="Engineering">Engineering</option>
+                        <option value="FrontOffice">Front Office</option>
+                    </select>
                 </div>
 
                 <div>
@@ -164,6 +169,12 @@
                         <option value="standard">Laundry Staff</option>
                         <option value="admin">Service Admin</option>
                     </select>
+                </div>
+
+                <div class="pt-2 border-t border-gray-700">
+                    <label class="block text-sm font-bold text-nixtz-secondary mb-1">Reset Password (Optional)</label>
+                    <input type="password" id="edit-staff-password" placeholder="Leave blank to keep current password" class="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:border-nixtz-secondary placeholder-gray-600">
+                    <p class="text-xs text-gray-500 mt-1">Min 8 characters if changing.</p>
                 </div>
 
                 <div class="flex justify-end gap-3 mt-6">

@@ -189,9 +189,9 @@ async function handleFormSubmit(e) {
     const requestType = currentMode; // Capture current mode
     
     const items = [];
-    const itemElements = itemsContainer.querySelectorAll('[id^="item-"]');
+    const itemElements = itemsContainer.querySelectorAll('[id^="item-"]'); // Select all item containers
     
-    // --- START DEBUG LOGGING ---
+    // --- START DEBUG LOGGING (To find the 4x bug origin) ---
     console.log('DEBUG: Found', itemElements.length, 'item containers in the DOM.'); 
     // --- END DEBUG LOGGING ---
 
@@ -204,7 +204,7 @@ async function handleFormSubmit(e) {
         const countInput = document.getElementById(`${idPrefix}-count`);
         const count = parseInt(countInput?.value);
         const details = document.getElementById(`${idPrefix}-details`)?.value.trim();
-        
+
         if (count > 0 && type) {
             items.push({ type, count, details });
         }
@@ -399,6 +399,15 @@ function initLaundryRequestPage() {
             createLucideIcons(); 
         });
     }
+
+    // --- FIX APPLIED: Force cleanup and reset on initialization ---
+    if (itemsContainer) {
+        itemsContainer.innerHTML = ''; // Force clear any pre-existing duplicates
+        itemCounter = 0; // Reset counter
+        itemsContainer.appendChild(createItemInput()); // Add the single starting item
+        createLucideIcons();
+    }
+    // --- END FIX ---
 
     loadRequestHistory();
     
