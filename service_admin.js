@@ -1,5 +1,6 @@
 /**
  * service_admin.js
+ * Handles the logic for the service management admin panel.
  */
 
 if (typeof window.API_BASE_URL === 'undefined') {
@@ -16,6 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (typeof lucide !== 'undefined') lucide.createIcons();
     
+    // Form handlers
     const createStaffForm = document.getElementById('create-staff-form');
     if (createStaffForm) {
         createStaffForm.addEventListener('submit', handleCreateStaffFormSubmit);
@@ -25,6 +27,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (editForm) {
         editForm.addEventListener('submit', handleSaveUserEdit);
     }
+    
+    // NEW: Handle Department Form Submission
+    const addDeptForm = document.getElementById('add-department-form');
+    if (addDeptForm) {
+        addDeptForm.addEventListener('submit', handleAddDepartmentSubmit);
+    }
+
 
     document.addEventListener('click', closeDropdownOnOutsideClick);
     
@@ -36,7 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ------------------------------------
-// UI LOGIC
+// UI UTILITIES
 // ------------------------------------
 
 function toggleUserDropdown() {
@@ -60,23 +69,107 @@ function closeDropdownOnOutsideClick(event) {
     }
 }
 
-function manageDepartments() {
-    const newDept = prompt("Enter the name of the new Department:");
-    if (newDept && newDept.trim() !== "") {
-        const select = document.getElementById('staff-department');
-        const option = document.createElement("option");
-        option.text = newDept.trim();
-        option.value = newDept.trim().replace(/\s+/g, ''); 
-        select.add(option);
-        select.value = option.value; 
-        window.showMessage(`Department "${newDept}" added to list.`, false);
+// ------------------------------------
+// DYNAMIC DROPDOWN MANAGEMENT (NEW LOGIC)
+// ------------------------------------
+
+// Utility to get current department options from the main select box
+function getCurrentDepartmentOptions() {
+    const select = document.getElementById('staff-department');
+    if (!select) return [];
+    return Array.from(select.options)
+        .filter(option => option.value !== '') // Filter out the initial '-- Select Department --'
+        .map(option => ({ name: option.text.trim(), value: option.value.trim() }));
+}
+
+// Utility to update all department dropdowns
+function updateDepartmentDropdowns(newDeptName) {
+    const departmentName = newDeptName.trim();
+    if (!departmentName) return;
+
+    const selectIds = ['staff-department', 'edit-staff-department'];
+
+    selectIds.forEach(id => {
+        const select = document.getElementById(id);
+        if (select) {
+            // Check if the option already exists by value (which equals name here)
+            if (!Array.from(select.options).some(opt => opt.value === departmentName)) {
+                const option = document.createElement("option");
+                option.text = departmentName;
+                option.value = departmentName; // FIX: Value is the department name, WITH spaces
+                select.add(option);
+            }
+        }
+    });
+
+    // Update the list inside the modal
+    const list = document.getElementById('current-departments-list');
+    if (list) {
+        if (!Array.from(list.children).some(li => li.textContent.trim() === departmentName)) {
+            const listItem = document.createElement("li");
+            listItem.textContent = departmentName;
+            list.appendChild(listItem);
+        }
     }
 }
+
+function populateDepartmentListForModal() {
+    const list = document.getElementById('current-departments-list');
+    if (!list) return;
+
+    // Clear and repopulate the list using current options from the primary select
+    list.innerHTML = '';
+    const currentOptions = getCurrentDepartmentOptions();
+    currentOptions.forEach(dept => {
+        const listItem = document.createElement("li");
+        listItem.textContent = dept.name;
+        list.appendChild(listItem);
+    });
+}
+
+// Action triggered by the sidebar button
+function manageDepartments() {
+    const modal = document.getElementById('manage-options-modal');
+    if (modal) modal.style.display = 'flex';
+    populateDepartmentListForModal();
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
 window.manageDepartments = manageDepartments;
+
+function closeManageOptionsModal() {
+    const modal = document.getElementById('manage-options-modal');
+    if (modal) modal.style.display = 'none';
+    document.getElementById('add-department-form').reset();
+}
+window.closeManageOptionsModal = closeManageOptionsModal;
+
+async function handleAddDepartmentSubmit(e) {
+    e.preventDefault();
+    const newDept = document.getElementById('new-department-name').value.trim();
+    
+    if (newDept === "") {
+        return window.showMessage("Department name cannot be empty.", true);
+    }
+    
+    // Check for existing department (case insensitive)
+    const existing = getCurrentDepartmentOptions().some(opt => opt.name.toLowerCase() === newDept.toLowerCase());
+    
+    if (existing) {
+        window.showMessage(`Department "${newDept}" already exists.`, true);
+        return;
+    }
+
+    // Update all relevant dropdowns with the new department name (includes spaces)
+    updateDepartmentDropdowns(newDept);
+    window.showMessage(`Department "${newDept}" added.`, false);
+    e.target.reset();
+}
+
 
 // ------------------------------------
 // DATA FETCHING & RENDERING (FIXED CACHING)
 // ------------------------------------
+// ... (rest of the file remains the same, except for the fix to handleDeptSubmit)
 
 async function fetchActiveServiceUsers() {
     const container = document.getElementById('active-users-list');
@@ -277,12 +370,16 @@ async function handleCreateStaffFormSubmit(e) {
     if (password.length < 8) {
          return window.showMessage("Password must be at least 8 characters long.", true);
     }
+    if (department === "") {
+        return window.showMessage("Please select or add an Assigned Department.", true);
+    }
+
 
     const payload = { 
         sname: name,             
         semployeeId: semployeeId,
         spassword: password,     
-        sdepartment: department, 
+        sdepartment: department, // NOTE: sdepartment now includes spaces if added via modal
         srole: role              
     }; 
     
