@@ -189,7 +189,13 @@ async function handleFormSubmit(e) {
     const requestType = currentMode; // Capture current mode
     
     const items = [];
-    itemsContainer.querySelectorAll('[id^="item-"]').forEach(itemDiv => {
+    const itemElements = itemsContainer.querySelectorAll('[id^="item-"]');
+    
+    // --- START DEBUG LOGGING ---
+    console.log('DEBUG: Found', itemElements.length, 'item containers in the DOM.'); 
+    // --- END DEBUG LOGGING ---
+
+    itemElements.forEach((itemDiv, index) => {
         const idPrefixMatch = itemDiv.id.match(/item-(\d+)/);
         if (!idPrefixMatch) return;
         const idPrefix = idPrefixMatch[0];
@@ -198,11 +204,20 @@ async function handleFormSubmit(e) {
         const countInput = document.getElementById(`${idPrefix}-count`);
         const count = parseInt(countInput?.value);
         const details = document.getElementById(`${idPrefix}-details`)?.value.trim();
-
+        
         if (count > 0 && type) {
             items.push({ type, count, details });
         }
+        
+        // --- START DEBUG LOGGING ---
+        console.log(`DEBUG: Element ${index}: ID=${idPrefix}, Type=${type}, Count=${count}. Added to payload? ${count > 0 && type}`);
+        // --- END DEBUG LOGGING ---
     });
+
+    // --- START DEBUG LOGGING ---
+    console.log('DEBUG: Final items array being sent:', items);
+    // --- END DEBUG LOGGING ---
+
 
     if (items.length === 0) {
         window.showMessage("Please add at least one item.", true);

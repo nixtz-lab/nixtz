@@ -73,7 +73,6 @@ function calculateDailyShift(staff, day, dayIndex, currentDateString, currentCou
             if (currentDateString >= request.startDate && currentDateString <= request.endDate) {
                 
                 // Specific Leave Request (Now handles SICK, PERSONAL, HOLIDAY, etc.)
-                // If status starts with "STATUS_", we treat it as a special leave type.
                 if (request.shiftId.startsWith('STATUS_')) {
                     // Use the user-provided "dutyRole" text (e.g. "Sick", "Personal")
                     return { shiftId: null, jobRole: request.dutyRole, timeRange: DAY_OFF_MARKER };
@@ -121,11 +120,11 @@ function calculateDailyShift(staff, day, dayIndex, currentDateString, currentCou
         currentCounts.M++; return { shiftId: 1, jobRole: ' ', timeRange: SHIFTS[1].time };
     }
 
-    // 3c. Delivery
+    // 3c. Delivery (FIXED: Job role set to 'Del' for clean display)
     if (position === 'Delivery') {
         const pref = (request && request.type === 'ShiftChange') ? request.shift : staff.shiftPreference;
-        if (pref.includes('Morning')) { currentCounts.M++; return { shiftId: 1, jobRole: 'C3 (Del)', timeRange: SHIFTS[1].time }; }
-        currentCounts.A++; return { shiftId: 2, jobRole: 'C3 (Del)', timeRange: SHIFTS[2].time };
+        if (pref.includes('Morning')) { currentCounts.M++; return { shiftId: 1, jobRole: 'Del', timeRange: SHIFTS[1].time }; }
+        currentCounts.A++; return { shiftId: 2, jobRole: 'Del', timeRange: SHIFTS[2].time };
     }
 
     // 3d. Normal Staff (The fillers)

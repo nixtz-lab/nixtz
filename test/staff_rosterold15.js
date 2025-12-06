@@ -159,21 +159,18 @@ function addStaffRow(initialData = {}) {
                         // CUSTOM FORMATTING RULES
                         if (isManagerOrSup || isDelivery) { 
                             
-                            // If role is simply 'Del', use it. Otherwise, strip unnecessary detail for managers/supervisors.
-                            let roleDisplay = (rawRole === 'Del') ? 'Del' : rawRole;
+                            let roleDisplay = isDelivery ? 'Del' : rawRole;
                             
-                            // If the backend returns a space (for Manager/Supervisor), use the default display
                             if (roleDisplay === ' ') {
                                 roleDisplay = config.name; 
-                            } else if (roleDisplay.includes('C3') && isDelivery) {
-                                // If the backend mistakenly sends 'C3' or 'C3 (Del)', force it to just 'Del'
+                            } else if (roleDisplay.includes('C3 (Del)')) {
                                 roleDisplay = 'Del'; 
                             }
 
                             displayVal = `${shiftIdToDisplay} ${roleDisplay}`;
 
                         } else {
-                            // Normal Staff (C4/C5) or manually assigned specific shift (M2, A2): Show "ShiftID Role"
+                            // Normal Staff (C4/C5): Show "ShiftID Role" (e.g. "2 C5")
                             if (rawRole !== config.name) {
                                 displayVal = `${shiftIdToDisplay} ${rawRole}`;
                             } else {
