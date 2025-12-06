@@ -5,16 +5,12 @@
 
 // --- 1. CONFIGURATION FIX ---
 if (typeof window.API_BASE_URL === 'undefined') {
-    // If your backend is live (Nginx configured), leave this empty:
     window.API_BASE_URL = ''; 
-    
-    // NOTE: If you still get "404 Not Found" after using this, 
-    // it means your Nginx server block is missing the /api proxy pass.
 }
 
 const itemsContainer = document.getElementById('items-container');
 
-// --- 2. MODE STATE MANAGEMENT (UPDATED) ---
+// --- 2. MODE STATE MANAGEMENT ---
 let currentMode = 'supply'; // Changed default mode to 'supply'
 
 const ITEM_OPTIONS = {
@@ -48,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('click', closeDropdownOnOutsideClick);
     
     // Initialize default mode UI to 'supply' (Order Clean)
-    setRequestMode('supply'); // <-- UPDATED
+    setRequestMode('supply'); 
 });
 
 // Helper function to create Lucide icons safely
@@ -260,7 +256,7 @@ async function handleFormSubmit(e) {
 }
 
 // ------------------------------------
-// 8. HISTORY DISPLAY
+// 8. HISTORY DISPLAY (FIXED ITEM QUANTITY)
 // ------------------------------------
 function renderRequestCard(request) {
     // Determine visuals based on Request Type
@@ -272,6 +268,7 @@ function renderRequestCard(request) {
     // Border color based on type
     const borderColor = isSupply ? 'border-nixtz-secondary' : 'border-nixtz-primary';
 
+    // FIX: Ensure only one list item is created per entry
     const itemsHtml = request.items.map(item => `
         <li class="text-xs text-gray-400 flex justify-between">
             <span>

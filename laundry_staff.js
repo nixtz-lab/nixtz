@@ -10,7 +10,8 @@ if (typeof window.API_BASE_URL === 'undefined') {
 
 // Map for Analytics & History Table
 const statusMap = {
-    'PendingPickup': { label: 'Pending Pickup', color: 'bg-status-pending text-nixtz-bg', icon: 'hourglass' },
+    'PendingPickup': { label: 'Pending Pickup', color: 'bg-status-pending text-nixtz-bg', icon: 'upload' },
+    'PendingDelivery': { label: 'Pending Delivery', color: 'bg-blue-600 text-white', icon: 'download' }, // <--- ADDED FIX
     'PickedUp': { label: 'Picked Up', color: 'bg-status-pickedup text-white', icon: 'truck' },
     'InProgress': { label: 'In Progress', color: 'bg-status-progress text-white', icon: 'washing-machine' },
     'ReadyforDelivery': { label: 'Ready for Delivery', color: 'bg-status-ready text-nixtz-bg', icon: 'box' },
@@ -38,6 +39,7 @@ function createLucideIcons() {
 function getStatusColor(status) {
     switch (status) {
         case 'Pending Pickup': return 'bg-status-pending text-nixtz-bg';
+        case 'Pending Delivery': return 'bg-blue-600 text-white'; // <--- ADDED FIX
         case 'Picked Up': return 'bg-status-pickedup text-white';
         case 'In Progress': return 'bg-status-progress text-white';
         case 'Ready for Delivery': return 'bg-status-ready text-nixtz-bg';
@@ -50,6 +52,7 @@ function getStatusColor(status) {
 function getNextStatus(currentStatus) {
     switch (currentStatus) {
         case 'Pending Pickup': return 'Picked Up';
+        case 'Pending Delivery': return 'In Progress'; // <--- NEW STEP
         case 'Picked Up': return 'In Progress';
         case 'In Progress': return 'Ready for Delivery';
         case 'Ready for Delivery': return 'Completed';
@@ -80,7 +83,7 @@ function closeDropdownOnOutsideClick(event) {
     }
 }
 
-// --- ACTIONS: UPDATE STATUS (Card View) ---
+// --- ACTIONS: UPDATE STATUS ---
 
 async function updateRequestStatus(requestId, newStatus) {
     const token = localStorage.getItem('nixtz_service_auth_token'); 
@@ -99,7 +102,6 @@ async function updateRequestStatus(requestId, newStatus) {
 
         if (response.ok && result.success) {
             window.showMessage(result.message, false);
-            // Refresh ALL data
             loadOutstandingRequests(); 
             fetchAnalytics();
             fetchAllRequests();
@@ -112,7 +114,7 @@ async function updateRequestStatus(requestId, newStatus) {
 }
 window.updateRequestStatus = updateRequestStatus; 
 
-// --- ACTIONS: DELETE (Table View) ---
+// --- ACTIONS: DELETE ---
 
 async function deleteRequest(id) {
     const token = localStorage.getItem('nixtz_service_auth_token');
@@ -159,19 +161,24 @@ async function fetchAnalytics() {
 function updateAnalyticsDashboard(data) {
     const container = document.getElementById('analytics-dashboard');
     if (!container) return;
-    const statuses = ['Total', 'PendingPickup', 'PickedUp', 'InProgress', 'ReadyforDelivery', 'Completed', 'Cancelled'];
+    
+    // UPDATED: Added PendingDelivery to status list
+    const statuses = ['Total', 'PendingPickup', 'PendingDelivery', 'PickedUp', 'InProgress', 'ReadyforDelivery', 'Completed', 'Cancelled'];
     
     container.innerHTML = statuses.map(key => {
         const count = data[key] || 0;
         const info = statusMap[key] || { label: key, color: 'bg-gray-700 text-white', icon: 'info' };
+        
         const cardColor = key === 'Total' ? 'bg-nixtz-primary' : info.color;
         const iconName = key === 'Total' ? 'trending-up' : info.icon;
-        const textColor = (key === 'Total' || key === 'PickedUp' || key === 'InProgress' || key === 'Completed' || key === 'Cancelled') ? 'text-white' : 'text-nixtz-bg';
+        
+        const whiteTextKeys = ['Total', 'PendingDelivery', 'PickedUp', 'InProgress', 'Completed', 'Cancelled'];
+        const textColor = whiteTextKeys.includes(key) ? 'text-white' : 'text-nixtz-bg';
 
         return `
             <div class="p-4 rounded-xl shadow-lg border border-gray-700 ${cardColor}">
                 <div class="flex justify-between items-center">
-                    <i data-lucide="${iconName}" class="w-6 h-6 ${textColor}"></i>
+                    <i data-lucide="${info.icon}" class="w-6 h-6 ${textColor}"></i>
                     <p class="text-3xl font-extrabold ${textColor}">${count}</p>
                 </div>
                 <p class="text-sm mt-2 font-medium ${textColor}">${key === 'Total' ? 'Total' : info.label}</p>
@@ -195,7 +202,8 @@ async function fetchAllRequests() {
         const result = await response.json();
         if (response.ok && result.data.length > 0) {
             tableBody.innerHTML = result.data.map(req => {
-                const statusInfo = statusMap[req.status.replace(/\s/g, '')] || { color: 'bg-gray-500' };
+                const statusKey = req.status.replace(/\s/g, ''); 
+                const statusInfo = statusMap[statusKey] || { color: 'bg-gray-500' };
                 const itemsSum = req.items.slice(0, 2).map(i => `${i.count}x ${i.type}`).join(', ');
                 return `
                     <tr class="bg-gray-900 border-b border-gray-800 hover:bg-gray-800">
@@ -221,14 +229,23 @@ function renderRequestCard(request) {
     const statusColorClass = getStatusColor(request.status);
     const itemsHtml = request.items.map(item => `<li class="text-xs text-gray-400"><span class="font-semibold">${item.count}x ${item.type}</span> ${item.details ? `(${item.details})` : ''}</li>`).join('');
     
+    // UPDATED: Distinguish Supply Orders visually
+    const isSupply = request.requestType === 'supply';
+    const typeIcon = isSupply ? 'download' : 'upload'; 
+    const borderColor = isSupply ? 'border-blue-600' : 'border-nixtz-secondary/50';
+    const titleColor = isSupply ? 'text-blue-300' : 'text-gray-400';
+    
     const actionButton = nextStatus ? `
         <button onclick="updateRequestStatus('${request._id}', '${nextStatus}')" class="w-full py-2 px-4 text-sm font-bold rounded-lg text-nixtz-bg bg-nixtz-secondary hover:bg-[#0da070] transition">Mark as "${nextStatus}"</button>
     ` : `<button disabled class="w-full py-2 px-4 text-sm font-bold rounded-lg bg-gray-600 text-gray-400 cursor-not-allowed">No Action</button>`;
 
     return `
-        <div class="bg-gray-800 p-5 rounded-xl shadow-lg border-l-4 border-nixtz-secondary/50">
+        <div class="bg-gray-800 p-5 rounded-xl shadow-lg border-l-4 ${borderColor}">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3">
-                <h4 class="text-xl font-bold text-white">${request.department} <span class="text-base font-normal text-gray-400">(${request.requesterUsername})</span></h4>
+                <div class="flex items-center gap-2">
+                    <i data-lucide="${typeIcon}" class="w-5 h-5 ${isSupply ? 'text-blue-500' : 'text-nixtz-secondary'}"></i>
+                    <h4 class="text-xl font-bold text-white">${request.department} <span class="text-base font-normal ${titleColor}">(${request.requesterUsername})</span></h4>
+                </div>
                 <span class="mt-2 sm:mt-0 px-3 py-1 text-xs font-semibold rounded-full ${statusColorClass}">${request.status}</span>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-4 border-b border-gray-700 pb-4">
