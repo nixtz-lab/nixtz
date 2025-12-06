@@ -33,11 +33,10 @@ document.addEventListener('DOMContentLoaded', () => {
         addDeptForm.addEventListener('submit', handleAddDepartmentSubmit);
     }
     
-    // NEW: Handle Item Form Submission (Form ID not yet defined in HTML)
-    const addItemForm = document.getElementById('add-item-form');
-    if (addItemForm) {
-        // You would define handleAddItemSubmit() for this to work
-        addItemForm.addEventListener('submit', handleAddItemSubmit); 
+    // NEW: Handle Item Form Submission
+    const itemConfigForm = document.getElementById('item-config-form');
+    if (itemConfigForm) {
+        itemConfigForm.addEventListener('submit', handleSaveItemConfig);
     }
 
     document.addEventListener('click', closeDropdownOnOutsideClick);
@@ -100,7 +99,7 @@ function updateDepartmentDropdowns(newDeptName, newContact) {
             if (!Array.from(select.options).some(opt => opt.value === departmentName)) {
                 const option = document.createElement("option");
                 option.text = departmentName;
-                option.value = departmentName; // CRITICAL FIX: Value is the department name, WITH spaces
+                option.value = departmentName; 
                 select.add(option);
             }
         }
@@ -124,7 +123,6 @@ function populateDepartmentListForModal() {
     list.innerHTML = '';
     const currentOptions = getCurrentDepartmentOptions();
     currentOptions.forEach(dept => {
-        // NOTE: Since the contact is not currently stored in the option element, we only show the name here.
         const listItem = document.createElement("li");
         listItem.textContent = dept.name; 
         list.appendChild(listItem);
@@ -162,15 +160,13 @@ async function handleAddDepartmentSubmit(e) {
         return;
     }
 
-    // Update dropdowns with name and update the list display with contact info
     updateDepartmentDropdowns(newDept, newContact); 
     window.showMessage(`Department "${newDept}" added. Contact: ${newContact}.`, false);
     e.target.reset();
 }
 
-
 // ------------------------------------
-// NEW ITEM MANAGEMENT LOGIC
+// ITEM MANAGEMENT LOGIC
 // ------------------------------------
 
 async function fetchItemConfig() {
@@ -178,19 +174,13 @@ async function fetchItemConfig() {
     if (!token) return;
 
     try {
-        // Fetch item config from the newly added READ endpoint
         const response = await fetch(`${window.API_BASE_URL}/api/laundry/items/config`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         const result = await response.json();
         
         if (response.ok && result.success) {
-            // Cache the configuration globally
             currentItemConfig = result.data;
-            // The lists in the item creation dropdowns need to be updated here too
-            // NOTE: Full dynamic update logic omitted, only fetch/cache implemented.
-            
-            // window.showMessage("Item configuration fetched.", false); // Optional: Remove console log spam
         } else {
             console.error('Failed to fetch item configuration:', result.message);
         }
@@ -200,29 +190,86 @@ async function fetchItemConfig() {
 }
 window.fetchItemConfig = fetchItemConfig;
 
-
-// Function for the new sidebar button
-function manageItemTypes() {
-    // 🚨 FIX 1: This makes the button open an alert confirming data fetch.
-    alert(`Item Management Feature is running.\n\nCurrent Pickup Items in Cache: ${currentItemConfig.pickup.length} items.\n(Check console for lists.)`);
-    console.log("Current Item Configuration (Pickup):", currentItemConfig.pickup);
-    console.log("Current Item Configuration (Supply):", currentItemConfig.supply);
+// Function to populate the modal lists
+function populateItemManagementModal() {
+    const pickupList = document.getElementById('pickup-items-list');
+    const supplyList = document.getElementById('supply-items-list');
     
-    // TODO: A real implementation would open a dedicated Item Management Modal here.
+    if (!pickupList || !supplyList) return;
+
+    // Helper to generate list item HTML
+    const createItemHtml = (item, type) => `
+        <div class="flex justify-between items-center text-sm p-1.5 bg-gray-700/50 rounded-md" data-item="${item}">
+            <span class="text-gray-300">${item}</span>
+            <button type="button" onclick="removeItemTypeFromList('${item}', '${type}')" class="text-red-400 hover:text-red-500 transition">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+    `;
+
+    pickupList.innerHTML = currentItemConfig.pickup.length > 0
+        ? currentItemConfig.pickup.map(item => createItemHtml(item, 'pickup')).join('')
+        : '<p class="text-gray-500 text-sm">No pickup items configured.</p>';
+        
+    supplyList.innerHTML = currentItemConfig.supply.length > 0
+        ? currentItemConfig.supply.map(item => createItemHtml(item, 'supply')).join('')
+        : '<p class="text-gray-500 text-sm">No supply items configured.</p>';
+
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+// Function to add a new item (triggered by buttons inside the modal)
+function addItemTypeToList(listType) {
+    const newItem = prompt(`Enter the new item name for ${listType}:`);
+    if (newItem && newItem.trim()) {
+        const item = newItem.trim();
+        
+        if (currentItemConfig[listType].includes(item)) {
+            return window.showMessage(`Item "${item}" already exists in the ${listType} list.`, true);
+        }
+
+        currentItemConfig[listType].push(item);
+        populateItemManagementModal(); // Re-render the lists
+        window.showMessage(`Item "${item}" added to the list. Click Save to confirm.`, false);
+    }
+}
+window.addItemTypeToList = addItemTypeToList; // Expose to HTML buttons
+
+// Function to remove an item (triggered by x buttons inside the modal)
+function removeItemTypeFromList(item, listType) {
+    const index = currentItemConfig[listType].indexOf(item);
+    if (index > -1) {
+        currentItemConfig[listType].splice(index, 1);
+        populateItemManagementModal(); // Re-render the lists
+        window.showMessage(`Item "${item}" removed. Click Save to confirm.`, false);
+    }
+}
+window.removeItemTypeFromList = removeItemTypeFromList; // Expose to HTML buttons
+
+
+// Function for the new sidebar button: opens the Item Management Modal
+function manageItemTypes() {
+    const modal = document.getElementById('manage-items-modal');
+    if (modal) modal.style.display = 'flex';
+    populateItemManagementModal();
 }
 window.manageItemTypes = manageItemTypes;
 
-// Submit handler for the item configuration form (needs corresponding HTML form)
-async function handleAddItemSubmit(e) {
+function closeItemManagementModal() {
+    const modal = document.getElementById('manage-items-modal');
+    if (modal) modal.style.display = 'none';
+}
+window.closeItemManagementModal = closeItemManagementModal;
+
+
+// Submit handler for the item configuration form (sends data to backend)
+async function handleSaveItemConfig(e) {
     e.preventDefault();
-    // This function will eventually call the POST /api/service/admin/items/config endpoint
     
-    const newPickupList = []; // Replace with actual form field data retrieval
-    const newSupplyList = []; // Replace with actual form field data retrieval
-    
+    // Data is already updated in the global currentItemConfig object
     const payload = { 
-        pickup: newPickupList, 
-        supply: newSupplyList 
+        pickup: currentItemConfig.pickup, 
+        supply: currentItemConfig.supply 
     };
 
     const token = localStorage.getItem('nixtz_service_auth_token');
@@ -236,16 +283,15 @@ async function handleAddItemSubmit(e) {
         const result = await response.json();
 
         if (response.ok && result.success) {
-            currentItemConfig = payload; // Update cache
-            window.showMessage("Item lists updated successfully!", false);
-            // Re-fetch Item Config to update the entire application, including Laundry Request Page
-            fetchItemConfig(); 
+            window.showMessage("Item lists updated and saved to server!", false);
+            closeItemManagementModal();
+            fetchItemConfig(); // Refresh cache for confirmation
         } else {
-            window.showMessage(result.message || 'Failed to update item lists.', true);
+            window.showMessage(result.message || 'Failed to save item lists.', true);
         }
     } catch (error) {
         console.error('Item Update Error:', error);
-        window.showMessage('Network error during item list update.', true);
+        window.showMessage('Network error during item list save.', true);
     }
 }
 

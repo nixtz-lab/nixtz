@@ -12,8 +12,7 @@ if (typeof window.API_BASE_URL === 'undefined') {
 const itemsContainer = document.getElementById('items-container');
 
 // --- 2. MODE STATE MANAGEMENT ---
-// This list will eventually be fetched dynamically from the backend.
-let currentMode = 'supply'; // Default start mode
+let currentMode = 'supply'; // Changed default mode to 'supply'
 
 const ITEM_OPTIONS = {
     pickup: [
@@ -42,9 +41,13 @@ const ITEM_OPTIONS = {
 
 document.addEventListener('DOMContentLoaded', () => {
     createLucideIcons();
-    // 🚨 FIX: Call the unified initialization function
-    initLaundryRequestPage();
+    
+    // 🚨 FIX APPLIED: Keep one unified call to handle all initialization and loading
+    initLaundryRequestPage(); 
+    
     document.addEventListener('click', closeDropdownOnOutsideClick);
+    
+    // setRequestMode('supply') is handled inside initLaundryRequestPage() now.
 });
 
 // Helper function to create Lucide icons safely
@@ -181,6 +184,11 @@ function createItemInput() {
 async function handleFormSubmit(e) {
     e.preventDefault();
     
+    // 🚨 FIX 1: Implement button lockout (Anti-Double Submission)
+    const submitBtn = document.getElementById('submit-btn');
+    submitBtn.disabled = true; 
+    submitBtn.textContent = 'Processing...';
+
     const form = e.target;
     const department = document.getElementById('department').value.trim();
     const contactExt = document.getElementById('contact-ext').value.trim();
@@ -189,12 +197,9 @@ async function handleFormSubmit(e) {
     
     const items = [];
     const itemElements = itemsContainer.querySelectorAll('[id^="item-"]'); // Select all item containers
-    
-    // --- START DEBUG LOGGING ---
-    console.log('DEBUG: Found', itemElements.length, 'item containers in the DOM.'); 
-    // --- END DEBUG LOGGING ---
 
-    itemElements.forEach((itemDiv, index) => {
+    // Debug logging removed to clean up console, but logic remains the same
+    itemElements.forEach((itemDiv) => {
         const idPrefixMatch = itemDiv.id.match(/item-(\d+)/);
         if (!idPrefixMatch) return;
         const idPrefix = idPrefixMatch[0];
@@ -207,19 +212,13 @@ async function handleFormSubmit(e) {
         if (count > 0 && type) {
             items.push({ type, count, details });
         }
-        
-        // --- START DEBUG LOGGING ---
-        console.log(`DEBUG: Element ${index}: ID=${idPrefix}, Type=${type}, Count=${count}. Added to payload? ${count > 0 && type}`);
-        // --- END DEBUG LOGGING ---
     });
-
-    // --- START DEBUG LOGGING ---
-    console.log('DEBUG: Final items array being sent:', items);
-    // --- END DEBUG LOGGING ---
 
 
     if (items.length === 0) {
         window.showMessage("Please add at least one item.", true);
+        submitBtn.disabled = false;
+        submitBtn.textContent = currentMode === 'supply' ? 'Order Supplies' : 'Request Pickup';
         return;
     }
 
@@ -230,6 +229,8 @@ async function handleFormSubmit(e) {
     if (!token) {
         window.showMessage("Authentication failed. Please log in.", true);
         window.checkServiceAccessAndRedirect('laundry_request.html');
+        submitBtn.disabled = false;
+        submitBtn.textContent = currentMode === 'supply' ? 'Order Supplies' : 'Request Pickup';
         return;
     }
 
@@ -267,6 +268,10 @@ async function handleFormSubmit(e) {
     } catch (error) {
         console.error('Submission Error:', error);
         window.showMessage('Network error during submission.', true);
+    } finally {
+        // 🚨 FIX 2: Re-enable button after processing (Success or Failure)
+        submitBtn.disabled = false;
+        submitBtn.textContent = currentMode === 'supply' ? 'Order Supplies' : 'Request Pickup';
     }
 }
 
