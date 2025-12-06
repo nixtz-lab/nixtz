@@ -49,6 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
     createLucideIcons();
     
     // 🚨 FIX APPLIED: Keep one unified call to handle all initialization and loading
+    // The actual setRequestMode is now inside initLaundryRequestPage() for timing control.
     initLaundryRequestPage(); 
     
     document.addEventListener('click', closeDropdownOnOutsideClick);

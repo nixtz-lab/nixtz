@@ -30,10 +30,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Handle Department Form Submission inside the modal
     const addDeptForm = document.getElementById('add-department-form');
     if (addDeptForm) {
-        addDeptForm.addEventListener('submit', handleAddDepartmentSubmit);
+        handleAddDeptForm.addEventListener('submit', handleAddDepartmentSubmit);
     }
     
-    // NEW: Handle Item Form Submission
+    // NEW: Handle Item Config Form Submission
     const itemConfigForm = document.getElementById('item-config-form');
     if (itemConfigForm) {
         itemConfigForm.addEventListener('submit', handleSaveItemConfig);
@@ -124,6 +124,7 @@ function populateDepartmentListForModal() {
     const currentOptions = getCurrentDepartmentOptions();
     currentOptions.forEach(dept => {
         const listItem = document.createElement("li");
+        // NOTE: Contact info is not stored in the HTML option element, so we show the simple name.
         listItem.textContent = dept.name; 
         list.appendChild(listItem);
     });
@@ -197,7 +198,7 @@ function populateItemManagementModal() {
     
     if (!pickupList || !supplyList) return;
 
-    // Helper to generate list item HTML
+    // Helper to generate list item HTML (includes delete button)
     const createItemHtml = (item, type) => `
         <div class="flex justify-between items-center text-sm p-1.5 bg-gray-700/50 rounded-md" data-item="${item}">
             <span class="text-gray-300">${item}</span>
