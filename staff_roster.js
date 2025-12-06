@@ -1,6 +1,6 @@
 /**
  * staff_roster.js
- * FINAL STABLE VERSION. Fixes: Moved Profile Fields to Update Modal, Added DOB/StartDate.
+ * FINAL STABLE VERSION. Fixes: Form Submission in Update Modal (Date Validation).
  */
 
 // Global constants and API endpoints
@@ -463,21 +463,35 @@ window.openStaffRequestModal = async function() {
 };
 
 window.toggleRequestFields = function(val) {
+    // Hide all optional fields/containers
     document.getElementById('specific-assignment-fields').classList.add('hidden');
     document.getElementById('shift-pref-fields').classList.add('hidden');
     document.getElementById('none-clear-message').classList.add('hidden');
-    document.getElementById('profile-settings-fields').classList.add('hidden'); // NEW
+    document.getElementById('profile-settings-fields').classList.add('hidden');
+    
+    // Manage 'required' attribute for date inputs to prevent validation block
+    const startDateInput = document.getElementById('request-start-date');
+    const endDateInput = document.getElementById('request-end-date');
+    const shiftSelect = document.getElementById('request-configured-shift');
+    
+    // Default: Required off
+    if (startDateInput) startDateInput.removeAttribute('required');
+    if (endDateInput) endDateInput.removeAttribute('required');
+    if (shiftSelect) shiftSelect.removeAttribute('required');
     
     if (val === 'specific_day_duty') {
         document.getElementById('specific-assignment-fields').classList.remove('hidden');
+        if (startDateInput) startDateInput.setAttribute('required', 'required');
+        if (endDateInput) endDateInput.setAttribute('required', 'required');
+        if (shiftSelect) shiftSelect.setAttribute('required', 'required');
     } else if (val === 'weekly_shift_pref') {
         document.getElementById('shift-pref-fields').classList.remove('hidden');
     } else if (val === 'update_profile_settings') {
-        document.getElementById('profile-settings-fields').classList.remove('hidden'); // NEW
+        document.getElementById('profile-settings-fields').classList.remove('hidden');
     } else {
         document.getElementById('none-clear-message').classList.remove('hidden');
     }
-}
+};
 
 window.showAddStaffModal = () => {
     const modal = document.getElementById('add-staff-modal');

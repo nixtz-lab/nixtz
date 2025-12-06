@@ -12,7 +12,8 @@ const LaundryRequest = mongoose.model('LaundryRequest');
 
 // POST /api/laundry/request - Submit a new request
 router.post('/request', async (req, res) => {
-    const { department, contactExt, notes, items } = req.body;
+    // 🚨 FIX APPLIED HERE: Added requestType to destructuring
+    const { department, contactExt, notes, items, requestType } = req.body; 
     
     // Basic validation
     if (!department || !contactExt || !items || items.length === 0) {
@@ -20,11 +21,14 @@ router.post('/request', async (req, res) => {
     }
     
     try {
-        // 🚨 FIX: Handle Service User vs Core User fields
         // Since middleware attaches the user, we access properties directly.
-        // 'susername' is for ServiceUser, 'username' is for Core User.
         const requesterName = req.user.susername || req.user.username || 'Unknown';
         const requesterId = req.user._id || req.user.id;
+
+        // 🚨 FIX APPLIED HERE: Determine initial status based on requestType
+        // 'supply' (Order Clean) should start at 'Pending Delivery'
+        // 'pickup' (Send Dirty) should start at 'Pending Pickup'
+        const initialStatus = requestType === 'supply' ? 'Pending Delivery' : 'Pending Pickup';
 
         const newRequest = new LaundryRequest({
             requesterId: requesterId,
@@ -32,7 +36,9 @@ router.post('/request', async (req, res) => {
             department,
             contactExt,
             notes,
-            items
+            items,
+            requestType: requestType || 'pickup', // Store the request type
+            status: initialStatus // Set the correct initial status
         });
 
         await newRequest.save();
@@ -72,8 +78,9 @@ router.get('/staff-view', async (req, res) => {
     
     try {
         // Find requests that are not yet marked 'Completed' or 'Cancelled'
+        // Includes 'Pending Delivery' which is needed for 'Order Clean' requests
         const outstandingRequests = await LaundryRequest.find({
-            status: { $in: ['Pending Pickup', 'Picked Up', 'In Progress', 'Ready for Delivery'] }
+            status: { $in: ['Pending Pickup', 'Pending Delivery', 'Picked Up', 'In Progress', 'Ready for Delivery'] }
         })
         .sort({ requestedAt: 1 }) // Oldest requests first
         .select('-__v'); 
