@@ -82,9 +82,10 @@ tailwind.config = {
                 </a>
                 
                 <nav id="desktop-nav-links" class="hidden md:flex space-x-3 text-sm">
-                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('staff_roster.html')" class="text-gray-400 hover:text-nixtz-primary transition duration-300">Staff Roster</a>
-                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('asset_tracker.html')" class="text-gray-400 hover:text-nixtz-primary transition duration-300">Assets</a>
-                    <a href="javascript:void(0)" onclick="checkAccessAndRedirect('yearly_budget_planning.html')" class="text-gray-400 hover:text-nixtz-primary transition duration-300">Budget Planning</a>
+                    <a href="staff_roster.html" class="text-nixtz-secondary font-bold transition duration-300">Staff Roster</a>
+                    <a href="staff_report.html" class="text-gray-400 hover:text-nixtz-primary transition duration-300">Leave Report</a>
+                    <a href="asset_tracker.html" class="text-gray-400 hover:text-nixtz-primary transition duration-300">Assets</a>
+                    <a href="yearly_budget_planning.html" class="text-gray-400 hover:text-nixtz-primary transition duration-300">Budget Planning</a>
                 </nav>
                 
                 <div id="auth-buttons-container" class="flex items-center space-x-4 sm:space-x-6">
@@ -102,7 +103,6 @@ tailwind.config = {
                     </button>
                     <span id="username-display" class="font-semibold text-white hidden sm:inline">User</span>
 
-                    <!-- DROPDOWN MENU (Corrected Hover Bridge & Content) -->
                     <div id="user-dropdown" class="absolute right-0 top-full pt-3 w-64 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 origin-top-right scale-95 group-hover:scale-100 z-50">
                         <div class="bg-gray-800 rounded-xl shadow-3xl-dark border border-gray-700/50 p-4">
                             
@@ -221,7 +221,6 @@ tailwind.config = {
     </div>
 </main>
 
-<!-- ADD STAFF MODAL -->
 <div id="add-staff-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[9999] hidden items-center justify-center p-4 transition-opacity duration-300">
     <div class="bg-nixtz-card w-full max-w-lg rounded-xl shadow-3xl-dark p-6 md:p-8 border border-gray-700/50">
         <h2 class="text-2xl font-bold text-nixtz-secondary mb-4 border-b border-gray-700 pb-3 flex justify-between items-center">
@@ -283,7 +282,6 @@ tailwind.config = {
     </div>
 </div>
 
-<!-- STAFF LIST MODAL -->
 <div id="staff-list-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[9999] hidden items-center justify-center p-4 transition-opacity duration-300">
     <div class="bg-nixtz-card w-full max-w-2xl rounded-xl shadow-3xl-dark p-6 md:p-8 border border-gray-700/50 max-h-[90vh] overflow-y-auto">
         <h2 class="text-2xl font-bold text-nixtz-primary mb-4 border-b border-gray-700 pb-3 flex justify-between items-center">
@@ -300,7 +298,6 @@ tailwind.config = {
     </div>
 </div>
 
-<!-- EDIT STAFF MODAL -->
 <div id="single-staff-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[9999] hidden items-center justify-center p-4 transition-opacity duration-300">
     <div class="bg-nixtz-card w-full max-w-md rounded-xl shadow-3xl-dark p-6 md:p-8 border border-gray-700/50">
         <h2 class="text-xl font-bold text-nixtz-secondary mb-4 border-b border-gray-700 pb-3 flex justify-between items-center" id="single-staff-title">
@@ -356,7 +353,6 @@ tailwind.config = {
     </div>
 </div>
 
-<!-- SHIFT CONFIG MODAL -->
 <div id="shift-config-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[9999] hidden items-center justify-center p-4 transition-opacity duration-300">
     <div class="bg-nixtz-card w-full max-w-lg rounded-xl shadow-3xl-dark p-6 md:p-8 border border-gray-700/50">
         <h2 class="text-2xl font-bold text-nixtz-secondary mb-4 border-b border-gray-700 pb-3 flex justify-between items-center">
@@ -400,7 +396,6 @@ tailwind.config = {
     </div>
 </div>
 
-<!-- UPDATE MODAL (Staff Request) -->
 <div id="staff-request-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[9999] hidden items-center justify-center p-4 transition-opacity duration-300">
     <div class="bg-nixtz-card w-full max-w-lg rounded-xl shadow-3xl-dark p-6 md:p-8 border border-gray-700/50">
         <h2 class="text-2xl font-bold text-nixtz-primary mb-4 border-b border-gray-700 pb-3 flex justify-between items-center">
@@ -411,7 +406,6 @@ tailwind.config = {
         </h2>
         <div id="request-message-box" class="p-3 rounded-lg text-white mb-3 hidden"></div>
         <form id="staff-request-form" class="space-y-4">
-            <!-- Week Start (Editable) -->
             <div>
                 <label class="block text-sm font-medium text-gray-400 mb-1">Target Week (Starting Mon)</label>
                 <input type="date" id="request-week-start"
@@ -424,7 +418,6 @@ tailwind.config = {
                     <option value="">-- Select Staff --</option>
                 </select>
             </div>
-            <!-- Simplified Selection Logic -->
             <div>
                 <label for="request-type" class="block text-sm font-medium text-gray-400 mb-1">Update Type</label>
                 <select id="request-type" onchange="toggleRequestFields(this.value)"
@@ -434,7 +427,6 @@ tailwind.config = {
                     <option value="weekly_shift_pref">Change Weekly Preference</option>
                 </select>
             </div>
-            <!-- Specific Assignment: Now includes Date Range & Dynamic Shift Dropdown -->
             <div id="specific-assignment-fields" class="space-y-4">
                 <div class="flex space-x-4">
                     <div class="w-1/2">
@@ -452,8 +444,7 @@ tailwind.config = {
                     <label class="block text-sm font-medium text-gray-400 mb-1">Select Assigned Shift</label>
                     <select id="request-configured-shift" required
                             class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition duration-200">
-                        <!-- Populated by JS from CORE_SHIFTS -->
-                    </select>
+                        </select>
                 </div>
             </div>
             <div id="shift-pref-fields" class="space-y-4 hidden">
@@ -481,7 +472,6 @@ tailwind.config = {
     </div>
 </div>
 
-<!-- USER PROFILE & PASSWORD MODAL (NEWLY ADDED) -->
 <div id="profile-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[9999] hidden flex items-center justify-center p-4 transition-opacity duration-300">
     <div class="bg-nixtz-card w-full max-w-lg rounded-xl shadow-3xl-dark p-6 md:p-8 border border-gray-700/50">
         <h2 class="text-2xl font-bold text-nixtz-secondary mb-4 border-b border-gray-700 pb-3 flex justify-between items-center">

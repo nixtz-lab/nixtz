@@ -3,44 +3,32 @@ const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
 
-// --- Define the LeaveHistory Schema/Model (assuming MongoDB structure) ---
-// Note: You must ensure this model is defined and registered in your Mongoose setup.
+// --- Schema Definition ---
 const LeaveHistorySchema = new mongoose.Schema({
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     employeeId: { type: String, required: true },
     employeeName: { type: String, required: true },
     leaveDate: { type: Date, required: true },
-    leaveType: { type: String, enum: ['Holiday', 'Sick Leave', 'Other', 'Requested'], required: true }
+    leaveType: { 
+        type: String, 
+        enum: ['Holiday', 'Sick Leave', 'Personal Leave', 'Other', 'Requested'], 
+        required: true 
+    }
 });
 
-// Assuming the model is registered globally, or defining it locally for context:
 let LeaveHistory;
-try {
-    LeaveHistory = mongoose.model('LeaveHistory');
-} catch (error) {
-    LeaveHistory = mongoose.model('LeaveHistory', LeaveHistorySchema);
-}
-// --------------------------------------------------------------------------
+try { LeaveHistory = mongoose.model('LeaveHistory'); } 
+catch (error) { LeaveHistory = mongoose.model('LeaveHistory', LeaveHistorySchema); }
 
-/**
- * @route   POST /api/staff/leave/history
- * @desc    Log a new permanent leave record
- * @access  Private
- */
+// 1. SAVE/LOG LEAVE (POST)
 router.post('/history', async (req, res) => {
     try {
         const { employeeId, employeeName, leaveDate, leaveType } = req.body;
         const userId = req.user.id;
-        
-        if (!employeeId || !leaveDate || !leaveType) {
-            return res.status(400).json({ success: false, message: 'Missing required leave fields.' });
-        }
-        
-        // Convert string date to Date object and set to start of day (UTC)
         const date = new Date(leaveDate);
         date.setUTCHours(0, 0, 0, 0);
 
-        // Check for duplicate entry on the same day for the same employee
+        // Check for duplicates
         const existingEntry = await LeaveHistory.findOne({
             user: userId,
             employeeId: employeeId,
@@ -48,7 +36,9 @@ router.post('/history', async (req, res) => {
         });
 
         if (existingEntry) {
-            return res.status(200).json({ success: false, message: 'Leave already logged for this date.' });
+            existingEntry.leaveType = leaveType;
+            await existingEntry.save();
+            return res.status(200).json({ success: true, message: 'Leave updated.' });
         }
         
         const newRecord = new LeaveHistory({
@@ -58,61 +48,97 @@ router.post('/history', async (req, res) => {
             leaveDate: date,
             leaveType
         });
-
         await newRecord.save();
-
-        res.status(201).json({ success: true, message: 'Leave record saved successfully.' });
-
+        res.status(201).json({ success: true, message: 'Leave record saved.' });
     } catch (err) {
-        console.error('Save Leave History Error:', err.message);
-        res.status(500).json({ success: false, message: 'Server error saving leave history.' });
+        res.status(500).json({ success: false, message: 'Server error.' });
     }
 });
 
-
-/**
- * @route   GET /api/staff/leave/report/:year
- * @desc    Fetch aggregated leave data for a specific year
- * @access  Private
- */
+// 2. FETCH REPORT TOTALS (GET)
 router.get('/report/:year', async (req, res) => {
     try {
         const userId = req.user.id; 
         const year = parseInt(req.params.year);
-        
-        if (isNaN(year) || year < 2000) {
-            return res.status(400).json({ success: false, message: 'Invalid year format.' });
-        }
-        
         const startDate = new Date(Date.UTC(year, 0, 1));
         const endDate = new Date(Date.UTC(year + 1, 0, 1));
 
         const pipeline = [
-            { $match: { 
-                user: userId, 
-                leaveDate: { $gte: startDate, $lt: endDate } 
-            }},
+            { $match: { user: new mongoose.Types.ObjectId(userId), leaveDate: { $gte: startDate, $lt: endDate } }},
             { $group: {
-                _id: { employeeId: "$employeeId", employeeName: "$employeeName", leaveType: "$leaveType" },
+                _id: { employeeId: "$employeeId", employeeName: "$employeeName", type: "$leaveType" },
                 count: { $sum: 1 }
             }},
             { $group: {
                 _id: { employeeId: "$_id.employeeId", employeeName: "$_id.employeeName" },
-                types: { $push: { leaveType: "$_id.leaveType", count: "$count" } },
-                totalDays: { $sum: "$count" }
+                breakdown: { $push: { type: "$_id.type", count: "$count" } },
+                total: { $sum: "$count" }
             }},
             { $sort: { "_id.employeeName": 1 } }
         ];
 
         const results = await LeaveHistory.aggregate(pipeline);
-
         res.json({ success: true, data: results });
-
     } catch (err) {
-        console.error('Fetch Leave Report Error:', err.message);
-        res.status(500).json({ success: false, message: 'Server error fetching leave report.' });
+        res.status(500).json({ success: false, message: 'Server error fetching report.' });
     }
 });
 
+// 3. GET DETAILS (For Modal)
+router.get('/details', async (req, res) => {
+    try {
+        const { employeeId, year } = req.query;
+        const userId = req.user.id;
+        const startDate = new Date(Date.UTC(year, 0, 1));
+        const endDate = new Date(Date.UTC(parseInt(year) + 1, 0, 1));
+
+        const leaves = await LeaveHistory.find({
+            user: userId,
+            employeeId: employeeId,
+            leaveDate: { $gte: startDate, $lt: endDate }
+        }).sort({ leaveDate: -1 });
+
+        res.json({ success: true, data: leaves });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Server error fetching details.' });
+    }
+});
+
+// 4. UPDATE RECORD (PUT) - UPDATED TO SUPPORT DATE CHANGE
+router.put('/:id', async (req, res) => {
+    try {
+        const { leaveType, leaveDate } = req.body;
+        
+        const record = await LeaveHistory.findOne({ _id: req.params.id, user: req.user.id });
+        if (!record) return res.status(404).json({ success: false, message: 'Record not found.' });
+
+        if (leaveType) record.leaveType = leaveType;
+        
+        // Update Date if provided
+        if (leaveDate) {
+            const newDate = new Date(leaveDate);
+            newDate.setUTCHours(0,0,0,0);
+            record.leaveDate = newDate;
+        }
+
+        await record.save();
+        res.json({ success: true, message: 'Record updated.' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: 'Server error updating record.' });
+    }
+});
+
+// 5. DELETE RECORD (DELETE) - "Cancel Leave"
+router.delete('/:id', async (req, res) => {
+    try {
+        const result = await LeaveHistory.findOneAndDelete({ _id: req.params.id, user: req.user.id });
+        if (!result) return res.status(404).json({ success: false, message: 'Record not found.' });
+        
+        res.json({ success: true, message: 'Leave cancelled (deleted).' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Server error deleting record.' });
+    }
+});
 
 module.exports = router;

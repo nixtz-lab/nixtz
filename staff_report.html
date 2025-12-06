@@ -19,85 +19,259 @@ tailwind.config = {
             fontFamily: {
                 sans: ['Inter', 'sans-serif'],
             },
+            boxShadow: { 
+                '3xl-dark': '0 35px 60px -15px rgba(0, 0, 0, 0.5)',
+            }
         }
     }
 }
 </script>
 <link rel="stylesheet" href="style.css">
 <script src="https://unpkg.com/lucide@latest"></script>
-<script src="script.js"></script> 
 <style>
-    /* Basic table styling for readability */
+    /* Table styling to match Roster */
     .report-table th, .report-table td {
-        padding: 10px;
+        padding: 12px;
         text-align: center;
-        border-bottom: 1px solid #334155;
+        border-bottom: 1px solid #1f2937; /* gray-800 */
+    }
+    .report-table th {
+        font-size: 0.875rem; /* text-sm */
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
     }
 </style>
 </head>
-<body class="bg-nixtz-bg font-sans antialiased">
-    <div id="message-box" class="fixed top-4 right-4 p-4 rounded-lg shadow-2xl z-[9999] hidden text-white bg-nixtz-primary transition duration-300 opacity-0">
-        <p id="message-text" class="font-semibold"></p>
-    </div>
+<body class="bg-nixtz-bg font-sans antialiased text-gray-300">
     
     <header class="bg-nixtz-bg shadow-2xl sticky top-0 z-50 border-b border-gray-800">
-        </header>
+        <div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-3 flex items-center justify-between">
 
-<main class="py-10">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h1 class="text-3xl font-extrabold text-white mb-6 border-b border-gray-700 pb-3">
-            Staff Leave and Absence Report
-        </h1>
-        
-        <div class="bg-nixtz-card p-4 rounded-xl shadow-lg mb-6 border border-gray-700/50 flex items-center space-x-4">
-            <label for="report-year" class="text-gray-300 font-medium">Select Year:</label>
-            <select id="report-year" onchange="loadLeaveReport()"
-                    class="p-2 rounded-lg bg-gray-800 border border-gray-600 text-white focus:border-nixtz-secondary transition duration-200">
-            </select>
-            <button onclick="loadLeaveReport()" class="bg-nixtz-secondary hover:bg-[#0da070] text-white font-bold py-2 px-4 rounded-full shadow-md transition duration-200 flex items-center">
-                <i data-lucide="refresh-cw" class="w-5 h-5 mr-1"></i> Refresh Report
-            </button>
-        </div>
+            <div class="flex items-center space-x-4">
+                <a href="index.html">
+                    <img src="images/nixtz_logo.png" alt="Nixtz Business Software Logo" class="h-14 sm:h-16 w-auto rounded-xl">
+                </a>
+            </div>
 
-        <div class="overflow-x-auto bg-nixtz-card rounded-xl shadow-2xl border border-gray-700/50">
-            <table id="leave-report-table" class="min-w-full divide-y divide-gray-700 text-gray-300 report-table">
-                <thead>
-                    <tr class="bg-gray-800 text-sm uppercase tracking-wider">
-                        <th class="p-3 text-left w-64">Staff Name / ID</th>
-                        <th class="p-3">Total Annual/Holiday (Days)</th>
-                        <th class="p-3">Total Sick Leave (Days)</th>
-                        <th class="p-3">Total Other Leave (Days)</th>
-                        <th class="p-3">Total Days Absent</th>
-                    </tr>
-                </thead>
-                <tbody id="report-body" class="divide-y divide-gray-800">
-                    <tr><td colspan="5" class="py-6 text-gray-500">Select a year to load the historical leave report.</td></tr>
-                </tbody>
-            </table>
-        </div>
-        
-        <div class="mt-8 p-4 bg-nixtz-card rounded-xl border border-gray-700/50 text-gray-400">
-             <h3 class="text-lg font-bold text-nixtz-secondary mb-3">Report Details</h3>
-             <p class="text-sm">This report aggregates all permanent leave records logged via the Roster Request system for the selected year. **Note:** Fixed Day Offs are excluded unless specifically requested otherwise.</p>
-        </div>
+            <div class="flex items-center space-x-4 sm:space-x-6">
+                
+                <a href="javascript:void(0)" onclick="window.location.href='business_dashboard.html'" 
+                   class="text-nixtz-primary hover:text-nixtz-secondary transition duration-300 stacked-nav-link focus:outline-none font-medium ml-4 sm:ml-6" 
+                   title="Quick Dashboard">
+                    <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                    <span class="text-[10px] leading-tight md:text-[10px] md:leading-tight">Dashboard</span>
+                </a>
+                
+                <nav id="desktop-nav-links" class="hidden md:flex space-x-3 text-sm">
+                    <a href="staff_roster.html" class="text-gray-400 hover:text-nixtz-primary transition duration-300">Staff Roster</a>
+                    <a href="staff_report.html" class="text-nixtz-secondary font-bold transition duration-300">Leave Report</a>
+                    <a href="asset_tracker.html" class="text-gray-400 hover:text-nixtz-primary transition duration-300">Assets</a>
+                </nav>
+                
+                <div id="auth-buttons-container" class="flex items-center space-x-4 sm:space-x-6">
+                    <a href="auth.html?mode=login" id="login-button" class="bg-gray-800 hover:bg-gray-700 text-white font-bold py-1.5 px-4 md:px-5 rounded-full shadow-lg transition duration-300 transform hover:scale-105 border border-gray-700 text-sm md:text-sm">
+                        Login
+                    </a>
+                </div>
+                
+                <div id="user-menu-container" class="group relative flex items-center space-x-2 hidden"> 
+                    <button id="nav-user-button" class="w-10 h-10 bg-nixtz-primary rounded-full flex items-center justify-center font-bold text-white hover:scale-105 transition duration-200" title="User Settings">
+                        <i data-lucide="user" class="w-6 h-6"></i>
+                    </button>
+                    <span id="username-display" class="font-semibold text-white hidden sm:inline">User</span>
 
+                    <div id="user-dropdown" class="absolute right-0 top-full pt-3 w-64 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 origin-top-right scale-95 group-hover:scale-100 z-50">
+                        <div class="bg-gray-800 rounded-xl shadow-3xl-dark border border-gray-700/50 p-4">
+                            <p class="text-sm font-medium text-white mb-3 border-b border-gray-700 pb-2">Account: <span id="user-initials" class="font-normal text-nixtz-secondary">User</span></p>
+                            <button onclick="openUserProfileModal()" class="w-full text-left text-sm text-gray-300 hover:text-white transition duration-200 font-medium py-2 px-3 rounded-lg hover:bg-gray-700 mb-3 flex items-center">
+                                <i data-lucide="settings" class="w-4 h-4 mr-2"></i> Profile & Password
+                            </button>
+                            <button onclick="handleLogout()" class="w-full text-center text-sm text-red-400 hover:text-red-500 transition duration-200 font-medium py-2 px-3 rounded-lg hover:bg-gray-700 flex items-center justify-center">
+                                <i data-lucide="log-out" class="w-4 h-4 mr-2"></i> Logout
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <button id="menu-toggle" class="md:hidden p-2 rounded-lg text-gray-400 hover:text-nixtz-primary transition duration-200">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
+                </button>
+
+            </div>
+        </div>
+    </header>
+
+    <main class="py-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h1 class="text-3xl font-extrabold text-white mb-6 border-b border-gray-700 pb-3 flex justify-between items-center">
+                Staff Leave & Absence Report
+                <a href="staff_roster.html" class="text-sm bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 hover:text-white px-4 py-2 rounded-lg transition duration-200 flex items-center">
+                    <i data-lucide="arrow-left" class="w-4 h-4 mr-2"></i> Back to Roster
+                </a>
+            </h1>
+            
+            <div class="bg-nixtz-card p-4 rounded-xl shadow-lg mb-6 border border-gray-700/50 flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-6">
+                <div class="flex items-center space-x-3 w-full md:w-auto">
+                    <label for="report-year" class="text-gray-300 font-medium whitespace-nowrap">Select Year:</label>
+                    <select id="report-year" onchange="loadLeaveReport()" 
+                           class="p-2 rounded-lg bg-gray-800 border border-gray-600 text-white focus:border-nixtz-secondary transition duration-200 min-w-[100px]">
+                        </select>
+                </div>
+                
+                <button onclick="loadLeaveReport()" class="bg-nixtz-secondary hover:bg-[#0da070] text-white font-bold py-2 px-4 rounded-full shadow-md transition duration-200 flex items-center">
+                    <i data-lucide="refresh-cw" class="w-5 h-5 mr-1"></i> Refresh Report
+                </button>
+            </div>
+
+            <div class="overflow-x-auto bg-nixtz-card rounded-xl shadow-2xl border border-gray-700/50">
+                <table id="leave-report-table" class="min-w-full divide-y divide-gray-700 text-gray-300 report-table">
+                    <thead>
+                        <tr class="bg-gray-800 text-sm uppercase tracking-wider text-gray-400">
+                            <th class="text-left w-64">Staff Name / ID</th>
+                            <th class="text-green-400">Holiday</th>
+                            <th class="text-red-400">Sick</th>
+                            <th class="text-orange-400">Personal</th>
+                            <th class="bg-gray-900/50 text-white">Total Absent</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="report-body" class="divide-y divide-gray-800">
+                        <tr><td colspan="6" class="py-8 text-center text-gray-500">Loading data...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="mt-8 p-4 bg-nixtz-card rounded-xl border border-gray-700/50 text-gray-400">
+                 <h3 class="text-lg font-bold text-nixtz-secondary mb-3">Report Details</h3>
+                 <p class="text-sm">This report aggregates all permanent leave records logged via the Roster Request system. Click <span class="text-white font-bold">"Manage"</span> to edit dates, change leave types, or cancel specific leave entries.</p>
+            </div>
+
+        </div>
+    </main>
+
+    <div id="manage-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[9999] hidden items-center justify-center p-4 transition-opacity duration-300">
+        <div class="bg-nixtz-card w-full max-w-2xl rounded-xl shadow-3xl-dark p-0 border border-gray-700/50 flex flex-col max-h-[85vh]">
+            
+            <div class="p-6 border-b border-gray-700 bg-gray-800/50 rounded-t-xl flex justify-between items-center">
+                <div>
+                    <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                        <i data-lucide="clipboard-list" class="w-5 h-5 text-nixtz-secondary"></i>
+                        <span id="modal-staff-name">Staff Details</span>
+                    </h2>
+                    <p class="text-xs text-gray-400 mt-1">Manage individual leave records for the selected year.</p>
+                </div>
+                <button onclick="document.getElementById('manage-modal').classList.add('hidden')" class="text-gray-400 hover:text-white transition duration-200">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+
+            <div class="p-0 overflow-y-auto flex-1 custom-scrollbar">
+                <table class="w-full text-sm text-left text-gray-300">
+                    <thead class="text-xs text-gray-500 uppercase bg-gray-900 sticky top-0 shadow-md">
+                        <tr>
+                            <th class="p-4 w-32">Date</th>
+                            <th class="p-4">Current Type</th>
+                            <th class="p-4 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modal-list-body" class="divide-y divide-gray-700 bg-nixtz-card">
+                        </tbody>
+                </table>
+            </div>
+            
+            <div class="p-4 border-t border-gray-700 bg-gray-800/30 rounded-b-xl text-center">
+                <button onclick="document.getElementById('manage-modal').classList.add('hidden')" class="text-sm text-gray-400 hover:text-white transition">Close</button>
+            </div>
+        </div>
     </div>
-</main>
 
-<script>
-// Dummy function for navigation, replace with actual script.js logic
-window.checkAccessAndRedirect = function(url) { window.location.href = url; }
-window.getAuthStatus = function() { return localStorage.getItem('nixtz_auth_token'); }
-window.showMessage = function(message, isError) {
-    const box = document.getElementById('message-box');
-    const text = document.getElementById('message-text');
-    text.textContent = message;
-    box.className = isError ? 'fixed top-4 right-4 p-4 rounded-lg shadow-2xl z-[9999] text-white bg-red-600 transition duration-300 opacity-100' : 'fixed top-4 right-4 p-4 rounded-lg shadow-2xl z-[9999] text-white bg-nixtz-secondary transition duration-300 opacity-100';
-    box.classList.remove('hidden');
-    setTimeout(() => { box.classList.add('opacity-0'); }, 5000);
-}
-// Initialize the year selector and load report function (defined below)
-</script>
-<script src="staff_report.js" defer></script>
+    <div id="profile-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[9999] hidden flex items-center justify-center p-4 transition-opacity duration-300">
+        <div class="bg-nixtz-card w-full max-w-lg rounded-xl shadow-3xl-dark p-6 md:p-8 border border-gray-700/50">
+            <h2 class="text-2xl font-bold text-nixtz-secondary mb-4 border-b border-gray-700 pb-3 flex justify-between items-center">
+                User Profile Settings
+                <button onclick="document.getElementById('profile-modal').classList.add('hidden')" class="text-gray-400 hover:text-white transition duration-200">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </h2>
+            <div class="mb-6">
+                <p class="text-lg font-semibold text-white mb-2">Account Details</p>
+                <div class="space-y-2 text-sm">
+                    <p class="text-gray-400">Username: <span id="modal-username" class="text-white font-medium">Loading...</span></p>
+                    <p class="text-gray-400">Email: <span id="modal-email" class="text-white font-medium">Loading...</span></p>
+                </div>
+            </div>
+            <div class="mt-8 border-t border-gray-700 pt-6">
+                <h3 class="text-xl font-semibold text-nixtz-primary mb-4">Change Password</h3>
+                <div id="password-message-box" class="p-3 rounded-lg text-white mb-3 hidden"></div>
+                <form id="change-password-form" class="space-y-4">
+                    <div>
+                        <label for="current-password" class="block text-sm font-medium text-gray-400 mb-1">Current Password</label>
+                        <input type="password" id="current-password" required
+                               class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition duration-200">
+                    </div>
+                    <div>
+                        <label for="new-password" class="block text-sm font-medium text-gray-400 mb-1">New Password</label>
+                        <input type="password" id="new-password" required minlength="8"
+                               class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition duration-200">
+                    </div>
+                    <div>
+                        <label for="confirm-new-password" class="block text-sm font-medium text-gray-400 mb-1">Confirm New Password</label>
+                        <input type="password" id="confirm-new-password" required minlength="8"
+                               class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-nixtz-primary transition duration-200">
+                    </div>
+                    <button type="submit" id="save-password-button"
+                            class="w-full p-3 bg-nixtz-primary text-white rounded-lg font-bold shadow-lg hover:bg-[#3f3bbf] transition duration-300 transform hover:scale-[1.01] disabled:opacity-50">
+                        Update Password
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Simple UI Helper for Menu Toggle if script.js isn't present
+        document.getElementById('menu-toggle')?.addEventListener('click', function() {
+            const nav = document.getElementById('desktop-nav-links');
+            nav.classList.toggle('hidden');
+            nav.classList.toggle('flex');
+            nav.classList.toggle('flex-col');
+            nav.classList.toggle('absolute');
+            nav.classList.toggle('top-16');
+            nav.classList.toggle('left-0');
+            nav.classList.toggle('w-full');
+            nav.classList.toggle('bg-nixtz-bg');
+            nav.classList.toggle('p-4');
+        });
+        
+        // Re-use Auth Logic from Roster (Simplified for Report)
+        function checkAuth() {
+            const token = localStorage.getItem('nixtz_auth_token') || localStorage.getItem('tmt_auth_token');
+            if(token) {
+                document.getElementById('auth-buttons-container').style.display = 'none';
+                document.getElementById('user-menu-container').style.display = 'flex';
+                document.getElementById('username-display').textContent = localStorage.getItem('nixtz_username') || 'User';
+                document.getElementById('user-initials').textContent = localStorage.getItem('nixtz_username') || 'User';
+            } else {
+                document.getElementById('auth-buttons-container').style.display = 'flex';
+                document.getElementById('user-menu-container').style.display = 'none';
+            }
+        }
+        
+        window.handleLogout = function() {
+            localStorage.clear();
+            window.location.href = 'index.html';
+        };
+
+        window.openUserProfileModal = function() {
+            document.getElementById('profile-modal').classList.remove('hidden');
+            document.getElementById('profile-modal').classList.add('flex');
+            document.getElementById('modal-username').textContent = localStorage.getItem('nixtz_username');
+            document.getElementById('modal-email').textContent = localStorage.getItem('nixtz_email');
+        };
+
+        document.addEventListener('DOMContentLoaded', checkAuth);
+    </script>
+    
+    <script src="staff_report.js"></script>
 </body>
 </html>
