@@ -80,7 +80,7 @@ const ServiceUserSchema = new mongoose.Schema({
     susername: { type: String, required: true, unique: true, trim: true },
     semail: { type: String, required: true, unique: true, trim: true, lowercase: true },
     spasswordHash: { type: String, required: true },
-    srole: { type: String, default: 'pending', enum: ['pending', 'standard', 'admin', 'superadmin'] }, 
+    srole: { type: String, default: 'pending', enum: ['pending', 'standard', 'admin', 'superadmin', 'request_only'] }, 
     smembership: { type: String, default: 'none', enum: ['none', 'standard', 'platinum', 'vip'] },
     spageAccess: { type: [String], default: [] },
     createdAt: { type: Date, default: Date.now },

@@ -257,7 +257,7 @@ async function handleFormSubmit(e) {
 }
 
 // ------------------------------------
-// 8. HISTORY DISPLAY (FIXED ITEM QUANTITY MERGE & DISPLAY)
+// 8. HISTORY DISPLAY (FIXED ITEM QUANTITY MERGE)
 // ------------------------------------
 function renderRequestCard(request) {
     // Determine visuals based on Request Type
@@ -285,7 +285,8 @@ function renderRequestCard(request) {
     const itemsHtml = Array.from(uniqueItems.entries()).map(([key, item]) => `
         <li class="text-xs text-gray-400 flex justify-between">
             <span>
-                <span class="font-bold text-white">${item.count}x</span> ${key} </span>
+                <span class="font-bold text-white">${item.count}x</span> ${key.split('(')[0].trim()}
+            </span>
             ${item.details ? `<span class="italic text-gray-500 text-[10px]">(${item.details})</span>` : ''}
         </li>
     `).join('');
