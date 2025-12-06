@@ -7,7 +7,7 @@ if (typeof window.API_BASE_URL === 'undefined') {
     window.API_BASE_URL = ''; 
 }
 
-let currentEditingUserId = null; // Track which user is being edited
+let currentEditingUserId = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     // 1. Auth Check
@@ -120,7 +120,7 @@ function renderUserList(users) {
     if (!container) return;
 
     const rows = users.map(user => {
-        // SAFEGUARD: Check if suser exists (in case of orphaned data)
+        // SAFEGUARD 1: Check for orphaned data
         const role = user.suser ? user.suser.srole : 'unknown';
         
         // Map Codes to Readable Names
@@ -138,15 +138,15 @@ function renderUserList(users) {
         if (role === 'request_only') roleColor = 'bg-blue-600 text-white';
         if (role === 'standard') roleColor = 'bg-nixtz-primary text-white';
 
-        // Escaping data for onclick safety
-        const safeName = user.sname.replace(/'/g, "\\'");
-        const safeDept = user.sdepartment.replace(/'/g, "\\'");
+        // SAFEGUARD 2: Encode data to prevent onclick errors with special characters
+        const safeName = encodeURIComponent(user.sname || '');
+        const safeDept = encodeURIComponent(user.sdepartment || '');
         
         return `
         <tr class="bg-gray-900 border-b border-gray-800 hover:bg-gray-800 transition">
-            <td class="px-4 py-3 font-medium text-white">${user.sname}</td>
-            <td class="px-4 py-3 text-gray-400">${user.semployeeId}</td>
-            <td class="px-4 py-3 text-gray-400">${user.sdepartment}</td>
+            <td class="px-4 py-3 font-medium text-white">${user.sname || 'N/A'}</td>
+            <td class="px-4 py-3 text-gray-400">${user.semployeeId || 'N/A'}</td>
+            <td class="px-4 py-3 text-gray-400">${user.sdepartment || 'N/A'}</td>
             <td class="px-4 py-3">
                 <span class="px-2 py-1 text-xs font-bold rounded-full ${roleColor}">
                     ${displayRole}
@@ -154,8 +154,9 @@ function renderUserList(users) {
             </td>
             <td class="px-4 py-3 text-sm text-gray-500">${user.serviceScope}</td>
             <td class="px-4 py-3 text-right">
-                <button onclick="openEditModal('${user._id}', '${safeName}', '${safeDept}', '${role}')" 
-                        class="text-nixtz-secondary hover:text-white transition" title="Edit User">
+                <button onclick="openEditModal('${user._id}', decodeURIComponent('${safeName}'), decodeURIComponent('${safeDept}'), '${role}')" 
+                        class="p-2 text-nixtz-secondary hover:text-white transition rounded-full hover:bg-gray-700" 
+                        title="Edit User">
                     <i data-lucide="edit-2" class="w-4 h-4"></i>
                 </button>
             </td>
@@ -189,22 +190,34 @@ function renderUserList(users) {
 // ------------------------------------
 
 function openEditModal(staffAccessId, currentName, currentDept, currentRole) {
+    const modal = document.getElementById('edit-user-modal');
+    
+    // SAFEGUARD 3: Check if modal exists in HTML
+    if (!modal) {
+        alert("Error: Edit Modal HTML is missing from service_admin.html. Please update your HTML file.");
+        return;
+    }
+
     currentEditingUserId = staffAccessId;
     
-    // Pre-fill existing data
-    document.getElementById('edit-staff-name').value = currentName;
-    document.getElementById('edit-staff-department').value = currentDept; 
-    document.getElementById('edit-staff-role').value = currentRole;
-    
-    // Clear password field
-    document.getElementById('edit-staff-password').value = ''; 
+    // Set Values
+    const nameInput = document.getElementById('edit-staff-name');
+    const deptInput = document.getElementById('edit-staff-department');
+    const roleInput = document.getElementById('edit-staff-role');
+    const passInput = document.getElementById('edit-staff-password');
 
-    document.getElementById('edit-user-modal').style.display = 'flex';
+    if (nameInput) nameInput.value = currentName;
+    if (deptInput) deptInput.value = currentDept; 
+    if (roleInput) roleInput.value = currentRole;
+    if (passInput) passInput.value = ''; 
+
+    modal.style.display = 'flex';
 }
 window.openEditModal = openEditModal;
 
 function closeEditModal() {
-    document.getElementById('edit-user-modal').style.display = 'none';
+    const modal = document.getElementById('edit-user-modal');
+    if (modal) modal.style.display = 'none';
     currentEditingUserId = null;
 }
 window.closeEditModal = closeEditModal;
@@ -216,7 +229,8 @@ async function handleSaveUserEdit(e) {
     const newName = document.getElementById('edit-staff-name').value.trim();
     const newDept = document.getElementById('edit-staff-department').value;
     const newRole = document.getElementById('edit-staff-role').value;
-    const newPass = document.getElementById('edit-staff-password').value.trim();
+    const newPassElement = document.getElementById('edit-staff-password');
+    const newPass = newPassElement ? newPassElement.value.trim() : '';
 
     if (newPass && newPass.length < 8) {
         return window.showMessage("New password must be at least 8 characters.", true);
@@ -232,7 +246,7 @@ async function handleSaveUserEdit(e) {
                 sname: newName, 
                 sdepartment: newDept, 
                 srole: newRole,
-                spassword: newPass // Send password (empty string if not changing)
+                spassword: newPass 
             })
         });
 
