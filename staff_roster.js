@@ -1,6 +1,6 @@
 /**
  * staff_roster.js
- * FINAL STABLE VERSION. Fixes: Form Submission in Update Modal (Date Validation).
+ * FINAL STABLE VERSION. Fixes: Form Submission in Update Modal (Date Validation), Simplified Delivery Role Display, Increased Time Font Size.
  */
 
 // Global constants and API endpoints
@@ -138,7 +138,10 @@ function addStaffRow(initialData = {}) {
                 let rawRole = shiftInfo.jobRole || DAY_OFF_MARKER;
                 let displayVal = rawRole;
                 let displayTime = "";
-                let isManagerOrSup = (initialData.position === 'Manager' || initialData.position === 'Supervisor');
+                
+                // --- Roles for simplified display ---
+                const isManagerOrSup = (initialData.position === 'Manager' || initialData.position === 'Supervisor');
+                const isDelivery = (initialData.position === 'Delivery'); 
 
                 if (rawRole.includes(DAY_OFF_MARKER) || rawRole.includes("Off") || rawRole.includes("หยุด") || rawRole.includes("Leave") || rawRole.includes("Sick") || rawRole.includes("Personal") || rawRole.includes("Holiday")) {
                     if (rawRole.includes("Sick")) displayVal = "Sick";
@@ -153,9 +156,21 @@ function addStaffRow(initialData = {}) {
                         displayTime = config.time || "";
                         shiftIdToDisplay = config.baseId || shiftInfo.shiftId;
                         
-                        if (isManagerOrSup) {
-                            displayVal = `${shiftIdToDisplay}`;
+                        // CUSTOM FORMATTING RULES
+                        if (isManagerOrSup || isDelivery) { 
+                            
+                            let roleDisplay = isDelivery ? 'Del' : rawRole;
+                            
+                            if (roleDisplay === ' ') {
+                                roleDisplay = config.name; 
+                            } else if (roleDisplay.includes('C3 (Del)')) {
+                                roleDisplay = 'Del'; 
+                            }
+
+                            displayVal = `${shiftIdToDisplay} ${roleDisplay}`;
+
                         } else {
+                            // Normal Staff (C4/C5): Show "ShiftID Role" (e.g. "2 C5")
                             if (rawRole !== config.name) {
                                 displayVal = `${shiftIdToDisplay} ${rawRole}`;
                             } else {
@@ -172,6 +187,8 @@ function addStaffRow(initialData = {}) {
                     cellClass = "text-blue-200 font-bold";
                 } else if (initialData.position === 'Supervisor') {
                     cellClass = "text-green-200 font-bold";
+                } else if (isDelivery) { 
+                    cellClass = "text-orange-300 font-medium";
                 } else if (displayVal.includes("M") || displayVal.includes("1")) { 
                     cellClass = "text-yellow-200";
                 } else if (displayVal.includes("A") || displayVal.includes("2")) { 
@@ -184,7 +201,7 @@ function addStaffRow(initialData = {}) {
                 <td class="roster-cell border-l border-b border-gray-800 p-2 text-center text-sm relative group" data-day="${day}">
                     <div class="flex flex-col items-center justify-center h-full">
                         <span class="${cellClass} text-lg">${displayVal}</span>
-                        ${displayTime ? `<span class="text-[10px] text-gray-500 mt-0.5">(${displayTime})</span>` : ''}
+                        <span class="text-xs text-gray-500">(${displayTime})</span>
                     </div>
                 </td>`;
             }).join('')}
@@ -459,6 +476,7 @@ window.openStaffRequestModal = async function() {
         };
     }
     
+    // Default to the specific day duty view and apply validation rules
     if(window.toggleRequestFields) window.toggleRequestFields('specific_day_duty'); 
 };
 
@@ -469,7 +487,7 @@ window.toggleRequestFields = function(val) {
     document.getElementById('none-clear-message').classList.add('hidden');
     document.getElementById('profile-settings-fields').classList.add('hidden');
     
-    // Manage 'required' attribute for date inputs to prevent validation block
+    // Manage 'required' attribute for date and shift inputs to prevent validation block
     const startDateInput = document.getElementById('request-start-date');
     const endDateInput = document.getElementById('request-end-date');
     const shiftSelect = document.getElementById('request-configured-shift');
