@@ -5,10 +5,45 @@ const mongoose = require('mongoose');
 
 // --- MODEL IMPORT METHOD ---
 const LaundryRequest = mongoose.model('LaundryRequest'); 
-// Note: 'User' model import removed as we use the req.user attached by middleware
+// NOTE: We rely on the LaundryItemConfig model being compiled in service_admin_be.js
+const getLaundryItemConfigModel = () => mongoose.model('LaundryItemConfig');
 // --- END MODEL IMPORT METHOD ---
 
-// --- USER ENDPOINTS (Request Submission) ---
+
+// ===================================================================
+// NEW ENDPOINT: ITEM CONFIGURATION READ (for front-end form)
+// ===================================================================
+
+/**
+ * GET /api/laundry/items/config - Get configuration data (called by laundry_request.js on load)
+ */
+router.get('/items/config', async (req, res) => {
+    try {
+        const LaundryItemConfig = getLaundryItemConfigModel();
+        
+        // Fetch the single config document using the fixed ID
+        const config = await LaundryItemConfig.findOne({ _id: 'CONFIG_SINGLETON' }); 
+
+        // If no config exists in DB, provide the front-end with a default structure
+        if (!config) {
+            return res.json({ success: true, data: { pickup: [], supply: [] } }); 
+        }
+        
+        // Return the arrays of items
+        res.json({ success: true, data: { 
+            pickup: config.pickup || [], 
+            supply: config.supply || [] 
+        } });
+    } catch (err) {
+        console.error('Fetch Item Config Error:', err);
+        res.status(500).json({ success: false, message: 'Server error fetching item configuration.' });
+    }
+});
+
+
+// ===================================================================
+// EXISTING ENDPOINTS
+// ===================================================================
 
 // POST /api/laundry/request - Submit a new request
 router.post('/request', async (req, res) => {

@@ -7,6 +7,7 @@ if (typeof window.API_BASE_URL === 'undefined') {
 }
 
 let currentEditingUserId = null;
+let currentItemConfig = { pickup: [], supply: [] }; // Global cache for item types
 
 document.addEventListener('DOMContentLoaded', () => {
     if (!window.getServiceAuthStatus()) {
@@ -26,12 +27,17 @@ document.addEventListener('DOMContentLoaded', () => {
         editForm.addEventListener('submit', handleSaveUserEdit);
     }
     
-    // NEW: Handle Department Form Submission inside the modal
+    // Handle Department Form Submission inside the modal
     const addDeptForm = document.getElementById('add-department-form');
     if (addDeptForm) {
         addDeptForm.addEventListener('submit', handleAddDepartmentSubmit);
     }
-
+    
+    // NEW: Handle Item Form Submission
+    const addItemForm = document.getElementById('add-item-form');
+    if (addItemForm) {
+        addItemForm.addEventListener('submit', handleAddItemSubmit);
+    }
 
     document.addEventListener('click', closeDropdownOnOutsideClick);
     
@@ -40,6 +46,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     fetchActiveServiceUsers();
+    // NEW: Fetch item configuration on startup
+    fetchItemConfig();
 });
 
 // ------------------------------------
@@ -68,30 +76,26 @@ function closeDropdownOnOutsideClick(event) {
 }
 
 // ------------------------------------
-// DYNAMIC DROPDOWN MANAGEMENT (NEW LOGIC)
+// DYNAMIC DROPDOWN MANAGEMENT (DEPARTMENTS)
 // ------------------------------------
 
-// Utility to get current department options from the main select box
 function getCurrentDepartmentOptions() {
     const select = document.getElementById('staff-department');
     if (!select) return [];
     return Array.from(select.options)
-        .filter(option => option.value !== '') // Filter out the initial '-- Select Department --'
+        .filter(option => option.value !== '')
         .map(option => ({ name: option.text.trim(), value: option.value.trim() }));
 }
 
-// Utility to update all department dropdowns
 function updateDepartmentDropdowns(newDeptName) {
     const departmentName = newDeptName.trim();
     if (!departmentName) return;
 
-    // Select IDs for the main creation form and the edit modal
     const selectIds = ['staff-department', 'edit-staff-department'];
 
     selectIds.forEach(id => {
         const select = document.getElementById(id);
         if (select) {
-            // Check if the option already exists by value (which equals name here)
             if (!Array.from(select.options).some(opt => opt.value === departmentName)) {
                 const option = document.createElement("option");
                 option.text = departmentName;
@@ -101,7 +105,6 @@ function updateDepartmentDropdowns(newDeptName) {
         }
     });
 
-    // Update the list inside the modal
     const list = document.getElementById('current-departments-list');
     if (list) {
         if (!Array.from(list.children).some(li => li.textContent.trim() === departmentName)) {
@@ -116,7 +119,6 @@ function populateDepartmentListForModal() {
     const list = document.getElementById('current-departments-list');
     if (!list) return;
 
-    // Clear and repopulate the list using current options from the primary select
     list.innerHTML = '';
     const currentOptions = getCurrentDepartmentOptions();
     currentOptions.forEach(dept => {
@@ -126,7 +128,6 @@ function populateDepartmentListForModal() {
     });
 }
 
-// Action triggered by the sidebar button
 function manageDepartments() {
     const modal = document.getElementById('manage-options-modal');
     if (modal) modal.style.display = 'flex';
@@ -150,7 +151,6 @@ async function handleAddDepartmentSubmit(e) {
         return window.showMessage("Department name cannot be empty.", true);
     }
     
-    // Check for existing department (case insensitive)
     const existing = getCurrentDepartmentOptions().some(opt => opt.name.toLowerCase() === newDept.toLowerCase());
     
     if (existing) {
@@ -158,7 +158,6 @@ async function handleAddDepartmentSubmit(e) {
         return;
     }
 
-    // Update all relevant dropdowns with the new department name (includes spaces)
     updateDepartmentDropdowns(newDept);
     window.showMessage(`Department "${newDept}" added.`, false);
     e.target.reset();
@@ -166,7 +165,84 @@ async function handleAddDepartmentSubmit(e) {
 
 
 // ------------------------------------
-// DATA FETCHING & RENDERING (FIXED CACHING)
+// NEW ITEM MANAGEMENT LOGIC
+// ------------------------------------
+
+async function fetchItemConfig() {
+    const token = localStorage.getItem('nixtz_service_auth_token');
+    if (!token) return;
+
+    try {
+        const response = await fetch(`${window.API_BASE_URL}/api/laundry/items/config`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+            // Cache the configuration globally
+            currentItemConfig = result.data;
+            window.showMessage("Item configuration fetched.", false); // Debug confirmation
+        } else {
+            console.error('Failed to fetch item configuration:', result.message);
+        }
+    } catch (error) {
+        console.error('Network error fetching item config:', error);
+    }
+}
+window.fetchItemConfig = fetchItemConfig;
+
+
+// Placeholder function for the new sidebar button
+function manageItemTypes() {
+    // This should open a new modal/view specifically for managing item types.
+    // For now, it alerts the user and prints current configuration.
+    alert("Item Management Feature: Showing items in console.");
+    console.log("Current Item Configuration (Pickup):", currentItemConfig.pickup);
+    console.log("Current Item Configuration (Supply):", currentItemConfig.supply);
+
+    // TODO: Implement dedicated HTML modal opening and population logic here
+}
+window.manageItemTypes = manageItemTypes;
+
+// Placeholder submit handler for the item configuration form
+async function handleAddItemSubmit(e) {
+    e.preventDefault();
+    // This is where you would collect the updated lists (pickup and supply)
+    // from the admin modal form fields.
+    const newPickupList = []; // Replace with actual form field data retrieval
+    const newSupplyList = []; // Replace with actual form field data retrieval
+    
+    const payload = { 
+        pickup: newPickupList, 
+        supply: newSupplyList 
+    };
+
+    const token = localStorage.getItem('nixtz_service_auth_token');
+
+    try {
+        const response = await fetch(`${window.API_BASE_URL}/api/service/admin/items/config`, { 
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify(payload)
+        });
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+            currentItemConfig = payload; // Update cache
+            window.showMessage("Item lists updated successfully!", false);
+            // closeItemManagementModal(); 
+        } else {
+            window.showMessage(result.message || 'Failed to update item lists.', true);
+        }
+    } catch (error) {
+        console.error('Item Update Error:', error);
+        window.showMessage('Network error during item list update.', true);
+    }
+}
+
+
+// ------------------------------------
+// DATA FETCHING & RENDERING (STAFF LIST)
 // ------------------------------------
 
 async function fetchActiveServiceUsers() {
@@ -177,7 +253,6 @@ async function fetchActiveServiceUsers() {
 
     container.innerHTML = '<p class="text-gray-500 text-center py-4">Loading active staff list...</p>';
 
-    // --- FIX: ADD CACHE BUSTER TO URL ---
     const cacheBuster = `?t=${new Date().getTime()}`;
 
     try {

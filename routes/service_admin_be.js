@@ -10,9 +10,70 @@ const bcrypt = require('bcryptjs');
 const getSUserModel = () => mongoose.model('ServiceUser'); // <-- NOW POINTS TO DEDICATED USER TABLE
 const getServiceStaffAccessModel = () => mongoose.model('ServiceStaffAccess');
 
+// ===================================================================
+// DYNAMIC ITEM CONFIGURATION SCHEMA (PLACEHOLDER/FIX)
+// NOTE: This should ideally be in a models/ folder, but defined here for immediate functionality.
+// ===================================================================
+
+// Schema for storing the editable item lists (pickup and supply)
+const LaundryItemConfigSchema = new mongoose.Schema({
+    // Use a fixed ID to ensure only one configuration document exists
+    _id: { type: String, default: 'CONFIG_SINGLETON' }, 
+    pickup: { type: [String], default: [] }, // Array of strings for pickup items
+    supply: { type: [String], default: [] }, // Array of strings for supply items
+    lastUpdated: { type: Date, default: Date.now }
+});
+
+// Use try/catch to avoid Mongoose OverwriteModelError if model is already defined elsewhere
+try {
+    mongoose.model('LaundryItemConfig', LaundryItemConfigSchema);
+} catch (error) {
+    // Model already exists, which is fine
+}
+
+// Helper to access the new config model
+const getLaundryItemConfigModel = () => mongoose.model('LaundryItemConfig');
+
+
+// ===================================================================
+// NEW ENDPOINT: ITEM CONFIGURATION MANAGEMENT (WRITE)
+// ===================================================================
+
+/**
+ * POST /api/service/admin/items/config - Save/Update configuration data
+ */
+router.post('/items/config', async (req, res) => {
+    const { pickup, supply } = req.body;
+    
+    // Simple validation for required arrays
+    if (!pickup || !supply || !Array.isArray(pickup) || !Array.isArray(supply)) {
+        return res.status(400).json({ success: false, message: 'Invalid item structure provided. Must contain arrays for pickup and supply.' });
+    }
+
+    try {
+        const LaundryItemConfig = getLaundryItemConfigModel();
+        
+        // Find existing config or create a new one (Upsert logic using fixed ID)
+        const updatedConfig = await LaundryItemConfig.findOneAndUpdate(
+            { _id: 'CONFIG_SINGLETON' }, 
+            { pickup: pickup, supply: supply, lastUpdated: new Date() },
+            { new: true, upsert: true, setDefaultsOnInsert: true }
+        );
+
+        res.json({ success: true, message: 'Item configuration updated successfully.', data: updatedConfig });
+    } catch (err) {
+        console.error('Save Item Config Error:', err);
+        res.status(500).json({ success: false, message: 'Server error saving item configuration.' });
+    }
+});
+
+
+// ===================================================================
+// EXISTING ENDPOINTS (Staff User Management)
+// ===================================================================
+
 /**
  * POST /api/service/admin/create-staff-v2 - Create a new service staff user
- * Creates a linked ServiceUser account for login and a ServiceStaffAccess record.
  */
 router.post('/create-staff-v2', async (req, res) => {
     
@@ -101,8 +162,6 @@ router.get('/staff-list', async (req, res) => {
 
 /**
  * PUT /api/service/admin/update-staff/:id
- * Update staff details (Name, Dept, Role) AND Password (Optional)
- * This route is required for the Edit Modal to work.
  */
 router.put('/update-staff/:id', async (req, res) => {
     const SUser = getSUserModel();

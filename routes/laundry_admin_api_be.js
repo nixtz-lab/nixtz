@@ -6,6 +6,10 @@ const mongoose = require('mongoose');
 const User = mongoose.model('User');
 const LaundryRequest = mongoose.model('LaundryRequest');
 
+// Helper to safely access the shared models
+const getLaundryItemConfigModel = () => mongoose.model('LaundryItemConfig');
+
+
 // GET /api/laundry/admin/analytics - Get aggregated counts of requests by status
 router.get('/analytics', async (req, res) => {
     try {

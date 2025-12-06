@@ -41,11 +41,13 @@ const ITEM_OPTIONS = {
 
 document.addEventListener('DOMContentLoaded', () => {
     createLucideIcons();
-    initLaundryRequestPage();
+    
+    // 🚨 FIX APPLIED: Keep one unified call to handle all initialization and loading
+    initLaundryRequestPage(); 
+    
     document.addEventListener('click', closeDropdownOnOutsideClick);
     
-    // Initialize default mode UI to 'supply' (Order Clean)
-    setRequestMode('supply'); 
+    // NOTE: setRequestMode('supply') is now implicitly handled inside initLaundryRequestPage()'s cleanup logic.
 });
 
 // Helper function to create Lucide icons safely
@@ -191,7 +193,7 @@ async function handleFormSubmit(e) {
     const items = [];
     const itemElements = itemsContainer.querySelectorAll('[id^="item-"]'); // Select all item containers
     
-    // --- START DEBUG LOGGING (To find the 4x bug origin) ---
+    // --- START DEBUG LOGGING ---
     console.log('DEBUG: Found', itemElements.length, 'item containers in the DOM.'); 
     // --- END DEBUG LOGGING ---
 
@@ -400,7 +402,8 @@ function initLaundryRequestPage() {
         });
     }
 
-    // --- FIX APPLIED: Force cleanup and reset on initialization ---
+    // --- FIX APPLIED: Force cleanup and reset on initialization to solve 4x bug ---
+    // This runs the initial setup cleanly, preventing multiple item inputs from being read.
     if (itemsContainer) {
         itemsContainer.innerHTML = ''; // Force clear any pre-existing duplicates
         itemCounter = 0; // Reset counter
