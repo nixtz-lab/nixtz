@@ -33,10 +33,11 @@ document.addEventListener('DOMContentLoaded', () => {
         addDeptForm.addEventListener('submit', handleAddDepartmentSubmit);
     }
     
-    // NEW: Handle Item Form Submission
+    // NEW: Handle Item Form Submission (Form ID not yet defined in HTML)
     const addItemForm = document.getElementById('add-item-form');
     if (addItemForm) {
-        addItemForm.addEventListener('submit', handleAddItemSubmit);
+        // You would define handleAddItemSubmit() for this to work
+        addItemForm.addEventListener('submit', handleAddItemSubmit); 
     }
 
     document.addEventListener('click', closeDropdownOnOutsideClick);
@@ -87,7 +88,7 @@ function getCurrentDepartmentOptions() {
         .map(option => ({ name: option.text.trim(), value: option.value.trim() }));
 }
 
-function updateDepartmentDropdowns(newDeptName) {
+function updateDepartmentDropdowns(newDeptName, newContact) {
     const departmentName = newDeptName.trim();
     if (!departmentName) return;
 
@@ -107,9 +108,10 @@ function updateDepartmentDropdowns(newDeptName) {
 
     const list = document.getElementById('current-departments-list');
     if (list) {
-        if (!Array.from(list.children).some(li => li.textContent.trim() === departmentName)) {
+        if (!Array.from(list.children).some(li => li.textContent.trim().startsWith(departmentName))) {
             const listItem = document.createElement("li");
-            listItem.textContent = departmentName;
+            // Display name and contact
+            listItem.textContent = `${departmentName} (Ext: ${newContact})`;
             list.appendChild(listItem);
         }
     }
@@ -122,8 +124,9 @@ function populateDepartmentListForModal() {
     list.innerHTML = '';
     const currentOptions = getCurrentDepartmentOptions();
     currentOptions.forEach(dept => {
+        // NOTE: Since the contact is not currently stored in the option element, we only show the name here.
         const listItem = document.createElement("li");
-        listItem.textContent = dept.name;
+        listItem.textContent = dept.name; 
         list.appendChild(listItem);
     });
 }
@@ -146,9 +149,10 @@ window.closeManageOptionsModal = closeManageOptionsModal;
 async function handleAddDepartmentSubmit(e) {
     e.preventDefault();
     const newDept = document.getElementById('new-department-name').value.trim();
+    const newContact = document.getElementById('new-department-contact').value.trim(); // NEW FIELD
     
-    if (newDept === "") {
-        return window.showMessage("Department name cannot be empty.", true);
+    if (newDept === "" || newContact === "") {
+        return window.showMessage("Department name and contact are required.", true);
     }
     
     const existing = getCurrentDepartmentOptions().some(opt => opt.name.toLowerCase() === newDept.toLowerCase());
@@ -158,8 +162,9 @@ async function handleAddDepartmentSubmit(e) {
         return;
     }
 
-    updateDepartmentDropdowns(newDept);
-    window.showMessage(`Department "${newDept}" added.`, false);
+    // Update dropdowns with name and update the list display with contact info
+    updateDepartmentDropdowns(newDept, newContact); 
+    window.showMessage(`Department "${newDept}" added. Contact: ${newContact}.`, false);
     e.target.reset();
 }
 
@@ -173,6 +178,7 @@ async function fetchItemConfig() {
     if (!token) return;
 
     try {
+        // Fetch item config from the newly added READ endpoint
         const response = await fetch(`${window.API_BASE_URL}/api/laundry/items/config`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -181,7 +187,10 @@ async function fetchItemConfig() {
         if (response.ok && result.success) {
             // Cache the configuration globally
             currentItemConfig = result.data;
-            window.showMessage("Item configuration fetched.", false); // Debug confirmation
+            // The lists in the item creation dropdowns need to be updated here too
+            // NOTE: Full dynamic update logic omitted, only fetch/cache implemented.
+            
+            // window.showMessage("Item configuration fetched.", false); // Optional: Remove console log spam
         } else {
             console.error('Failed to fetch item configuration:', result.message);
         }
@@ -192,23 +201,22 @@ async function fetchItemConfig() {
 window.fetchItemConfig = fetchItemConfig;
 
 
-// Placeholder function for the new sidebar button
+// Function for the new sidebar button
 function manageItemTypes() {
-    // This should open a new modal/view specifically for managing item types.
-    // For now, it alerts the user and prints current configuration.
-    alert("Item Management Feature: Showing items in console.");
+    // 🚨 FIX 1: This makes the button open an alert confirming data fetch.
+    alert(`Item Management Feature is running.\n\nCurrent Pickup Items in Cache: ${currentItemConfig.pickup.length} items.\n(Check console for lists.)`);
     console.log("Current Item Configuration (Pickup):", currentItemConfig.pickup);
     console.log("Current Item Configuration (Supply):", currentItemConfig.supply);
-
-    // TODO: Implement dedicated HTML modal opening and population logic here
+    
+    // TODO: A real implementation would open a dedicated Item Management Modal here.
 }
 window.manageItemTypes = manageItemTypes;
 
-// Placeholder submit handler for the item configuration form
+// Submit handler for the item configuration form (needs corresponding HTML form)
 async function handleAddItemSubmit(e) {
     e.preventDefault();
-    // This is where you would collect the updated lists (pickup and supply)
-    // from the admin modal form fields.
+    // This function will eventually call the POST /api/service/admin/items/config endpoint
+    
     const newPickupList = []; // Replace with actual form field data retrieval
     const newSupplyList = []; // Replace with actual form field data retrieval
     
@@ -230,7 +238,8 @@ async function handleAddItemSubmit(e) {
         if (response.ok && result.success) {
             currentItemConfig = payload; // Update cache
             window.showMessage("Item lists updated successfully!", false);
-            // closeItemManagementModal(); 
+            // Re-fetch Item Config to update the entire application, including Laundry Request Page
+            fetchItemConfig(); 
         } else {
             window.showMessage(result.message || 'Failed to update item lists.', true);
         }

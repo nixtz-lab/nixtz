@@ -12,7 +12,8 @@ if (typeof window.API_BASE_URL === 'undefined') {
 const itemsContainer = document.getElementById('items-container');
 
 // --- 2. MODE STATE MANAGEMENT ---
-let currentMode = 'supply'; // Changed default mode to 'supply'
+// This list will eventually be fetched dynamically from the backend.
+let currentMode = 'supply'; // Default start mode
 
 const ITEM_OPTIONS = {
     pickup: [
@@ -41,13 +42,9 @@ const ITEM_OPTIONS = {
 
 document.addEventListener('DOMContentLoaded', () => {
     createLucideIcons();
-    
-    // 🚨 FIX APPLIED: Keep one unified call to handle all initialization and loading
-    initLaundryRequestPage(); 
-    
+    // 🚨 FIX: Call the unified initialization function
+    initLaundryRequestPage();
     document.addEventListener('click', closeDropdownOnOutsideClick);
-    
-    // NOTE: setRequestMode('supply') is now implicitly handled inside initLaundryRequestPage()'s cleanup logic.
 });
 
 // Helper function to create Lucide icons safely
@@ -403,7 +400,6 @@ function initLaundryRequestPage() {
     }
 
     // --- FIX APPLIED: Force cleanup and reset on initialization to solve 4x bug ---
-    // This runs the initial setup cleanly, preventing multiple item inputs from being read.
     if (itemsContainer) {
         itemsContainer.innerHTML = ''; // Force clear any pre-existing duplicates
         itemCounter = 0; // Reset counter
@@ -411,6 +407,10 @@ function initLaundryRequestPage() {
         createLucideIcons();
     }
     // --- END FIX ---
+    
+    // 🚨 FIX FOR DEFAULT MODE: Ensure the mode is set after initialization
+    setRequestMode('supply'); 
+    
 
     loadRequestHistory();
     
